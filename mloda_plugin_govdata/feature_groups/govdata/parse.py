@@ -68,10 +68,11 @@ def _to_int(raw: str) -> int | None:
     cleaned = _clean_number(raw)
     if cleaned is None:
         return None
-    number = float(cleaned)
-    if not number.is_integer():
-        raise ValueError(f"expected an integer, got {raw!r}")
-    return int(number)
+    try:
+        # int() directly, never through float, so large values are not rounded.
+        return int(cleaned)
+    except ValueError:
+        raise ValueError(f"expected an integer, got {raw!r}") from None
 
 
 def _to_float(raw: str) -> float | None:

@@ -12,6 +12,7 @@ from tenacity import RetryCallState, retry, retry_if_exception, stop_after_attem
 DEFAULT_TIMEOUT = httpx.Timeout(connect=10.0, read=60.0, write=30.0, pool=10.0)
 RETRYABLE_STATUS: frozenset[int] = frozenset({429, 500, 502, 503, 504})
 MAX_ATTEMPTS = 5
+MAX_RETRY_AFTER = 60.0  # cap a server's Retry-After so it cannot stall the client for hours
 
 _BASE_WAIT = wait_exponential_jitter(initial=0.5, max=10.0)
 
@@ -58,7 +59,7 @@ def _wait(state: RetryCallState) -> float:
     if outcome is not None:
         exc = outcome.exception()
         if isinstance(exc, RetryableStatusError) and exc.retry_after is not None:
-            return max(base, exc.retry_after)
+            return max(base, min(exc.retry_after, MAX_RETRY_AFTER))
     return base
 
 

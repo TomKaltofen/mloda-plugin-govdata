@@ -14,8 +14,10 @@ from typing import Any, ClassVar
 
 import pyarrow as pa
 
-from mloda.provider import BaseInputData, ComputeFramework, FeatureSet
-from mloda_plugins.compute_framework.base_implementations.pyarrow.table import PyArrowTable
+from mloda.provider import BaseInputData, FeatureSet
+
+# Imported for its registration side effect so "PyArrowTable" resolves; the reader returns a pyarrow Table.
+from mloda_plugins.compute_framework.base_implementations.pyarrow.table import PyArrowTable  # noqa: F401
 from mloda_plugins.feature_group.input_data.read_file import ReadFile
 from mloda_plugins.feature_group.input_data.read_file_feature import ReadFileFeature
 
@@ -54,7 +56,7 @@ class GovDataReader(ReadFile):
     def load_data(cls, data_access: Any, features: FeatureSet) -> Any:
         # Touch features first: the framework probes load_data(None, None) and
         # only tolerates AttributeError to detect scoped-access support.
-        requested = list(features.get_all_names())
+        requested = sorted(features.get_all_names())  # deterministic column order
         locator = GovDataLocator.coerce(data_access)
         if locator is None:
             raise ValueError(f"GovDataReader cannot handle data access {data_access!r}")
@@ -77,12 +79,8 @@ class GovDataReader(ReadFile):
 
 
 class GovDataFeature(ReadFileFeature):
-    """Root FeatureGroup that serves columns from a GovData distribution."""
+    """Root FeatureGroup for GovData columns; inherits the any-framework rule to avoid resolver collisions."""
 
     @classmethod
     def input_data(cls) -> BaseInputData | None:
         return GovDataReader()
-
-    @classmethod
-    def compute_framework_rule(cls) -> set[type[ComputeFramework]] | None:
-        return {PyArrowTable}

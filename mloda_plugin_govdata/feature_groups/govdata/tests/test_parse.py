@@ -85,3 +85,11 @@ def test_date_validation_raises_on_bad_date() -> None:
     data = "Stichtag\r\n99.99.9999\r\n".encode("cp1252")
     with pytest.raises(ValueError):
         parse_german_csv_bytes(data, {"Stichtag": ColumnType.DATE})
+
+
+def test_large_integer_parses_exactly() -> None:
+    # Values above 2**53 must not be rounded through float.
+    big = 9007199254740993
+    data = f"Wert\r\n{big}\r\n".encode("cp1252")
+    table = parse_german_csv_bytes(data, {"Wert": ColumnType.INTEGER})
+    assert table.column("Wert").to_pylist() == [big]

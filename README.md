@@ -6,6 +6,29 @@
 
 # mloda-plugin-govdata
 
+Connectors for German open government data, built on [mloda](https://github.com/mloda-ai/mloda). Request the columns you want as mloda features; the plugin handles CKAN discovery, download with caching and retries, and German-CSV parsing into a typed Arrow table.
+
+## Usage
+
+Read the Stuttgart population dataset (via GovData) as a typed PyArrow table:
+
+```python
+from mloda.user import Feature, mloda
+from mloda_plugin_govdata.feature_groups.govdata import GovDataReader
+
+slug = "einwohner-nach-altersgruppen-und-stadtbezirken"
+result = mloda.run_all(
+    [
+        Feature("Einwohner", options={GovDataReader.__name__: slug}),
+        Feature("Stadtbezirk", options={GovDataReader.__name__: slug}),
+    ],
+    compute_frameworks=["PyArrowTable"],
+)
+table = result[0]  # pyarrow.Table with the requested columns
+```
+
+The option value is a GovData dataset slug or a direct distribution URL. The license is read from the CKAN distribution metadata. Set `GovDataReader.cache_dir` to control where downloads are cached.
+
 ## Related Repositories
 
 - **[mloda](https://github.com/mloda-ai/mloda)**: The core library for open data access. Declaratively define what data you need, not how to get it. mloda handles feature resolution, dependency management, and compute framework abstraction automatically.

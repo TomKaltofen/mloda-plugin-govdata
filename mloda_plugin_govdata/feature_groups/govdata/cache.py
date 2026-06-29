@@ -60,8 +60,11 @@ class DownloadCache:
         meta_path = self._meta_path(url)
         if not meta_path.exists():
             return None
-        loaded: dict[str, Any] = json.loads(meta_path.read_text(encoding="utf-8"))
-        return loaded
+        try:
+            loaded = json.loads(meta_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            return None  # unreadable metadata: treat as a cache miss and re-download
+        return loaded if isinstance(loaded, dict) else None
 
     def get_or_download(self, url: str) -> CachedFile:
         meta = self._read_meta(url)
@@ -77,8 +80,10 @@ class DownloadCache:
                 headers["If-Modified-Since"] = meta["last_modified"]
 
         response = request_with_retry(self._client, "GET", url, headers=headers)
-        if response.status_code == 304 and cached is not None:
-            return cached
+        if response.status_code == 304:
+            if cached is not None:
+                return cached
+            raise RuntimeError(f"server returned 304 for {url} but no cached body is available")
         response.raise_for_status()
         return self._store(url, response)
 

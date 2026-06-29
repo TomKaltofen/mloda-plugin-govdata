@@ -50,3 +50,13 @@ def test_corrupted_cache_redownloads(tmp_path: Path) -> None:
         first.path.write_bytes(b"corrupted")  # tamper the stored body
         second = cache.get_or_download(URL)
     assert second.path.read_bytes() == BODY
+
+
+@respx.mock
+def test_unreadable_metadata_redownloads(tmp_path: Path) -> None:
+    respx.get(URL).mock(return_value=httpx.Response(200, content=BODY, headers={"ETag": ETAG}))
+    with DownloadCache(tmp_path) as cache:
+        cache.get_or_download(URL)
+        cache._meta_path(URL).write_text("{ not valid json", encoding="utf-8")  # truncated write
+        second = cache.get_or_download(URL)
+    assert second.path.read_bytes() == BODY

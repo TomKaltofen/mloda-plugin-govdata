@@ -7,7 +7,13 @@ import httpx
 import respx
 
 from mloda_plugin_govdata.feature_groups.govdata.client import build_client
-from mloda_plugin_govdata.feature_groups.govdata.discovery import Dataset, normalize_license, resolve_distribution
+from mloda_plugin_govdata.feature_groups.govdata.discovery import (
+    Dataset,
+    Resource,
+    _select_resource,
+    normalize_license,
+    resolve_distribution,
+)
 from mloda_plugin_govdata.feature_groups.govdata.locator import GovDataLocator
 
 PACKAGE_SHOW = "https://ckan.govdata.de/api/3/action/package_show"
@@ -47,3 +53,11 @@ def test_resolve_direct_url_skips_discovery() -> None:
         resolved = resolve_distribution(GovDataLocator(distribution_url="https://example.org/data.csv"), client)
     assert resolved.url == "https://example.org/data.csv"
     assert resolved.license is None
+
+
+def test_select_resource_prefers_csv_over_first_non_csv() -> None:
+    resources = [
+        Resource(url="https://example.org/page.html", format="HTML"),
+        Resource(url="https://example.org/data.csv", format="CSV"),
+    ]
+    assert _select_resource(resources, 0).url.endswith(".csv")

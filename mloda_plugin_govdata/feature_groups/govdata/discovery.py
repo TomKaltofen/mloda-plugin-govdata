@@ -57,7 +57,7 @@ class Dataset(BaseModel):
 
     @classmethod
     def from_ckan(cls, result: dict[str, Any]) -> "Dataset":
-        extras = {e["key"]: e.get("value", "") for e in result.get("extras", []) if "key" in e}
+        extras = {e["key"]: str(e.get("value", "")) for e in result.get("extras", []) if "key" in e}
         resources = [Resource.model_validate(r) for r in result.get("resources", [])]
         return cls(
             name=result.get("name"),
@@ -90,6 +90,26 @@ def fetch_dataset(client: httpx.Client, locator: GovDataLocator) -> Dataset:
     return Dataset.from_ckan(payload["result"])
 
 
+def _looks_like_csv(resource: Resource) -> bool:
+    """True when the resource advertises CSV via format, mimetype, or URL suffix."""
+    fmt = (resource.format or "").strip().lower()
+    mimetype = (resource.mimetype or "").strip().lower()
+    return fmt == "csv" or mimetype == "text/csv" or resource.url.lower().endswith(".csv")
+
+
+def _select_resource(resources: list[Resource], resource_index: int) -> Resource:
+    """Pick the distribution to read, preferring CSV since that is all the reader parses."""
+    if not 0 <= resource_index < len(resources):
+        raise IndexError(f"resource_index {resource_index} is out of range ({len(resources)} resources)")
+    chosen = resources[resource_index]
+    if _looks_like_csv(chosen):
+        return chosen
+    for resource in resources:
+        if _looks_like_csv(resource):
+            return resource
+    return chosen
+
+
 def resolve_distribution(locator: GovDataLocator, client: httpx.Client) -> ResolvedDistribution:
     """Resolve a locator to a concrete distribution URL plus its license.
 
@@ -103,7 +123,5 @@ def resolve_distribution(locator: GovDataLocator, client: httpx.Client) -> Resol
     dataset = fetch_dataset(client, locator)
     if not dataset.resources:
         raise ValueError(f"dataset {locator.dataset_id!r} exposes no resources")
-    if locator.resource_index >= len(dataset.resources):
-        raise IndexError(f"resource_index {locator.resource_index} out of range for {locator.dataset_id!r}")
-    resource = dataset.resources[locator.resource_index]
+    resource = _select_resource(dataset.resources, locator.resource_index)
     return ResolvedDistribution(url=resource.url, license=normalize_license(resource.license), dataset=dataset)
