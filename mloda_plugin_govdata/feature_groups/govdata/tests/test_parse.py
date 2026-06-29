@@ -101,7 +101,7 @@ def test_multi_header_flattens_and_types_kerg(fixtures_dir: Path) -> None:
     table = parse_multi_header_csv(
         fixtures_dir / "kerg_sample.csv", skiprows=5, header_rows=3, label_columns=4, value_type=ColumnType.INTEGER
     )
-    assert table.num_columns == 141
+    assert table.num_columns == 140  # 140 real columns; the trailing ';' phantom column is dropped
     assert table.num_rows == 16  # 17 data lines minus one ';' separator row
     assert table.schema.names[:4] == ["Nr", "Gebiet", "gehört zu", "Gewählt"]
     # the 3 merged header rows flatten into one combined name
@@ -126,3 +126,26 @@ def test_multi_header_dedupes_duplicate_names() -> None:
     assert table.schema.names == ["A", "A (2)"]
     assert table.column("A").to_pylist() == [1, 3]
     assert table.column("A (2)").to_pylist() == [2, 4]
+
+
+def test_multi_header_does_not_fill_padded_cells() -> None:
+    # The top header row omits a trailing cell; padding must not forward-fill into it.
+    data = "A;B\r\nx;y;z\r\n1;2;3\r\n".encode("utf-8")
+    table = parse_multi_header_csv_bytes(data, skiprows=0, header_rows=2, label_columns=3, value_type=ColumnType.STRING)
+    assert table.schema.names == ["A x", "B y", "z"]
+
+
+def test_multi_header_dedupe_handles_existing_suffix() -> None:
+    data = "A;A (2);A\r\n1;2;3\r\n".encode("utf-8")
+    table = parse_multi_header_csv_bytes(
+        data, skiprows=0, header_rows=1, label_columns=0, value_type=ColumnType.INTEGER
+    )
+    assert table.schema.names == ["A", "A (2)", "A (3)"]
+
+
+def test_multi_header_empty_measure_is_null() -> None:
+    data = "Region;Votes\r\nBerlin;\r\nHamburg;5\r\n".encode("utf-8")
+    table = parse_multi_header_csv_bytes(
+        data, skiprows=0, header_rows=1, label_columns=1, value_type=ColumnType.INTEGER
+    )
+    assert table.column("Votes").to_pylist() == [None, 5]

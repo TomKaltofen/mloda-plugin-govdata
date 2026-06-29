@@ -9,6 +9,7 @@ silently leaving a column as strings.
 
 from __future__ import annotations
 
+import csv
 import io
 import os
 from datetime import date, datetime
@@ -179,24 +180,34 @@ def _ffill_header_row(row: list[str]) -> list[str]:
 
 
 def _flatten_header(header_rows: list[list[str]]) -> list[str]:
-    """Combine multi-row merged headers into one unique name per column."""
-    ncols = max(len(row) for row in header_rows)
-    padded = [row + [""] * (ncols - len(row)) for row in header_rows]
-    filled = [_ffill_header_row(row) for row in padded]
+    """Combine multi-row merged headers into one unique name per column.
+
+    Trailing columns with no header cell in any row are dropped, so a universal
+    trailing delimiter does not add a phantom all-null column.
+    """
+    ncols = 0
+    for row in header_rows:
+        for j, cell in enumerate(row):
+            if cell.strip():
+                ncols = max(ncols, j + 1)
+    # Forward-fill merged cells within each row, then pad/truncate to ncols so a
+    # writer's omitted trailing cells do not inherit a label.
+    filled = [(_ffill_header_row(row) + [""] * ncols)[:ncols] for row in header_rows]
     names: list[str] = []
-    seen: dict[str, int] = {}
+    used: set[str] = set()
     for j in range(ncols):
         parts: list[str] = []
         for row in filled:
             part = row[j]
             if part and (not parts or parts[-1] != part):
                 parts.append(part)
-        name = " ".join(parts) if parts else f"column_{j}"
-        if name in seen:
-            seen[name] += 1
-            name = f"{name} ({seen[name]})"
-        else:
-            seen[name] = 1
+        base = " ".join(parts) if parts else f"column_{j}"
+        name = base
+        suffix = 1
+        while name in used:  # guarantee uniqueness even against pre-suffixed names
+            suffix += 1
+            name = f"{base} ({suffix})"
+        used.add(name)
         names.append(name)
     return names
 
@@ -215,22 +226,22 @@ def parse_multi_header_csv_bytes(
 
     Skips ``skiprows`` preamble lines, flattens the next ``header_rows`` rows into
     unique column names, drops blank/separator rows, and types the first
-    ``label_columns`` columns as strings with the rest as ``value_type``. Assumes
-    fields are not quoted (true for German authority exports).
+    ``label_columns`` columns as strings with the rest as ``value_type``. Parsing
+    goes through the csv module, so quoted fields and line endings are handled.
     """
     enc = encoding or detect_encoding(data)
-    lines = data.decode(enc).splitlines()
-    header_block = [line.split(sep) for line in lines[skiprows : skiprows + header_rows]]
+    rows = list(csv.reader(io.StringIO(data.decode(enc)), delimiter=sep))
+    header_block = rows[skiprows : skiprows + header_rows]
     if header_rows < 1 or len(header_block) < header_rows:
         raise ValueError("not enough header rows for the requested header_rows")
     names = _flatten_header(header_block)
     ncols = len(names)
 
     cells: dict[str, list[str]] = {name: [] for name in names}
-    for line in lines[skiprows + header_rows :]:
-        if not line.replace(sep, "").strip():
+    for row in rows[skiprows + header_rows :]:
+        if not any(cell.strip() for cell in row):
             continue  # blank or separator row (e.g. a lone ';')
-        fields = (line.split(sep) + [""] * ncols)[:ncols]
+        fields = (row + [""] * ncols)[:ncols]
         for name, value in zip(names, fields):
             cells[name].append(value)
 
