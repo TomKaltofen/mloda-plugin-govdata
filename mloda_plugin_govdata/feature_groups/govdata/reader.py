@@ -26,6 +26,7 @@ from .client import build_client
 from .discovery import ResolvedDistribution, resolve_distribution
 from .locator import GovDataLocator
 from .parse import ColumnType, parse_german_csv, parse_multi_header_csv
+from .uba import parse_uba_measures
 
 # The M1 population dataset (Stuttgart, via GovData) and its known typed schema.
 POPULATION_SLUG = "einwohner-nach-altersgruppen-und-stadtbezirken"
@@ -88,6 +89,24 @@ class BundeswahlleiterinReader(GovDataReader):
     @classmethod
     def _parse(cls, path: Path, locator: GovDataLocator, distribution: ResolvedDistribution) -> pa.Table:
         return parse_multi_header_csv(path, skiprows=5, header_rows=3, label_columns=4, value_type=ColumnType.INTEGER)
+
+
+class UbaAirReader(GovDataReader):
+    """Reads the UBA Air Data v4 ``measures`` JSON endpoint into a typed Arrow table.
+
+    The option value is a full ``measures`` URL (build one with
+    :func:`~mloda_plugin_govdata.feature_groups.govdata.uba.uba_measures_url`); the response
+    is flattened to one row per station and measurement timestamp. Reuses the client, cache,
+    retry, and direct-URL resolution; only the parse seam differs from the CSV readers.
+    """
+
+    @classmethod
+    def suffix(cls) -> tuple[str, ...]:
+        return (".json",)
+
+    @classmethod
+    def _parse(cls, path: Path, locator: GovDataLocator, distribution: ResolvedDistribution) -> pa.Table:
+        return parse_uba_measures(path)
 
 
 class GovDataFeature(ReadFileFeature):
