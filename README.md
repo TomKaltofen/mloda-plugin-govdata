@@ -29,6 +29,18 @@ table = result[0]  # pyarrow.Table with the requested columns
 
 The option value is a GovData dataset slug or a direct distribution URL. The license is read from the CKAN distribution metadata. Set `GovDataReader.cache_dir` to control where downloads are cached.
 
+The elections reader handles a direct CSV URL whose file has a multi-row merged header (Bundeswahlleiterin `kerg.csv`):
+
+```python
+from mloda_plugin_govdata.feature_groups.govdata import BundeswahlleiterinReader
+
+kerg = "https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata/btw25/csv/kerg.csv"
+result = mloda.run_all(
+    [Feature("Gebiet", options={BundeswahlleiterinReader.__name__: kerg})],
+    compute_frameworks=["PyArrowTable"],
+)
+```
+
 ## Related Repositories
 
 - **[mloda](https://github.com/mloda-ai/mloda)**: The core library for open data access. Declaratively define what data you need, not how to get it. mloda handles feature resolution, dependency management, and compute framework abstraction automatically.

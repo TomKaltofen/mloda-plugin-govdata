@@ -11,6 +11,8 @@ from mloda_plugin_govdata.feature_groups.govdata.parse import (
     detect_encoding,
     parse_german_csv,
     parse_german_csv_bytes,
+    parse_multi_header_csv,
+    parse_multi_header_csv_bytes,
 )
 
 POPULATION_COLUMNS: dict[str, ColumnType] = {
@@ -93,3 +95,34 @@ def test_large_integer_parses_exactly() -> None:
     data = f"Wert\r\n{big}\r\n".encode("cp1252")
     table = parse_german_csv_bytes(data, {"Wert": ColumnType.INTEGER})
     assert table.column("Wert").to_pylist() == [big]
+
+
+def test_multi_header_flattens_and_types_kerg(fixtures_dir: Path) -> None:
+    table = parse_multi_header_csv(
+        fixtures_dir / "kerg_sample.csv", skiprows=5, header_rows=3, label_columns=4, value_type=ColumnType.INTEGER
+    )
+    assert table.num_columns == 141
+    assert table.num_rows == 16  # 17 data lines minus one ';' separator row
+    assert table.schema.names[:4] == ["Nr", "Gebiet", "gehört zu", "Gewählt"]
+    # the 3 merged header rows flatten into one combined name
+    assert "Wahlberechtigte Erststimmen Endgültig" in table.schema.names
+    assert table.schema.field("Gebiet").type == pa.string()
+    assert table.schema.field("Wahlberechtigte Erststimmen Endgültig").type == pa.int64()
+    assert table.column("Gebiet").to_pylist()[0] == "Flensburg – Schleswig"
+    assert table.column("Wahlberechtigte Erststimmen Endgültig").to_pylist()[0] == 232131
+
+
+def test_multi_header_forward_fills_merged_cells() -> None:
+    data = "Group;;Other\r\na;b;c\r\n1;2;3\r\n".encode("utf-8")
+    table = parse_multi_header_csv_bytes(data, skiprows=0, header_rows=2, label_columns=3, value_type=ColumnType.STRING)
+    assert table.schema.names == ["Group a", "Group b", "Other c"]
+
+
+def test_multi_header_dedupes_duplicate_names() -> None:
+    data = "skip\r\nA;A\r\n1;2\r\n3;4\r\n".encode("utf-8")
+    table = parse_multi_header_csv_bytes(
+        data, skiprows=1, header_rows=1, label_columns=0, value_type=ColumnType.INTEGER
+    )
+    assert table.schema.names == ["A", "A (2)"]
+    assert table.column("A").to_pylist() == [1, 3]
+    assert table.column("A (2)").to_pylist() == [2, 4]

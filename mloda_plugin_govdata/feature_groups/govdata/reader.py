@@ -25,7 +25,7 @@ from .cache import DownloadCache
 from .client import build_client
 from .discovery import ResolvedDistribution, resolve_distribution
 from .locator import GovDataLocator
-from .parse import ColumnType, parse_german_csv
+from .parse import ColumnType, parse_german_csv, parse_multi_header_csv
 
 # The M1 population dataset (Stuttgart, via GovData) and its known typed schema.
 POPULATION_SLUG = "einwohner-nach-altersgruppen-und-stadtbezirken"
@@ -69,13 +69,25 @@ class GovDataReader(ReadFile):
             distribution = resolve_distribution(locator, client)
             cache = DownloadCache(cls.cache_dir, client=client)
             cached = cache.get_or_download(distribution.url)
-            return parse_german_csv(cached.path, cls._schema_for(locator, distribution))
+            return cls._parse(cached.path, locator, distribution)
+
+    @classmethod
+    def _parse(cls, path: Path, locator: GovDataLocator, distribution: ResolvedDistribution) -> pa.Table:
+        return parse_german_csv(path, cls._schema_for(locator, distribution))
 
     @staticmethod
     def _schema_for(locator: GovDataLocator, distribution: ResolvedDistribution) -> dict[str, ColumnType] | None:
         if locator.dataset_id == POPULATION_SLUG or POPULATION_URL_MARKER in distribution.url:
             return POPULATION_SCHEMA
         return None  # unknown dataset: read every column as a string
+
+
+class BundeswahlleiterinReader(GovDataReader):
+    """Reads the Bundeswahlleiterin kerg.csv result file (5-line preamble, 3-row merged header)."""
+
+    @classmethod
+    def _parse(cls, path: Path, locator: GovDataLocator, distribution: ResolvedDistribution) -> pa.Table:
+        return parse_multi_header_csv(path, skiprows=5, header_rows=3, label_columns=4, value_type=ColumnType.INTEGER)
 
 
 class GovDataFeature(ReadFileFeature):

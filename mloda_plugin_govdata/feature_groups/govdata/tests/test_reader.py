@@ -10,10 +10,16 @@ import respx
 
 from mloda.user import Feature, mloda
 
-from mloda_plugin_govdata.feature_groups.govdata.reader import GovDataFeature, GovDataReader
+from mloda_plugin_govdata.feature_groups.govdata.reader import (
+    BundeswahlleiterinReader,
+    GovDataFeature,
+    GovDataReader,
+)
 
 SLUG = "einwohner-nach-altersgruppen-und-stadtbezirken"
 PACKAGE_SHOW = "https://ckan.govdata.de/api/3/action/package_show"
+KERG_URL = "https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata/btw25/csv/kerg.csv"
+KERG_MEASURE = "Wahlberechtigte Erststimmen Endgültig"
 
 
 def test_feature_group_uses_govdata_reader() -> None:
@@ -69,3 +75,33 @@ def test_live_end_to_end() -> None:
     table = result[0]
     assert table.num_rows > 20_000
     assert table.schema.field("Einwohner").type == pa.int64()
+
+
+@respx.mock
+def test_elections_reader_level2(fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(BundeswahlleiterinReader, "cache_dir", str(tmp_path))
+    kerg_bytes = (fixtures_dir / "kerg_sample.csv").read_bytes()
+    respx.get(KERG_URL).mock(return_value=httpx.Response(200, content=kerg_bytes, headers={"ETag": '"k1"'}))
+    result = mloda.run_all(
+        [
+            Feature("Gebiet", options={BundeswahlleiterinReader.__name__: KERG_URL}),
+            Feature(KERG_MEASURE, options={BundeswahlleiterinReader.__name__: KERG_URL}),
+        ],
+        compute_frameworks=["PyArrowTable"],
+    )
+    table = result[0]
+    assert set(table.schema.names) == {"Gebiet", KERG_MEASURE}
+    assert table.num_rows == 16
+    assert table.column("Gebiet").to_pylist()[0] == "Flensburg – Schleswig"
+    assert table.schema.field(KERG_MEASURE).type == pa.int64()
+
+
+@pytest.mark.live
+def test_elections_live_end_to_end() -> None:
+    result = mloda.run_all(
+        [Feature("Gebiet", options={BundeswahlleiterinReader.__name__: KERG_URL})],
+        compute_frameworks=["PyArrowTable"],
+    )
+    table = result[0]
+    assert table.num_rows > 300
+    assert table.column("Gebiet").to_pylist()[-1] == "Bundesgebiet"
