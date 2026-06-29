@@ -4,8 +4,8 @@ The environment dataset is publisher-direct REST JSON, not a CSV distribution, s
 has a distinct shape from the GovData / Bundeswahlleiterin CSV readers. The response is
 ``{request, indices, data}`` where ``data`` is keyed by station then by measurement
 start datetime, and each leaf is ``[component id, scope id, value, date end, index]``.
-The ``indices.data`` block self-describes that layout, so the flatten reads the column
-names from the response rather than hardcoding positions.
+The leaf order is fixed by the v4 contract, so the flatten maps it to a canonical schema by
+position and uses the self-describing ``indices.data`` block only to detect a changed layout.
 """
 
 from __future__ import annotations
@@ -21,20 +21,26 @@ from .parse import ColumnType
 
 UBA_AIR_BASE = "https://luftdaten.umweltbundesamt.de/api/air-data/v4"
 
-# Fallback column layout if the response omits a usable ``indices.data`` block.
-DEFAULT_MEASURE_LABELS: tuple[str, ...] = (
-    "station id",
-    "date start",
-    "component id",
-    "scope id",
+# Canonical, stable output schema. The v4 measures leaf array is fixed by the API contract as
+# [component id, scope id, value, date end, index]; the outer keys prepend the station id and the
+# measurement start datetime. Names are canonical (not read from the response) so feature selection
+# and column typing never depend on server-side labels, which can be revised or localized. The
+# response's self-describing ``indices.data`` block is used only to detect a changed leaf width.
+MEASURE_COLUMNS: tuple[str, ...] = (
+    "station_id",
+    "date_start",
+    "component_id",
+    "scope_id",
     "value",
-    "date end",
+    "date_end",
     "index",
 )
 
-# Types for the normalized (underscored) measure columns; unlisted columns read as strings.
-# Station/component/scope ids and the air-quality index are integers; value is a float so a
-# component reporting fractional concentrations is not truncated; the datetimes stay ISO strings.
+# Fields in each leaf array (the columns after the station id and start datetime).
+_VALUE_FIELD_COUNT = len(MEASURE_COLUMNS) - 2
+
+# Column types; value is a float so a component reporting fractional concentrations is not
+# truncated, ids and the air-quality index are integers, and the datetimes stay ISO strings.
 MEASURE_COLUMN_TYPES: dict[str, ColumnType] = {
     "station_id": ColumnType.INTEGER,
     "date_start": ColumnType.STRING,
@@ -82,45 +88,46 @@ def uba_measures_url(
     return f"{base}/measures/json?{urlencode(params)}"
 
 
-def _normalize(label: str) -> str:
-    """A response label like ``"date start"`` becomes the column name ``"date_start"``."""
-    return label.strip().replace(" ", "_")
+def _check_layout(payload: dict[str, Any]) -> None:
+    """Fail loud if the response self-describes a leaf width other than the fixed one.
 
-
-def _measure_column_names(payload: dict[str, Any]) -> list[str]:
-    """Read the column layout from ``indices.data``, falling back to the known layout.
-
-    ``indices.data`` is ``{<station label>: {<datetime label>: [<value labels...>]}}``; the
-    flattened row is ``[station, datetime, *values]``, so the names follow that order.
+    ``indices.data`` is ``{<station label>: {<datetime label>: [<value labels...>]}}``. Leaves are
+    mapped by position, so a changed field count would silently shift columns; detect it instead.
+    A same-width reordering is not detected; the v4 leaf order is treated as a stable contract.
     """
-    raw: tuple[str, ...] | list[str] = DEFAULT_MEASURE_LABELS
     indices = payload.get("indices")
-    if isinstance(indices, dict):
-        outer = indices.get("data")
-        if isinstance(outer, dict) and outer:
-            station_label = next(iter(outer))
-            inner = outer[station_label]
-            if isinstance(inner, dict) and inner:
-                datetime_label = next(iter(inner))
-                value_labels = inner[datetime_label]
-                if isinstance(value_labels, list) and all(isinstance(v, str) for v in value_labels):
-                    raw = [station_label, datetime_label, *value_labels]
-    names = [_normalize(str(label)) for label in raw]
-    if len(set(names)) != len(names):
-        raise ValueError(f"UBA measures column names are not unique: {names}")
-    return names
+    if not isinstance(indices, dict):
+        return
+    outer = indices.get("data")
+    if not isinstance(outer, dict) or not outer:
+        return
+    inner = outer[next(iter(outer))]
+    if not isinstance(inner, dict) or not inner:
+        return
+    value_labels = inner[next(iter(inner))]
+    if isinstance(value_labels, list) and len(value_labels) != _VALUE_FIELD_COUNT:
+        raise ValueError(
+            f"UBA measures leaf layout changed: expected {_VALUE_FIELD_COUNT} value fields, "
+            f"got {len(value_labels)}: {value_labels}"
+        )
 
 
 def _to_int(value: Any) -> int | None:
     if value is None or value == "":
         return None
-    return int(value)
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"expected an integer, got {value!r}") from None
 
 
 def _to_float(value: Any) -> float | None:
     if value is None or value == "":
         return None
-    return float(value)
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"expected a float, got {value!r}") from None
 
 
 def _to_string(value: Any) -> str | None:
@@ -150,8 +157,9 @@ def _typed_table(columns: dict[str, list[Any]], names: list[str]) -> pa.Table:
 def parse_uba_measures_bytes(data: bytes) -> pa.Table:
     """Flatten a UBA ``measures`` JSON response into a typed Arrow table (one row per reading).
 
-    One row per (station, measurement start) pair. Missing leaf cells and ``null`` values
-    become nulls. Raises ``ValueError`` if the payload has no ``data`` object.
+    One row per (station, measurement start) pair. Missing leaf cells and ``null`` values become
+    nulls. Raises ``ValueError`` if the payload has no ``data`` object or self-describes a leaf
+    width other than the expected one.
     """
     payload = json.loads(data)
     if not isinstance(payload, dict):
@@ -159,10 +167,11 @@ def parse_uba_measures_bytes(data: bytes) -> pa.Table:
     series_by_station = payload.get("data")
     if not isinstance(series_by_station, dict):
         raise ValueError("UBA measures payload has no 'data' object")
+    _check_layout(payload)
 
-    names = _measure_column_names(payload)
-    station_col, datetime_col, value_cols = names[0], names[1], names[2:]
-    columns: dict[str, list[Any]] = {name: [] for name in names}
+    station_col, datetime_col = MEASURE_COLUMNS[0], MEASURE_COLUMNS[1]
+    value_cols = MEASURE_COLUMNS[2:]
+    columns: dict[str, list[Any]] = {name: [] for name in MEASURE_COLUMNS}
 
     for station_id, series in series_by_station.items():
         if not isinstance(series, dict):
@@ -174,7 +183,7 @@ def parse_uba_measures_bytes(data: bytes) -> pa.Table:
             for i, col in enumerate(value_cols):
                 columns[col].append(cells[i] if i < len(cells) else None)
 
-    return _typed_table(columns, names)
+    return _typed_table(columns, list(MEASURE_COLUMNS))
 
 
 def parse_uba_measures(path: str | os.PathLike[str]) -> pa.Table:

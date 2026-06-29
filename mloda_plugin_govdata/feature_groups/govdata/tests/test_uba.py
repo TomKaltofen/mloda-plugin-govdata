@@ -31,15 +31,14 @@ def _demo_url() -> str:
 # --- Level 1: URL builder ---------------------------------------------------------------
 
 
-def test_uba_measures_url_shape() -> None:
-    url = _demo_url()
-    assert url.startswith(f"{UBA_AIR_BASE}/measures/json?")
-    for fragment in ("date_from=2025-01-01", "station=143", "component=3", "scope=2", "time_from=1", "time_to=24"):
-        assert fragment in url
-
-
-def test_uba_measures_url_is_deterministic() -> None:
-    assert _demo_url() == _demo_url()
+def test_uba_measures_url_is_exact_and_ordered() -> None:
+    # Assert the full string: param order is fixed, which keeps the cache key stable.
+    expected = (
+        f"{UBA_AIR_BASE}/measures/json?"
+        "date_from=2025-01-01&time_from=1&date_to=2025-01-01&time_to=24"
+        "&station=143&component=3&scope=2&lang=en"
+    )
+    assert _demo_url() == expected
 
 
 # --- Level 1: flatten -------------------------------------------------------------------
@@ -80,16 +79,64 @@ def test_flatten_handles_null_value_and_index() -> None:
     assert table.column("index").to_pylist() == [None]
 
 
-def test_flatten_falls_back_to_default_layout_without_indices() -> None:
+def test_flatten_without_indices_uses_canonical_schema() -> None:
+    # The schema is canonical and does not depend on the response self-describing its layout.
     payload = {"data": {"143": {"2025-01-01 00:00:00": [3, 2, 37, "2025-01-01 01:00:00", "2"]}}}
     table = parse_uba_measures_bytes(json.dumps(payload).encode())
     assert table.schema.names == MEASURE_COLUMNS
     assert table.column("value").to_pylist() == [37.0]
 
 
+def test_flatten_keeps_canonical_names_for_localized_labels() -> None:
+    # Even if the server sends localized labels, the public column names stay canonical.
+    localized = {"data": {"Stationskennung": {"Startdatum": ["Komponente", "Bereich", "Wert", "Enddatum", "Index"]}}}
+    payload = {"indices": localized, "data": {"143": {"2025-01-01 00:00:00": [3, 2, 37, "2025-01-01 01:00:00", "2"]}}}
+    table = parse_uba_measures_bytes(json.dumps(payload).encode())
+    assert table.schema.names == MEASURE_COLUMNS
+    assert table.schema.field("value").type == pa.float64()
+
+
+def test_flatten_rejects_changed_leaf_layout() -> None:
+    # A different leaf width would shift columns under positional mapping; reject it loudly.
+    changed = {"data": {"station id": {"date start": ["component id", "scope id", "value", "date end"]}}}
+    payload = {"indices": changed, "data": {"143": {"2025-01-01 00:00:00": [3, 2, 37, "2025-01-01 01:00:00"]}}}
+    with pytest.raises(ValueError):
+        parse_uba_measures_bytes(json.dumps(payload).encode())
+
+
 def test_flatten_rejects_payload_without_data() -> None:
     with pytest.raises(ValueError):
         parse_uba_measures_bytes(b'{"request": {}}')
+
+
+def test_flatten_empty_data_yields_zero_rows() -> None:
+    table = parse_uba_measures_bytes(json.dumps({"indices": INDICES, "data": {}}).encode())
+    assert table.num_rows == 0
+    assert table.schema.names == MEASURE_COLUMNS
+
+
+def test_flatten_skips_non_dict_station() -> None:
+    payload = {
+        "indices": INDICES,
+        "data": {"143": {"2025-01-01 00:00:00": [3, 2, 37, "2025-01-01 01:00:00", "2"]}, "999": None},
+    }
+    table = parse_uba_measures_bytes(json.dumps(payload).encode())
+    assert table.column("station_id").to_pylist() == [143]
+
+
+def test_flatten_pads_short_leaf() -> None:
+    payload = {"data": {"143": {"2025-01-01 00:00:00": [3, 2, 37]}}}
+    table = parse_uba_measures_bytes(json.dumps(payload).encode())
+    assert table.column("value").to_pylist() == [37.0]
+    assert table.column("date_end").to_pylist() == [None]
+    assert table.column("index").to_pylist() == [None]
+
+
+def test_flatten_rejects_non_numeric_station_id() -> None:
+    # station_id is typed integer; a non-numeric key fails loudly rather than silently mistyping.
+    payload = {"data": {"DEBW118": {"2025-01-01 00:00:00": [3, 2, 37, "2025-01-01 01:00:00", "2"]}}}
+    with pytest.raises(ValueError):
+        parse_uba_measures_bytes(json.dumps(payload).encode())
 
 
 _LEAF = st.just([3, 2, 10, "2025-01-01 01:00:00", "1"])
