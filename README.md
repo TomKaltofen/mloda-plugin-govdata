@@ -75,9 +75,11 @@ Columns are `station_id`, `date_start`, `component_id`, `scope_id`, `value`, `da
 
 ## Demo
 
-An interactive [marimo](https://marimo.io) notebook walks through dataset discovery and all three example datasets:
+An interactive [marimo](https://marimo.io) notebook walks through dataset discovery and all three example datasets. The notebook lives in the repository (not in the published package), so run it from a source checkout:
 
 ```bash
+git clone https://github.com/TomKaltofen/mloda-plugin-govdata.git
+cd mloda-plugin-govdata
 uv sync --all-extras
 uv run marimo edit demos/govdata_demo.py
 ```

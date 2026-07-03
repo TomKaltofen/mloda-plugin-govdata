@@ -134,7 +134,9 @@ def search_datasets(
             if max_results is not None and yielded >= max_results:
                 return
         start += len(results)
-        if start >= int(result.get("count", 0)):
+        count = result.get("count")
+        # Without a usable count, the empty-page guard above ends the walk.
+        if count is not None and start >= int(count):
             return
 
 

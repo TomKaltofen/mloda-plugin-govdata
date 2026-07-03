@@ -123,6 +123,29 @@ def test_search_datasets_stops_on_stalled_server_page() -> None:
     assert route.call_count == 2
 
 
+@respx.mock
+def test_search_datasets_shrinks_rows_near_max_results_and_honors_ckan_base() -> None:
+    custom_search = "https://ckan.example.org/api/3/action/package_search"
+    route = respx.get(custom_search).mock(
+        side_effect=[_search_page(5, ["ds-a", "ds-b"]), _search_page(5, ["ds-c"])],
+    )
+    with build_client() as client:
+        names = [
+            d.name
+            for d in search_datasets(
+                client,
+                "einwohner",
+                ckan_base="https://ckan.example.org/api/3/action",
+                page_size=2,
+                max_results=3,
+            )
+        ]
+    assert names == ["ds-a", "ds-b", "ds-c"]
+    assert route.call_count == 2
+    # The second request only asks for the one row still allowed by max_results.
+    assert dict(route.calls[1].request.url.params) == {"q": "einwohner", "rows": "1", "start": "2"}
+
+
 def test_search_datasets_rejects_bad_page_size() -> None:
     with build_client() as client:
         with pytest.raises(ValueError, match="page_size"):
