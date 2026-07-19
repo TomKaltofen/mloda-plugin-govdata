@@ -12,7 +12,7 @@ Three example datasets cover the M1 themes: population (GovData CSV), elections 
 
 ## Status
 
-Young but working. All three example readers run end to end, with paginated dataset search, cached downloads with retries, and unit plus property-based tests behind them. The elections and air-quality readers are thin subclasses of `GovDataReader` that override only the parse step; new datasets follow the same path (see [docs/adding-a-reader.md](docs/adding-a-reader.md)). Development happens in a 6-month Prototype Fund stage (June to November 2026), so the API may still shift between releases.
+Young but working. All three example readers run end to end, with paginated dataset search, cached downloads with retries, and unit plus property-based tests behind them. Every reader is a thin subclass of `BaseGovDataReader` that overrides only the parse step; new datasets follow the same path (see [docs/adding-a-reader.md](docs/adding-a-reader.md)). Development happens in a 6-month Prototype Fund stage (June to November 2026), so the API may still shift between releases.
 
 ## Usage
 
@@ -20,26 +20,25 @@ Read the Stuttgart population dataset (via GovData) as a typed PyArrow table:
 
 ```python
 from mloda.user import Feature, mloda
-from mloda_plugin_govdata.feature_groups.govdata import GovDataReader
+from mloda_plugin_govdata.feature_groups.govdata import StuttgartPopulationReader
 
 slug = "einwohner-nach-altersgruppen-und-stadtbezirken"
 result = mloda.run_all(
     [
-        Feature("Einwohner", options={GovDataReader.__name__: slug}),
-        Feature("Stadtbezirk", options={GovDataReader.__name__: slug}),
+        Feature("Einwohner", options={StuttgartPopulationReader.__name__: slug}),
+        Feature("Stadtbezirk", options={StuttgartPopulationReader.__name__: slug}),
     ],
     compute_frameworks=["PyArrowTable"],
 )
 table = result[0]  # pyarrow.Table with the requested columns
 ```
 
-The option value is a GovData dataset slug or a direct distribution URL. The license is read from the CKAN distribution metadata. Set `GovDataReader.cache_dir` to control where downloads are cached.
+The option value is a GovData dataset slug or a direct distribution URL. The license is read from the CKAN distribution metadata. Set `BaseGovDataReader.cache_dir` to control where downloads are cached. For any other GovData CSV dataset, `GovDataReader` works out of the box and reads every column as a string; subclass it and set `schema` for typed columns.
 
 Don't know the slug yet? Search GovData with the paginated CKAN `package_search` API:
 
 ```python
-from mloda_plugin_govdata.feature_groups.govdata import search_datasets
-from mloda_plugin_govdata.feature_groups.govdata.client import build_client
+from mloda_plugin_govdata.feature_groups.govdata import build_client, search_datasets
 
 with build_client() as client:
     for dataset in search_datasets(client, "einwohner stuttgart", max_results=10):
@@ -51,7 +50,7 @@ with build_client() as client:
 Got a slug but not the column names? `peek` lists what you can request as features:
 
 ```python
-GovDataReader.peek(slug)  # {"Stichtag": "date32[day]", "Stadtbezirk": "string", ...}
+StuttgartPopulationReader.peek(slug)  # {"Stichtag": "date32[day]", "Stadtbezirk": "string", ...}
 ```
 
 It works on every reader (`BundeswahlleiterinReader.peek(kerg)`, `UbaAirReader.peek(url)`) and downloads through the cache, so the actual feature request reuses the file. A typo in a feature name fails with the available columns and a close-match suggestion instead of a raw KeyError.

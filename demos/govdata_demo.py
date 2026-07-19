@@ -41,17 +41,17 @@ def _():
     from mloda.user import Feature, mloda
     from mloda_plugin_govdata.feature_groups.govdata import (
         BundeswahlleiterinReader,
-        GovDataReader,
+        StuttgartPopulationReader,
         UbaAirReader,
+        build_client,
         search_datasets,
         uba_measures_url,
     )
-    from mloda_plugin_govdata.feature_groups.govdata.client import build_client
 
     return (
         BundeswahlleiterinReader,
         Feature,
-        GovDataReader,
+        StuttgartPopulationReader,
         UbaAirReader,
         build_client,
         mloda,
@@ -90,14 +90,14 @@ def _(mo):
 
 
 @app.cell
-def _(Feature, GovDataReader, mloda):
+def _(Feature, StuttgartPopulationReader, mloda):
     _slug = "einwohner-nach-altersgruppen-und-stadtbezirken"
     _result = mloda.run_all(
         [
-            Feature("Stichtag", options={GovDataReader.__name__: _slug}),
-            Feature("Stadtbezirk", options={GovDataReader.__name__: _slug}),
-            Feature("Alter in 10 Gruppen", options={GovDataReader.__name__: _slug}),
-            Feature("Einwohner", options={GovDataReader.__name__: _slug}),
+            Feature("Stichtag", options={StuttgartPopulationReader.__name__: _slug}),
+            Feature("Stadtbezirk", options={StuttgartPopulationReader.__name__: _slug}),
+            Feature("Alter in 10 Gruppen", options={StuttgartPopulationReader.__name__: _slug}),
+            Feature("Einwohner", options={StuttgartPopulationReader.__name__: _slug}),
         ],
         compute_frameworks=["PyArrowTable"],
     )

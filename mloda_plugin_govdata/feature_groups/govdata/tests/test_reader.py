@@ -12,13 +12,11 @@ import respx
 from mloda.provider import FeatureSet
 from mloda.user import Feature, mloda
 
-from mloda_plugin_govdata.feature_groups.govdata.reader import (
-    BundeswahlleiterinReader,
-    GovDataFeature,
-    GovDataReader,
-    UbaAirReader,
-)
-from mloda_plugin_govdata.feature_groups.govdata.uba import uba_measures_url
+from mloda_plugin_govdata.feature_groups.govdata.bundeswahlleiterin import BundeswahlleiterinReader
+from mloda_plugin_govdata.feature_groups.govdata.feature import GovDataFeature
+from mloda_plugin_govdata.feature_groups.govdata.population import StuttgartPopulationReader
+from mloda_plugin_govdata.feature_groups.govdata.reader import BaseGovDataReader, GovDataReader
+from mloda_plugin_govdata.feature_groups.govdata.uba import UbaAirReader, uba_measures_url
 
 SLUG = "einwohner-nach-altersgruppen-und-stadtbezirken"
 PACKAGE_SHOW = "https://ckan.govdata.de/api/3/action/package_show"
@@ -44,13 +42,13 @@ class _FakeFeatureSet:
         return self._names
 
 
-def test_feature_group_uses_govdata_reader() -> None:
-    assert isinstance(GovDataFeature.input_data(), GovDataReader)
+def test_feature_group_uses_base_govdata_reader() -> None:
+    assert isinstance(GovDataFeature.input_data(), BaseGovDataReader)
 
 
 @respx.mock
 def test_load_data_level2(fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(GovDataReader, "cache_dir", str(tmp_path))
+    monkeypatch.setattr(StuttgartPopulationReader, "cache_dir", str(tmp_path))
     package_show = (fixtures_dir / "package_show.json").read_text(encoding="utf-8")
     csv_bytes = (fixtures_dir / "population_sample.csv").read_bytes()
     distribution_url = json.loads(package_show)["result"]["resources"][0]["url"]
@@ -60,8 +58,8 @@ def test_load_data_level2(fixtures_dir: Path, tmp_path: Path, monkeypatch: pytes
 
     result = mloda.run_all(
         [
-            Feature("Einwohner", options={GovDataReader.__name__: SLUG}),
-            Feature("Stadtbezirk", options={GovDataReader.__name__: SLUG}),
+            Feature("Einwohner", options={StuttgartPopulationReader.__name__: SLUG}),
+            Feature("Stadtbezirk", options={StuttgartPopulationReader.__name__: SLUG}),
         ],
         compute_frameworks=["PyArrowTable"],
     )
@@ -91,7 +89,7 @@ def test_resolves_without_explicit_compute_framework(
 @pytest.mark.live
 def test_live_end_to_end() -> None:
     result = mloda.run_all(
-        [Feature("Einwohner", options={GovDataReader.__name__: SLUG})],
+        [Feature("Einwohner", options={StuttgartPopulationReader.__name__: SLUG})],
         compute_frameworks=["PyArrowTable"],
     )
     table = result[0]
@@ -131,13 +129,28 @@ def test_elections_live_end_to_end() -> None:
 
 @respx.mock
 def test_peek_population_level2(fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(GovDataReader, "cache_dir", str(tmp_path))
+    monkeypatch.setattr(StuttgartPopulationReader, "cache_dir", str(tmp_path))
     _mock_population_endpoints(fixtures_dir)
-    assert GovDataReader.peek(SLUG) == {
+    assert StuttgartPopulationReader.peek(SLUG) == {
         "Stichtag": "date32[day]",
         "Stadtbezirk": "string",
         "Alter in 10 Gruppen": "string",
         "Einwohner": "int64",
+    }
+
+
+@respx.mock
+def test_generic_reader_reads_unknown_dataset_as_strings(
+    fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The generic reader carries no dataset schema; every column comes back as a string.
+    monkeypatch.setattr(GovDataReader, "cache_dir", str(tmp_path))
+    _mock_population_endpoints(fixtures_dir)
+    assert GovDataReader.peek(SLUG) == {
+        "Stichtag": "string",
+        "Stadtbezirk": "string",
+        "Alter in 10 Gruppen": "string",
+        "Einwohner": "string",
     }
 
 
@@ -167,10 +180,14 @@ def test_peek_rejects_unusable_data_access() -> None:
         GovDataReader.peek(123)
 
 
-def test_load_data_probe_still_raises_attribute_error() -> None:
+@pytest.mark.parametrize(
+    "reader",
+    [BaseGovDataReader, GovDataReader, StuttgartPopulationReader, BundeswahlleiterinReader, UbaAirReader],
+)
+def test_load_data_probe_still_raises_attribute_error(reader: type[BaseGovDataReader]) -> None:
     # The framework probes load_data(None, None) and only tolerates AttributeError.
     with pytest.raises(AttributeError):
-        GovDataReader.load_data(None, cast(FeatureSet, None))
+        reader.load_data(None, cast(FeatureSet, None))
 
 
 @respx.mock

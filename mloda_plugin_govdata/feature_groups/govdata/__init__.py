@@ -1,6 +1,8 @@
-"""GovData connector: read German open-government CSV distributions into mloda."""
+"""GovData connector: read German open-government data into mloda."""
 
-from .discovery import (
+from .bundeswahlleiterin import BundeswahlleiterinReader
+from .core.client import build_client
+from .core.discovery import (
     Dataset,
     ResolvedDistribution,
     Resource,
@@ -8,13 +10,18 @@ from .discovery import (
     resolve_distribution,
     search_datasets,
 )
-from .locator import GovDataLocator
-from .parse import ColumnType, parse_german_csv, parse_german_csv_bytes, parse_multi_header_csv
-from .reader import BundeswahlleiterinReader, GovDataFeature, GovDataReader, UbaAirReader
-from .uba import UBA_AIR_BASE, parse_uba_measures, parse_uba_measures_bytes, uba_measures_url
+from .core.locator import GovDataLocator
+from .core.parse import ColumnType, parse_german_csv, parse_german_csv_bytes, parse_multi_header_csv
+from .feature import GovDataFeature
+from .population import POPULATION_SCHEMA, POPULATION_SLUG, StuttgartPopulationReader
+from .reader import BaseGovDataReader, GovDataReader
+from .uba import UBA_AIR_BASE, UbaAirReader, parse_uba_measures, parse_uba_measures_bytes, uba_measures_url
 
 __all__ = [
+    "POPULATION_SCHEMA",
+    "POPULATION_SLUG",
     "UBA_AIR_BASE",
+    "BaseGovDataReader",
     "BundeswahlleiterinReader",
     "ColumnType",
     "Dataset",
@@ -23,7 +30,9 @@ __all__ = [
     "GovDataReader",
     "Resource",
     "ResolvedDistribution",
+    "StuttgartPopulationReader",
     "UbaAirReader",
+    "build_client",
     "normalize_license",
     "parse_german_csv",
     "parse_german_csv_bytes",

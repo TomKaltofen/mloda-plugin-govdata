@@ -7,8 +7,8 @@ import httpx
 import pytest
 import respx
 
-from mloda_plugin_govdata.feature_groups.govdata.client import build_client
-from mloda_plugin_govdata.feature_groups.govdata.discovery import (
+from mloda_plugin_govdata.feature_groups.govdata.core.client import build_client
+from mloda_plugin_govdata.feature_groups.govdata.core.discovery import (
     Dataset,
     Resource,
     _select_resource,
@@ -16,7 +16,7 @@ from mloda_plugin_govdata.feature_groups.govdata.discovery import (
     resolve_distribution,
     search_datasets,
 )
-from mloda_plugin_govdata.feature_groups.govdata.locator import GovDataLocator
+from mloda_plugin_govdata.feature_groups.govdata.core.locator import GovDataLocator
 
 PACKAGE_SHOW = "https://ckan.govdata.de/api/3/action/package_show"
 PACKAGE_SEARCH = "https://ckan.govdata.de/api/3/action/package_search"
