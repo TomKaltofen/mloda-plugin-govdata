@@ -2,12 +2,14 @@
 
 import json
 from pathlib import Path
+from typing import cast
 
 import httpx
 import pyarrow as pa
 import pytest
 import respx
 
+from mloda.provider import FeatureSet
 from mloda.user import Feature, mloda
 
 from mloda_plugin_govdata.feature_groups.govdata.reader import (
@@ -20,6 +22,24 @@ SLUG = "einwohner-nach-altersgruppen-und-stadtbezirken"
 PACKAGE_SHOW = "https://ckan.govdata.de/api/3/action/package_show"
 KERG_URL = "https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata/btw25/csv/kerg.csv"
 KERG_MEASURE = "Wahlberechtigte Erststimmen Endgültig"
+
+
+def _mock_population_endpoints(fixtures_dir: Path) -> None:
+    package_show = (fixtures_dir / "package_show.json").read_text(encoding="utf-8")
+    csv_bytes = (fixtures_dir / "population_sample.csv").read_bytes()
+    distribution_url = json.loads(package_show)["result"]["resources"][0]["url"]
+    respx.get(PACKAGE_SHOW).mock(return_value=httpx.Response(200, text=package_show))
+    respx.get(distribution_url).mock(return_value=httpx.Response(200, content=csv_bytes, headers={"ETag": '"v1"'}))
+
+
+class _FakeFeatureSet:
+    """Just enough FeatureSet surface for load_data."""
+
+    def __init__(self, names: set[str]) -> None:
+        self._names = names
+
+    def get_all_names(self) -> set[str]:
+        return self._names
 
 
 def test_feature_group_uses_govdata_reader() -> None:
@@ -105,3 +125,45 @@ def test_elections_live_end_to_end() -> None:
     table = result[0]
     assert table.num_rows > 300
     assert table.column("Gebiet").to_pylist()[-1] == "Bundesgebiet"
+
+
+@respx.mock
+def test_peek_population_level2(fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(GovDataReader, "cache_dir", str(tmp_path))
+    _mock_population_endpoints(fixtures_dir)
+    assert GovDataReader.peek(SLUG) == {
+        "Stichtag": "date32[day]",
+        "Stadtbezirk": "string",
+        "Alter in 10 Gruppen": "string",
+        "Einwohner": "int64",
+    }
+
+
+@respx.mock
+def test_peek_elections_level2(fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(BundeswahlleiterinReader, "cache_dir", str(tmp_path))
+    kerg_bytes = (fixtures_dir / "kerg_sample.csv").read_bytes()
+    respx.get(KERG_URL).mock(return_value=httpx.Response(200, content=kerg_bytes, headers={"ETag": '"k1"'}))
+    columns = BundeswahlleiterinReader.peek(KERG_URL)
+    assert columns["Gebiet"] == "string"
+    assert columns[KERG_MEASURE] == "int64"
+
+
+def test_peek_rejects_unusable_data_access() -> None:
+    with pytest.raises(ValueError, match="cannot handle data access"):
+        GovDataReader.peek(123)
+
+
+@respx.mock
+def test_unknown_feature_names_available_columns(
+    fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(GovDataReader, "cache_dir", str(tmp_path))
+    _mock_population_endpoints(fixtures_dir)
+    features = cast(FeatureSet, _FakeFeatureSet({"Einwohner_", "Stadtbezirk"}))
+    with pytest.raises(ValueError) as excinfo:
+        GovDataReader.load_data(SLUG, features)
+    message = str(excinfo.value)
+    assert "Unknown feature(s) 'Einwohner_'" in message
+    assert "Available: Alter in 10 Gruppen, Einwohner, Stadtbezirk, Stichtag." in message
+    assert "Did you mean 'Einwohner' instead of 'Einwohner_'?" in message
