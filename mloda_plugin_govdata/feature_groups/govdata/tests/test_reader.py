@@ -16,7 +16,9 @@ from mloda_plugin_govdata.feature_groups.govdata.reader import (
     BundeswahlleiterinReader,
     GovDataFeature,
     GovDataReader,
+    UbaAirReader,
 )
+from mloda_plugin_govdata.feature_groups.govdata.uba import uba_measures_url
 
 SLUG = "einwohner-nach-altersgruppen-und-stadtbezirken"
 PACKAGE_SHOW = "https://ckan.govdata.de/api/3/action/package_show"
@@ -149,9 +151,26 @@ def test_peek_elections_level2(fixtures_dir: Path, tmp_path: Path, monkeypatch: 
     assert columns[KERG_MEASURE] == "int64"
 
 
+@respx.mock
+def test_peek_uba_level2(fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(UbaAirReader, "cache_dir", str(tmp_path))
+    url = uba_measures_url(station=143, component=3, scope=2, date_from="2025-01-01", date_to="2025-01-01")
+    payload = (fixtures_dir / "uba_measures.json").read_bytes()
+    respx.get(url).mock(return_value=httpx.Response(200, content=payload, headers={"ETag": '"u1"'}))
+    columns = UbaAirReader.peek(url)
+    assert columns["station_id"] == "int64"
+    assert columns["value"] == "double"
+
+
 def test_peek_rejects_unusable_data_access() -> None:
     with pytest.raises(ValueError, match="cannot handle data access"):
         GovDataReader.peek(123)
+
+
+def test_load_data_probe_still_raises_attribute_error() -> None:
+    # The framework probes load_data(None, None) and only tolerates AttributeError.
+    with pytest.raises(AttributeError):
+        GovDataReader.load_data(None, cast(FeatureSet, None))
 
 
 @respx.mock
@@ -166,4 +185,19 @@ def test_unknown_feature_names_available_columns(
     message = str(excinfo.value)
     assert "Unknown feature(s) 'Einwohner_'" in message
     assert "Available: Alter in 10 Gruppen, Einwohner, Stadtbezirk, Stichtag." in message
+    assert "Did you mean 'Einwohner' instead of 'Einwohner_'?" in message
+
+
+@respx.mock
+def test_unknown_feature_suggestion_only_for_close_matches(
+    fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(GovDataReader, "cache_dir", str(tmp_path))
+    _mock_population_endpoints(fixtures_dir)
+    features = cast(FeatureSet, _FakeFeatureSet({"Einwohner_", "zzzzz"}))
+    with pytest.raises(ValueError) as excinfo:
+        GovDataReader.load_data(SLUG, features)
+    message = str(excinfo.value)
+    assert "Unknown feature(s) 'Einwohner_', 'zzzzz'" in message
+    assert message.count("Did you mean") == 1  # no suggestion for 'zzzzz'
     assert "Did you mean 'Einwohner' instead of 'Einwohner_'?" in message

@@ -75,7 +75,8 @@ class GovDataReader(ReadFile):
         requested = sorted(features.get_all_names())  # deterministic column order
         locator = cls._coerce_locator(data_access)
         table = cls._read_table(locator)
-        missing = [name for name in requested if name not in set(table.column_names)]
+        available = set(table.column_names)
+        missing = [name for name in requested if name not in available]
         if missing:
             raise ValueError(_unknown_features_message(missing, table.column_names, locator))
         return table.select(requested)
