@@ -1,6 +1,13 @@
 """GovData connector: read German open-government CSV distributions into mloda."""
 
-from .discovery import Dataset, ResolvedDistribution, Resource, normalize_license, resolve_distribution
+from .discovery import (
+    Dataset,
+    ResolvedDistribution,
+    Resource,
+    normalize_license,
+    resolve_distribution,
+    search_datasets,
+)
 from .locator import GovDataLocator
 from .parse import ColumnType, parse_german_csv, parse_german_csv_bytes, parse_multi_header_csv
 from .reader import BundeswahlleiterinReader, GovDataFeature, GovDataReader, UbaAirReader
@@ -24,5 +31,6 @@ __all__ = [
     "parse_uba_measures",
     "parse_uba_measures_bytes",
     "resolve_distribution",
+    "search_datasets",
     "uba_measures_url",
 ]

@@ -31,6 +31,19 @@ table = result[0]  # pyarrow.Table with the requested columns
 
 The option value is a GovData dataset slug or a direct distribution URL. The license is read from the CKAN distribution metadata. Set `GovDataReader.cache_dir` to control where downloads are cached.
 
+Don't know the slug yet? Search GovData with the paginated CKAN `package_search` API:
+
+```python
+from mloda_plugin_govdata.feature_groups.govdata import search_datasets
+from mloda_plugin_govdata.feature_groups.govdata.client import build_client
+
+with build_client() as client:
+    for dataset in search_datasets(client, "einwohner stuttgart", max_results=10):
+        print(dataset.name, "|", dataset.title)
+```
+
+`search_datasets` walks the result pages lazily (`page_size` per request) and stops at `max_results` or the end of the result set.
+
 The elections reader handles a direct CSV URL whose file has a multi-row merged header (Bundeswahlleiterin `kerg.csv`):
 
 ```python
@@ -59,6 +72,19 @@ result = mloda.run_all(
 ```
 
 Columns are `station_id`, `date_start`, `component_id`, `scope_id`, `value`, `date_end`, and `index` (the air-quality index). Component and scope ids come from the UBA `components` and `scopes` endpoints.
+
+## Demo
+
+An interactive [marimo](https://marimo.io) notebook walks through dataset discovery and all three example datasets. The notebook lives in the repository (not in the published package), so run it from a source checkout:
+
+```bash
+git clone https://github.com/TomKaltofen/mloda-plugin-govdata.git
+cd mloda-plugin-govdata
+uv sync --all-extras
+uv run marimo edit demos/govdata_demo.py
+```
+
+The notebook hits the live GovData, Bundeswahlleiterin, and UBA endpoints; downloads are cached locally after the first run.
 
 ## Related Repositories
 
