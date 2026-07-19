@@ -22,7 +22,7 @@ dependencies = [
 requires-python = ">=3.10"
 
 [project.optional-dependencies]
-demo = ["marimo>=0.14"]
+demo = ["marimo>=0.14", "altair>=5.0", "openpyxl>=3.1"]
 dev = [
     "tox",
     "tox-uv",

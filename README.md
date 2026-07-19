@@ -60,6 +60,31 @@ result = mloda.run_all(
 )
 ```
 
+The header geometry defaults to the btw25 `kerg.csv` layout and is overridable per feature via the `OPTION_WAHL_*` option keys, so a differently shaped election export is a configuration step instead of a code change. The single-header wahlen-berlin.de Datenexport files use the degenerate geometry:
+
+```python
+from mloda_plugin_govdata.feature_groups.govdata import (
+    OPTION_WAHL_HEADER_ROWS,
+    OPTION_WAHL_LABEL_COLUMNS,
+    OPTION_WAHL_SKIPROWS,
+    OPTION_WAHL_VALUE_TYPE,
+    BundeswahlleiterinReader,
+)
+
+berlin = "https://www.wahlen-berlin.de/wahlen/BE2023/AFSPRAES/agh/Datenexport_AGH2023_Zweitstimme_W_BE.csv"
+options = {
+    BundeswahlleiterinReader.__name__: berlin,
+    OPTION_WAHL_SKIPROWS: 0,
+    OPTION_WAHL_HEADER_ROWS: 1,
+    OPTION_WAHL_LABEL_COLUMNS: 12,
+    OPTION_WAHL_VALUE_TYPE: "float",
+}
+result = mloda.run_all(
+    [Feature("Bezirksname", options=options), Feature("Gueltig", options=options)],
+    compute_frameworks=["PyArrowTable"],
+)
+```
+
 The environment reader fetches the Umweltbundesamt (UBA) Air Data v4 `measures` endpoint (REST JSON) and flattens it to one typed row per station and timestamp. `uba_measures_url` builds the query (here: hourly ozone at station 143):
 
 ```python
@@ -79,16 +104,19 @@ Columns are `station_id`, `date_start`, `component_id`, `scope_id`, `value`, `da
 
 ## Demo
 
-An interactive [marimo](https://marimo.io) notebook walks through dataset discovery and all three example datasets. The notebook lives in the repository (not in the published package), so run it from a source checkout:
+Two interactive [marimo](https://marimo.io) notebooks live in the repository (not in the published package), so run them from a source checkout:
 
 ```bash
 git clone https://github.com/TomKaltofen/mloda-plugin-govdata.git
 cd mloda-plugin-govdata
 uv sync --all-extras
 uv run marimo edit demos/govdata_demo.py
+uv run marimo edit demos/berlin_wahl_2026_demo.py
 ```
 
-The notebook hits the live GovData, Bundeswahlleiterin, and UBA endpoints; downloads are cached locally after the first run.
+`govdata_demo.py` walks through dataset discovery and the three example datasets. `berlin_wahl_2026_demo.py` connects Berlin's open voting data (AGH 2023, EU 2024, BT 2025 at Wahlbezirk level, plus Strukturdaten and the official 2023-on-2026-geometry baseline) and ends in a waiting config cell that switches the notebook to the live preliminary results on election night, 20 September 2026, with no code change.
+
+The notebooks hit the live GovData, Bundeswahlleiterin, wahlen-berlin.de, statistik-berlin-brandenburg.de, and UBA endpoints; downloads are cached locally after the first run.
 
 ## Related Repositories
 
