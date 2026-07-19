@@ -119,8 +119,10 @@ def _(mo):
     An honest footnote: the statistics office relaunched its website in July
     2026, and the harvested CSV resource URLs behind these catalog entries
     currently return the new site's homepage instead of data. Open data needs
-    consumers that notice. The cells below therefore read the
-    wahlen-berlin.de exports directly, which are alive and stable.
+    consumers that notice. AGH 2023 and BT 2025 therefore read the
+    wahlen-berlin.de exports directly; EU 2024 goes through the GovData
+    catalog entry and starts working again the moment AfS repairs its
+    resource URLs.
     """)
     return
 
@@ -148,7 +150,10 @@ def _(
 ):
     BERLIN_EXPORTS = {
         "AGH 2023": "https://www.wahlen-berlin.de/wahlen/BE2023/AFSPRAES/agh/Datenexport_AGH2023_Zweitstimme_W_BE.csv",
-        "EU 2024": "https://www.wahlen-berlin.de/wahlen/EU2024/AFSPRAES/Datenexport_EUROPAWAHL2024_Stimme_W_BE.csv",
+        # EU 2024 reads through the GovData catalog entry (resolved via CKAN to the
+        # AfS distribution). Blocked until AfS fixes the /opendata/ resource URLs,
+        # which return the site homepage since the July 2026 relaunch.
+        "EU 2024": "europawahl-2024-in-berlin-nach-wahlbezirken",
         "BT 2025": (
             "https://www.wahlen-berlin.de/wahlen/BU2025/afspraes/Datenexport_BUNDESTAGSWAHL2025_Zweitstimme_W_BE.csv"
         ),
