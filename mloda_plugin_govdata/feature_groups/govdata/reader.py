@@ -8,6 +8,7 @@ FeatureGroup on the PyArrow compute framework.
 
 from __future__ import annotations
 
+import difflib
 import tempfile
 from pathlib import Path
 from typing import Any, ClassVar
@@ -39,6 +40,20 @@ POPULATION_SCHEMA: dict[str, ColumnType] = {
 }
 
 
+def _unknown_features_message(missing: list[str], available: list[str], locator: GovDataLocator) -> str:
+    """Name the missing features, list what the distribution offers, and suggest close matches."""
+    target = locator.dataset_id or locator.distribution_url
+    parts = [
+        f"Unknown feature(s) {', '.join(repr(name) for name in missing)} for {target!r}.",
+        f"Available: {', '.join(sorted(available))}.",
+    ]
+    for name in missing:
+        close = difflib.get_close_matches(name, available, n=1)
+        if close:
+            parts.append(f"Did you mean {close[0]!r} instead of {name!r}?")
+    return " ".join(parts)
+
+
 class GovDataReader(ReadFile):
     """Reads a GovData CSV distribution into a typed Arrow table."""
 
@@ -58,11 +73,29 @@ class GovDataReader(ReadFile):
         # Touch features first: the framework probes load_data(None, None) and
         # only tolerates AttributeError to detect scoped-access support.
         requested = sorted(features.get_all_names())  # deterministic column order
+        locator = cls._coerce_locator(data_access)
+        table = cls._read_table(locator)
+        available = set(table.column_names)
+        missing = [name for name in requested if name not in available]
+        if missing:
+            raise ValueError(_unknown_features_message(missing, table.column_names, locator))
+        return table.select(requested)
+
+    @classmethod
+    def peek(cls, data_access: Any) -> dict[str, str]:
+        """Columns selectable as features for this locator, as name to Arrow type.
+
+        Downloads through the cache, so a following feature request reuses the file.
+        """
+        table = cls._read_table(cls._coerce_locator(data_access))
+        return {field.name: str(field.type) for field in table.schema}
+
+    @classmethod
+    def _coerce_locator(cls, data_access: Any) -> GovDataLocator:
         locator = GovDataLocator.coerce(data_access)
         if locator is None:
-            raise ValueError(f"GovDataReader cannot handle data access {data_access!r}")
-        table = cls._read_table(locator)
-        return table.select(requested)
+            raise ValueError(f"{cls.__name__} cannot handle data access {data_access!r}")
+        return locator
 
     @classmethod
     def _read_table(cls, locator: GovDataLocator) -> pa.Table:
