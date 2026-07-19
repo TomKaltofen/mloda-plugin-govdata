@@ -10,6 +10,10 @@ Connectors for German open government data, built on [mloda](https://github.com/
 
 Three example datasets cover the M1 themes: population (GovData CSV), elections (Bundeswahlleiterin `kerg.csv`), and environment (UBA Air Data JSON).
 
+## Status
+
+Young but working. All three example readers run end to end, with paginated dataset search, cached downloads with retries, and unit plus property-based tests behind them. The elections and air-quality readers are thin subclasses of `GovDataReader` that override only the parse step; new datasets follow the same path (see [docs/adding-a-reader.md](docs/adding-a-reader.md)). Development happens in a 6-month Prototype Fund stage (June to November 2026), so the API may still shift between releases.
+
 ## Usage
 
 Read the Stuttgart population dataset (via GovData) as a typed PyArrow table:
@@ -88,9 +92,9 @@ The notebook hits the live GovData, Bundeswahlleiterin, and UBA endpoints; downl
 
 ## Related Repositories
 
-- **[mloda](https://github.com/mloda-ai/mloda)**: The core library for open data access. Declaratively define what data you need, not how to get it. mloda handles feature resolution, dependency management, and compute framework abstraction automatically.
+- **[mloda](https://github.com/mloda-ai/mloda)**: the core library this plugin builds on. You declare which features you need; mloda resolves how to compute them.
 
-- **[mloda-registry](https://github.com/mloda-ai/mloda-registry)**: The central hub for discovering and sharing mloda plugins. Browse community-contributed FeatureGroups, find integration guides, and publish your own plugins for others to use.
+- **[mloda-registry](https://github.com/mloda-ai/mloda-registry)**: plugin registry and development guides for the mloda ecosystem.
 
 ## Funding
 
