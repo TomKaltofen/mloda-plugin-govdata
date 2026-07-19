@@ -6,7 +6,7 @@ Run with: marimo edit demos/govdata_demo.py (needs network access; install the
 
 import marimo
 
-__generated_with = "0.14.16"
+__generated_with = "0.23.11"
 app = marimo.App(width="medium")
 
 
@@ -19,18 +19,16 @@ def _():
 
 @app.cell
 def _(mo):
-    mo.md(
-        """
-        # mloda-plugin-govdata demo
+    mo.md("""
+    # mloda-plugin-govdata demo
 
-        German open government data as mloda features: search GovData via the
-        paginated CKAN API, then read the three M1 example datasets (population,
-        elections, environment) as typed Arrow tables. Every cell below talks to
-        the live endpoints; downloads are cached locally after the first run.
+    German open government data as mloda features: search GovData via the
+    paginated CKAN API, then read the three M1 example datasets (population,
+    elections, environment) as typed Arrow tables. Every cell below talks to
+    the live endpoints; downloads are cached locally after the first run.
 
-        Part of the Prototype Fund project mloda-plugin-govdata (FKZ 16IS26S11).
-        """
-    )
+    Part of the Prototype Fund project mloda-plugin-govdata (FKZ 16IS26S11).
+    """)
     return
 
 
@@ -63,7 +61,9 @@ def _():
 
 @app.cell
 def _(mo):
-    mo.md("""## 1. Discover datasets (paginated CKAN `package_search`)""")
+    mo.md("""
+    ## 1. Discover datasets (paginated CKAN `package_search`)
+    """)
     return
 
 
@@ -85,7 +85,9 @@ def _(build_client, pd, query, search_datasets):
 
 @app.cell
 def _(mo):
-    mo.md("""## 2. Population: Stuttgart residents by age group (GovData CSV)""")
+    mo.md("""
+    ## 2. Population: Stuttgart residents by age group (GovData CSV)
+    """)
     return
 
 
@@ -108,7 +110,9 @@ def _(Feature, GovDataReader, mloda):
 
 @app.cell
 def _(mo):
-    mo.md("""## 3. Elections: Bundestagswahl 2025 results (`kerg.csv`, merged header)""")
+    mo.md("""
+    ## 3. Elections: Bundestagswahl 2025 results (`kerg.csv`, merged header)
+    """)
     return
 
 
@@ -126,7 +130,9 @@ def _(BundeswahlleiterinReader, Feature, mloda):
 
 @app.cell
 def _(mo):
-    mo.md("""## 4. Environment: hourly ozone at one station (UBA Air Data JSON)""")
+    mo.md("""
+    ## 4. Environment: hourly ozone at one station (UBA Air Data JSON)
+    """)
     return
 
 
@@ -142,6 +148,11 @@ def _(Feature, UbaAirReader, mloda, uba_measures_url):
     )
     environment = _result[0].to_pandas()
     environment
+    return
+
+
+@app.cell
+def _():
     return
 
 
