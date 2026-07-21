@@ -15,6 +15,7 @@ from typing import Any, ClassVar
 import pyarrow as pa
 
 from mloda.provider import BaseInputData, FeatureSet
+from mloda.user import Options
 
 # Imported for its registration side effect so "PyArrowTable" resolves; the reader returns a pyarrow Table.
 from mloda_plugins.compute_framework.base_implementations.pyarrow.table import PyArrowTable  # noqa: F401
@@ -27,6 +28,13 @@ from .discovery import ResolvedDistribution, resolve_distribution
 from .locator import GovDataLocator
 from .parse import ColumnType, parse_german_csv, parse_multi_header_csv
 from .uba import parse_uba_measures
+
+# Feature-option keys steering the multi-header election parse; defaults are the btw25 kerg.csv
+# geometry, so a new election file is a per-feature configuration change, not a code change.
+OPTION_WAHL_SKIPROWS = "govdata_wahl_skiprows"
+OPTION_WAHL_HEADER_ROWS = "govdata_wahl_header_rows"
+OPTION_WAHL_LABEL_COLUMNS = "govdata_wahl_label_columns"
+OPTION_WAHL_VALUE_TYPE = "govdata_wahl_value_type"
 
 # The M1 population dataset (Stuttgart, via GovData) and its known typed schema.
 POPULATION_SLUG = "einwohner-nach-altersgruppen-und-stadtbezirken"
@@ -61,19 +69,21 @@ class GovDataReader(ReadFile):
         locator = GovDataLocator.coerce(data_access)
         if locator is None:
             raise ValueError(f"GovDataReader cannot handle data access {data_access!r}")
-        table = cls._read_table(locator)
+        table = cls._read_table(locator, features.options)
         return table.select(requested)
 
     @classmethod
-    def _read_table(cls, locator: GovDataLocator) -> pa.Table:
+    def _read_table(cls, locator: GovDataLocator, options: Options | None = None) -> pa.Table:
         with build_client() as client:
             distribution = resolve_distribution(locator, client)
             cache = DownloadCache(cls.cache_dir, client=client)
             cached = cache.get_or_download(distribution.url)
-            return cls._parse(cached.path, locator, distribution)
+            return cls._parse(cached.path, locator, distribution, options)
 
     @classmethod
-    def _parse(cls, path: Path, locator: GovDataLocator, distribution: ResolvedDistribution) -> pa.Table:
+    def _parse(
+        cls, path: Path, locator: GovDataLocator, distribution: ResolvedDistribution, options: Options | None = None
+    ) -> pa.Table:
         return parse_german_csv(path, cls._schema_for(locator, distribution))
 
     @staticmethod
@@ -84,11 +94,31 @@ class GovDataReader(ReadFile):
 
 
 class BundeswahlleiterinReader(GovDataReader):
-    """Reads the Bundeswahlleiterin kerg.csv result file (5-line preamble, 3-row merged header)."""
+    """Reads German election-result CSVs with the Bundeswahlleiterin kerg.csv as the default geometry.
+
+    The header geometry defaults to the btw25 kerg.csv layout (5-line preamble, 3-row merged
+    header, 4 label columns, integer values) and is overridable per feature via the
+    ``OPTION_WAHL_*`` option keys. A degenerate geometry (``header_rows=1``, ``skiprows=0``)
+    covers single-header publisher exports such as the wahlen-berlin.de Datenexport files,
+    so connecting the next election is a configuration step instead of a code change.
+    """
 
     @classmethod
-    def _parse(cls, path: Path, locator: GovDataLocator, distribution: ResolvedDistribution) -> pa.Table:
-        return parse_multi_header_csv(path, skiprows=5, header_rows=3, label_columns=4, value_type=ColumnType.INTEGER)
+    def _parse(
+        cls, path: Path, locator: GovDataLocator, distribution: ResolvedDistribution, options: Options | None = None
+    ) -> pa.Table:
+        def int_option(key: str, default: int) -> int:
+            value = options.get(key) if options is not None else None
+            return default if value is None else int(value)  # non-numeric values raise loudly
+
+        raw_value_type = options.get(OPTION_WAHL_VALUE_TYPE) if options is not None else None
+        return parse_multi_header_csv(
+            path,
+            skiprows=int_option(OPTION_WAHL_SKIPROWS, 5),
+            header_rows=int_option(OPTION_WAHL_HEADER_ROWS, 3),
+            label_columns=int_option(OPTION_WAHL_LABEL_COLUMNS, 4),
+            value_type=ColumnType(raw_value_type) if raw_value_type is not None else ColumnType.INTEGER,
+        )
 
 
 class UbaAirReader(GovDataReader):
@@ -105,7 +135,9 @@ class UbaAirReader(GovDataReader):
         return (".json",)
 
     @classmethod
-    def _parse(cls, path: Path, locator: GovDataLocator, distribution: ResolvedDistribution) -> pa.Table:
+    def _parse(
+        cls, path: Path, locator: GovDataLocator, distribution: ResolvedDistribution, options: Options | None = None
+    ) -> pa.Table:
         return parse_uba_measures(path)
 
 
