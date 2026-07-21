@@ -11,6 +11,7 @@ import respx
 
 from mloda.provider import FeatureSet
 from mloda.user import Feature, mloda
+from mloda_plugins.feature_group.input_data.read_file import ReadFile
 
 from mloda_plugin_govdata.feature_groups.govdata.bundeswahlleiterin import BundeswahlleiterinReader
 from mloda_plugin_govdata.feature_groups.govdata.feature import GovDataFeature
@@ -36,9 +37,9 @@ class _FakeFeatureSet:
     """Just enough FeatureSet surface for load_data."""
 
     def __init__(self, names: set[str]) -> None:
-        self._names = names
+        self._names = tuple(names)
 
-    def get_all_names(self) -> set[str]:
+    def get_all_names(self) -> tuple[str, ...]:
         return self._names
 
 
@@ -184,10 +185,12 @@ def test_peek_rejects_unusable_data_access() -> None:
     "reader",
     [BaseGovDataReader, GovDataReader, StuttgartPopulationReader, BundeswahlleiterinReader, UbaAirReader],
 )
-def test_load_data_probe_still_raises_attribute_error(reader: type[BaseGovDataReader]) -> None:
-    # The framework probes load_data(None, None) and only tolerates AttributeError.
-    with pytest.raises(AttributeError):
-        reader.load_data(None, cast(FeatureSet, None))
+def test_readers_classify_as_final_readers(reader: type[BaseGovDataReader]) -> None:
+    # mloda >=0.10.0 classifies readers structurally: overriding load_data wholesale
+    # relative to the ReadFile anchor makes each reader final; the ReadFile base is not.
+    assert reader.final_reader_anchor() is ReadFile
+    assert reader.is_final_reader() is True
+    assert ReadFile.is_final_reader() is False
 
 
 @respx.mock
