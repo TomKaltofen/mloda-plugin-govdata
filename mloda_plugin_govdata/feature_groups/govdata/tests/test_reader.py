@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import httpx
 import pyarrow as pa
@@ -10,7 +10,7 @@ import pytest
 import respx
 
 from mloda.provider import FeatureSet
-from mloda.user import Feature, mloda
+from mloda.user import Feature, Options, mloda
 from mloda_plugins.feature_group.input_data.read_file import ReadFile
 
 from mloda_plugin_govdata.feature_groups.govdata.bundeswahlleiterin import BundeswahlleiterinReader
@@ -34,10 +34,10 @@ def _mock_population_endpoints(fixtures_dir: Path) -> None:
 
 
 class _FakeFeatureSet:
-    """Just enough FeatureSet surface for load_data."""
+    """Just enough FeatureSet surface for load_data; mirrors the sorted-tuple contract."""
 
     def __init__(self, names: set[str]) -> None:
-        self._names = tuple(names)
+        self._names = tuple(sorted(names))
 
     def get_all_names(self) -> tuple[str, ...]:
         return self._names
@@ -45,6 +45,13 @@ class _FakeFeatureSet:
 
 def test_feature_group_uses_base_govdata_reader() -> None:
     assert isinstance(GovDataFeature.input_data(), BaseGovDataReader)
+
+
+def test_class_options_key_normalizes_to_reader_name() -> None:
+    # The reader class works as an options key; it normalizes to the class-name string (mloda >=0.10.0).
+    # The cast bridges a 0.10.0 typing gap: the runtime accepts class keys, the hints only admit str.
+    options = Options(cast(dict[str, Any], {GovDataReader: SLUG}))
+    assert options.get(GovDataReader.__name__) == SLUG
 
 
 @respx.mock
@@ -68,6 +75,11 @@ def test_load_data_level2(fixtures_dir: Path, tmp_path: Path, monkeypatch: pytes
     assert set(table.schema.names) == {"Einwohner", "Stadtbezirk"}
     assert table.num_rows == 1000
     assert table.schema.field("Einwohner").type == pa.int64()
+    # RunResult.plan (mloda >=0.10.0): the resolved execution steps name our group and framework.
+    compute_steps = [step for step in result.plan if step.step_kind == "compute"]
+    assert [step.feature_group_name for step in compute_steps] == ["GovDataFeature"]
+    assert compute_steps[0].compute_framework_name == "PyArrowTable"
+    assert set(compute_steps[0].requested_feature_names) == {"Einwohner", "Stadtbezirk"}
 
 
 @respx.mock
