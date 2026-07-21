@@ -64,8 +64,8 @@ class BaseGovDataReader(ReadFile):
 
     @classmethod
     def load_data(cls, data_access: Any, features: FeatureSet) -> Any:
-        # Touch features first: the framework probes load_data(None, None) and
-        # only tolerates AttributeError to detect scoped-access support.
+        # Overriding load_data wholesale classifies this as a final reader (mloda >=0.10.0
+        # is_final_reader, structural, no runtime probe).
         requested = sorted(features.get_all_names())  # deterministic column order
         locator = cls._coerce_locator(data_access)
         table = cls._read_table(locator)
