@@ -17,9 +17,10 @@ from typing import Any, ClassVar
 import pyarrow as pa
 from mloda.provider import FeatureSet
 
-# Imported for its registration side effect so "PyArrowTable" resolves; the reader returns a pyarrow Table.
-# Public path since mloda 0.10.0 (lazy export); resolving it imports and registers the framework class.
-from mloda.user import PyArrowTable  # noqa: F401
+# PyArrowTable is imported for its registration side effect so "PyArrowTable" resolves; the reader
+# returns a pyarrow Table. Public path since mloda 0.10.0 (lazy export); resolving it imports and
+# registers the framework class.
+from mloda.user import Options, PyArrowTable  # noqa: F401
 from mloda_plugins.feature_group.input_data.read_file import ReadFile
 
 from .core.cache import DownloadCache
@@ -68,7 +69,7 @@ class BaseGovDataReader(ReadFile):
         # is_final_reader, structural, no runtime probe).
         requested = list(features.get_all_names())  # sorted tuple since mloda 0.10.0; deterministic column order
         locator = cls._coerce_locator(data_access)
-        table = cls._read_table(locator)
+        table = cls._read_table(locator, features.options)
         available = set(table.column_names)
         missing = [name for name in requested if name not in available]
         if missing:
@@ -92,15 +93,17 @@ class BaseGovDataReader(ReadFile):
         return locator
 
     @classmethod
-    def _read_table(cls, locator: GovDataLocator) -> pa.Table:
+    def _read_table(cls, locator: GovDataLocator, options: Options | None = None) -> pa.Table:
         with build_client() as client:
             distribution = resolve_distribution(locator, client)
             cache = DownloadCache(cls.cache_dir, client=client)
             cached = cache.get_or_download(distribution.url)
-            return cls._parse(cached.path, locator, distribution)
+            return cls._parse(cached.path, locator, distribution, options)
 
     @classmethod
-    def _parse(cls, path: Path, locator: GovDataLocator, distribution: ResolvedDistribution) -> pa.Table:
+    def _parse(
+        cls, path: Path, locator: GovDataLocator, distribution: ResolvedDistribution, options: Options | None = None
+    ) -> pa.Table:
         raise NotImplementedError(f"{cls.__name__} must implement _parse")
 
 
@@ -114,5 +117,7 @@ class GovDataReader(BaseGovDataReader):
     schema: ClassVar[dict[str, ColumnType] | None] = None
 
     @classmethod
-    def _parse(cls, path: Path, locator: GovDataLocator, distribution: ResolvedDistribution) -> pa.Table:
+    def _parse(
+        cls, path: Path, locator: GovDataLocator, distribution: ResolvedDistribution, options: Options | None = None
+    ) -> pa.Table:
         return parse_german_csv(path, cls.schema)
