@@ -1,6 +1,12 @@
 """GovData connector: read German open-government data into mloda."""
 
-from .bundeswahlleiterin import BundeswahlleiterinReader
+from .bundeswahlleiterin import (
+    OPTION_WAHL_HEADER_ROWS,
+    OPTION_WAHL_LABEL_COLUMNS,
+    OPTION_WAHL_SKIPROWS,
+    OPTION_WAHL_VALUE_TYPE,
+    BundeswahlleiterinReader,
+)
 from .core.client import build_client
 from .core.discovery import (
     Dataset,
@@ -18,6 +24,10 @@ from .reader import BaseGovDataReader, GovDataReader
 from .uba import UBA_AIR_BASE, UbaAirReader, parse_uba_measures, parse_uba_measures_bytes, uba_measures_url
 
 __all__ = [
+    "OPTION_WAHL_HEADER_ROWS",
+    "OPTION_WAHL_LABEL_COLUMNS",
+    "OPTION_WAHL_SKIPROWS",
+    "OPTION_WAHL_VALUE_TYPE",
     "POPULATION_SCHEMA",
     "POPULATION_SLUG",
     "UBA_AIR_BASE",

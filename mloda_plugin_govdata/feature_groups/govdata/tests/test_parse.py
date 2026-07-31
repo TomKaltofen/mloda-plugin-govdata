@@ -149,3 +149,35 @@ def test_multi_header_empty_measure_is_null() -> None:
         data, skiprows=0, header_rows=1, label_columns=1, value_type=ColumnType.INTEGER
     )
     assert table.column("Votes").to_pylist() == [None, 5]
+
+
+def test_berlin_wahl_sample_degenerate_geometry(fixtures_dir: Path) -> None:
+    # wahlen-berlin.de Datenexport: single header row, 12 label columns, float values
+    # (vote counts and German-decimal percentages share one value type).
+    table = parse_multi_header_csv(
+        fixtures_dir / "berlin_wahl_sample.csv",
+        skiprows=0,
+        header_rows=1,
+        label_columns=12,
+        value_type=ColumnType.FLOAT,
+    )
+    assert table.num_columns == 268
+    assert table.num_rows == 12
+    assert table.schema.names[:4] == ["Adresse", "StimmArt", "Bezirk", "Bezirksname"]
+    assert table.schema.field("Bezirksname").type == pa.string()
+    assert table.schema.field("Gueltig").type == pa.float64()
+    first = table.slice(0, 1).to_pylist()[0]
+    assert first["Adresse"] == "01W100"
+    assert first["Bezirksname"] == "Mitte"
+    assert first["Gueltig"] == 428.0
+    assert first["Gueltigp"] == 99.3  # German decimal comma parsed as float
+
+
+def test_degenerate_geometry_matches_plain_single_header_parse() -> None:
+    # header_rows=1 with skiprows=0 is exactly a plain single-header German CSV.
+    data = b"Ort;Stimmen\r\nMitte;1.234\r\nPankow;56\r\n"
+    table = parse_multi_header_csv_bytes(
+        data, skiprows=0, header_rows=1, label_columns=1, value_type=ColumnType.INTEGER
+    )
+    plain = parse_german_csv_bytes(data, {"Ort": ColumnType.STRING, "Stimmen": ColumnType.INTEGER})
+    assert table.equals(plain)

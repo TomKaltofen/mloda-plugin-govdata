@@ -17,6 +17,7 @@ from typing import Any
 from urllib.parse import urlencode
 
 import pyarrow as pa
+from mloda.user import Options
 
 from .core.discovery import ResolvedDistribution
 from .core.locator import GovDataLocator
@@ -213,5 +214,7 @@ class UbaAirReader(BaseGovDataReader):
         return (".json",)
 
     @classmethod
-    def _parse(cls, path: Path, locator: GovDataLocator, distribution: ResolvedDistribution) -> pa.Table:
+    def _parse(
+        cls, path: Path, locator: GovDataLocator, distribution: ResolvedDistribution, options: Options | None = None
+    ) -> pa.Table:
         return parse_uba_measures(path)
