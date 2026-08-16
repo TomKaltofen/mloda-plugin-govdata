@@ -21,8 +21,8 @@ SPECS = {
         "a9ce7944d21fc1a9f5330790d9dff939748320486bfb40eadc82608000cd684c",
     ),
 }
-# Defaults the client relies on (documented in the plan): ffcsv is always sent explicitly, quality
-# stays off unless asked, job is never true, language is pinned, area is left to the server.
+# Defaults the client relies on: ffcsv is always sent explicitly, quality stays off unless asked,
+# job is never true, language is pinned, area is left to the server.
 TABLEFILE_DEFAULTS = {"format": "datencsv", "quality": "off", "job": "false", "language": "de", "area": "free"}
 # Request-side differences between the two hosts' specs, all outside the client's surface.
 KNOWN_HOST_DIFFERENCES = {

@@ -1,4 +1,4 @@
-"""GenesisClient over respx: auth paths, wire shape, no retry on auth failure, the D7 lock, host scoping, redaction."""
+"""GenesisClient over respx: auth paths, wire shape, no retry on auth failure, the process lock, host scoping, redaction."""
 
 import subprocess
 import sys

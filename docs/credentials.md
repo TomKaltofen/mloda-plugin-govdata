@@ -7,7 +7,7 @@ The Destatis connector talks to two GENESIS installations. Each needs its own fr
 | GENESIS-Online (Statistisches Bundesamt) | `genesis` (default) | `https://genesis.destatis.de/genesisWS/rest/2020/` | `GENESIS_TOKEN`, or `GENESIS_USER` and `GENESIS_PASSWORD` | https://genesis.destatis.de/datenbank/online/ |
 | Regionalstatistik (Regionaldatenbank Deutschland, IT.NRW) | `regionalstatistik` | `https://www.regionalstatistik.de/genesisws/rest/2020/` | `REGIONALSTATISTIK_TOKEN`, or `REGIONALSTATISTIK_USER` and `REGIONALSTATISTIK_PASSWORD` | https://www.regionalstatistik.de/datenbank/online/ |
 
-Registration is self-service and same-day: the personal API token appears in the web UI right after signup ("Webservice-Schnittstelle (API)"). Generating a new token invalidates the old one immediately.
+Registration is self-service and same-day: the token appears in the web UI right after signup ("Webservice-Schnittstelle (API)"). A new token invalidates the old one immediately.
 
 ## Two paths
 

@@ -1,6 +1,6 @@
 """GENESIS client: header credentials, form-encoded POST, pinned language, one request at a time.
 
-Politeness (plan D7): a per-host ``threading.Lock`` serializes calls inside one process, and a
+Politeness: a per-host ``threading.Lock`` serializes calls inside one process, and a
 ``filelock.FileLock`` in the cache directory serializes across processes that share it. mloda's
 ``THREADING`` mode runs feature groups in threads of one process; ``MULTIPROCESSING`` spawns one
 fresh interpreter per compute framework instance, so only the file lock reaches those.

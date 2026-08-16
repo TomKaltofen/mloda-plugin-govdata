@@ -1,4 +1,4 @@
-"""GENESIS reply shapes (typed from the pinned OpenAPI spec where it types them) and the status mapping.
+"""GENESIS reply shapes (typed from the pinned OpenAPI spec where available) and the status mapping.
 
 Three JSON shapes exist: the nested envelope (``Ident``, ``Status`` object, ``Parameter``, ``Object``
 or ``List`` or neither, ``Copyright``), the flat ``logincheck`` reply (``Status`` is a string), and a
@@ -28,8 +28,8 @@ from .errors import (
 )
 from .redact import CREDENTIAL_KEYS, REDACTED
 
-# Status codes. "documented": Anwenderdokumentation v5.1 examples; "observed": live on 2026-08-16;
-# "pystatis": recorded by that client's maintainers, not observed here yet (re-pin from a capture).
+# Status codes. "documented": Anwenderdokumentation v5.1 examples; "observed": confirmed against the
+# live services; "pystatis": recorded by that client's maintainers, not observed here yet (re-pin from a capture).
 CODE_OK = 0  # documented
 CODE_GENERIC_ERROR = 2  # observed: backend outage and wrong credentials share it, the text decides
 CODE_NOT_AUTHORIZED = 15  # observed (HTTP 401): credential headers missing or not recognized
