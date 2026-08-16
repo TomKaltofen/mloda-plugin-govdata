@@ -1,0 +1,79 @@
+GENESIS webservice replies used as test fixtures. Three provenance classes, named by prefix:
+- genesis-* / regionalstatistik-*: captured live with scripts/capture_genesis_fixtures.py, redacted (secret values in any
+  case or URL-encoding replaced; username / password / Username fields replaced unless the value is the guest marker
+  GAST or the server's own asterisk masking). "guest" runs sent no credential headers; "badcreds" runs sent a made-up
+  user and password so the rejection texts could be recorded without a real account.
+- documented-*: hand-written from the Anwenderdokumentation "Webservice/API" v5.1 (01.06.2026, Statistisches Bundesamt),
+  https://genesis.destatis.de/datenbank/online/docs/GENESIS-Webservices_Einfuehrung.pdf; not captured.
+- synthetic-*: written for the tests, no external source.
+Not yet available (need working credentials; the GENESIS-Online webservice backend was degraded on 2026-08-16 and no
+Regionalstatistik account exists yet): unknown-table, result-too-large, and job-accepted envelopes, metadata/table
+replies for the pinned tables, and the three tablefile payloads. Their mappings are covered by synthetic status blocks in
+the tests; replace them with captures via the script when credentials work.
+
+Attribution for captured content:
+GENESIS-Online: (c) Statistisches Bundesamt (Destatis), 2026 (Copyright line of the replies); qualitysigns legend text
+as published by Destatis.
+Regionalstatistik: (c) Statistische Aemter des Bundes und der Laender, Deutschland, 2026; Datenlizenz Deutschland -
+Namensnennung - Version 2.0 (Copyright line of the replies).
+
+genesis-guest-whoami.json
+Source: GENESIS-Online, helloworld/whoami (GET, no credentials), captured 2026-08-16, HTTP 200.
+sha256: aeb22e8493b83eeea15481a3562a7e3074e232cbc37f41f963a397622e2562e4
+
+genesis-guest-logincheck.json
+Source: GENESIS-Online, helloworld/logincheck without credential headers, captured 2026-08-16, HTTP 200. The generic
+system-error text: this host's backend answered every logincheck this way that day (guest, token, user plus password).
+sha256: 3ba7df272fcd93adbcbc7baff6c3f0b4da5d697b3d4c56da1895968321aa55df
+
+genesis-guest-qualitysigns.json
+Source: GENESIS-Online, catalogue/qualitysigns (GET, language=de, no credentials), captured 2026-08-16, HTTP 200. The
+Parameter echo is masked by the server for guests.
+sha256: 1dce8fe8c13587db9139af33ffa2e377d9f7d2d3658dbcd86cb8f302c90d161f
+
+genesis-guest-metadata-table-12411-0015.json
+Source: GENESIS-Online, metadata/table name=12411-0015 without credential headers, captured 2026-08-16, HTTP 404: the flat
+Code 2 system-error body (same as the degraded logincheck).
+sha256: 8e527a894d59a41ae29eae9062ab08dcdf98d9ea924472fa80daf0f689c81181
+
+regionalstatistik-guest-whoami.json
+Source: Regionalstatistik, helloworld/whoami (GET, no credentials), captured 2026-08-16, HTTP 200.
+sha256: aeb22e8493b83eeea15481a3562a7e3074e232cbc37f41f963a397622e2562e4
+
+regionalstatistik-guest-logincheck.json
+Source: Regionalstatistik, helloworld/logincheck without credential headers, captured 2026-08-16, HTTP 200: the success
+text next to Username GAST, the signature of a request whose credentials were not sent.
+sha256: 017c5d374537b7ab1cc9e2bc168c78a87f52edc4231a4de1fbe1319b6ac09575
+
+regionalstatistik-guest-qualitysigns.json
+Source: Regionalstatistik, catalogue/qualitysigns (GET, language=de, no credentials), captured 2026-08-16, HTTP 200.
+sha256: 3e372a7ab8ea91be9feb6bb1984361f1d2c84446c47fc95798696146118789c2
+
+regionalstatistik-guest-metadata-table-13211-02-05-4.json
+Source: Regionalstatistik, metadata/table name=13211-02-05-4 without credential headers, captured 2026-08-16, HTTP 401:
+the flat Code 15 body (not authorized or credential headers not recognized).
+sha256: e6e6797dccbc1d6b4177bb2ee2e9326b02bab478fc5fc21996839c2880c5d56f
+
+regionalstatistik-badcreds-logincheck.json
+Source: Regionalstatistik, helloworld/logincheck with a made-up user and password, captured 2026-08-16, HTTP 200: the
+wrong-credentials text; Username redacted.
+sha256: 480939804e22dee05f65dcbacdecbbe8672be070e8f07ce909e2650314a83782
+
+regionalstatistik-badcreds-tablefile-13211-02-05-4.json
+Source: Regionalstatistik, data/tablefile name=13211-02-05-4 format=ffcsv with a made-up user and password, captured
+2026-08-16, HTTP 404: the flat Code 2 body with the wrong-credentials text.
+sha256: c326122dcf4a69e3ddd35e76eaababbdd416c8fd7aa7b28727d0258d9f42ddf0
+
+documented-logincheck-ok.json
+Source: documented success reply (v5.1 section 2.4.1 shape) with the current wording of the success text as captured from
+the guest logincheck; Username is the documentation's placeholder IHRE_KENNUNG. Not captured with a real account.
+sha256: dafd71969e77f75f6f69d03272109ba4b2680aeaff02f88cc1c729501e5c7a07
+
+documented-tablefile-no-objects.json
+Source: documented tablefile error case (v5.1 section 2.5.12): Status code 104, Object null, Copyright as printed. The
+Parameter block lists tablefile fields; the PDF example carries chart parameters there (a documentation artifact).
+sha256: ab13f39b6dcfc15c272b573ebdee820aabc03307c7c4773074c6c93087c9ec09
+
+synthetic-maintenance.html
+Synthetic HTML page standing in for a maintenance or error page served instead of JSON. No external source.
+sha256: 35606a1b8a99841cd21f568e38928833dc3e45182b0e7d36f590b60718f1ab93
