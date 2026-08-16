@@ -5,7 +5,7 @@ Companion to [ap2-destatis-harmonization.md](ap2-destatis-harmonization.md)
 Tick items in the PR that lands them. If a slice moves, a checkpoint slips, or
 a cut line is pulled, edit both files in the same PR.
 
-Status: draft v2.3, 2026-08-16 (slice 2 ticked, D7 wording corrected in the plan). v1 was reviewed by three independent advisors
+Status: draft v2.4, 2026-08-16 (slice 3 ticked, pulled forward from week 2; slice 2 ticked, D7 wording corrected in the plan). v1 was reviewed by three independent advisors
 (two Claude models, one Codex run) against the M1 code and mloda 0.10.0; the
 findings are folded in below. Slice 0 step 0 (OpenAPI assessment) was done
 2026-08-16, reviewed by one Claude Sonnet run and one Codex run against the
@@ -424,22 +424,53 @@ with made-up credentials. Learning:
 
 ## Slice 3: parameter-keyed POST cache (WP-B, week 2, about 8 h)
 
-- [ ] `destatis/core/cache.py`: `ParameterCache`, sibling of `DownloadCache`
-      (do not extend it). Key: sha256 over canonical JSON of host, endpoint,
-      normalized parameters (sorted region lists, integer years, stripped
-      strings); credentials excluded before keying. Meta: parameters,
-      `retrieved_at`, payload sha256, data file. Same `cache_dir` as the GET
-      cache, key prefix `post-` so nothing collides.
-- [ ] Freshness (D6): cache hit wins with no request; `refresh=True`
-      refetches; a hit older than 30 days logs a warning naming the table and
-      the age. No TTL. Same offline-first semantics as the GET cache's
-      `revalidate=False` (slice 1), so D6 is symmetric across both caches.
-- [ ] Tests: key stable under parameter reordering and list order; changes
-      when a parameter changes; token or password in the params never reaches
-      the key or the meta; refresh bypasses; staleness warning fires (inject
-      the clock); corrupted entry re-downloads; a hit makes zero HTTP calls.
-- [ ] Commit `feat(destatis): parameter-keyed POST cache`.
-- [ ] Planning repo: ADR 0003 (cache), status proposed.
+Landed in fork PR #15
+(https://github.com/TomKaltofen/mloda-plugin-govdata/pull/15, 2026-08-16,
+tox green). Pulled forward from week 2 (owner call, no credentials needed).
+
+- [x] 2026-08-16, PR #15. `destatis/core/cache.py`: `ParameterCache`, sibling
+      of `DownloadCache` (no inheritance). Key: `post-` plus sha256 over
+      canonical JSON of host base URL, endpoint, and the form fields as sent.
+      Design change against the wording above: the parameters are the wire
+      form, not a typed mirror of it, so what is keyed is what goes over the
+      wire. `canonical_parameters(endpoint, parameters)` accepts only fields
+      the operation registry declares (any other name is refused before
+      keying or writing, named by field only, so a token under a stray name
+      cannot leak), drops `username` / `password`, treats `None` as not
+      sent, strips strings, turns ints into digits, comma-joins flat
+      sequences, sorts the selection fields (`regionalkey`,
+      `classifyingkey1..5`; other multi-values keep the caller's order),
+      refuses bools (the spec spells them per field: `true`/`false` for
+      `compress`, `on`/`off` for `quality`), and requires `language` where
+      the operation declares it (the client would fill it in silently and
+      two languages would share one entry). Meta: host, base URL, endpoint,
+      canonical parameters, `retrieved_at` (UTC), sha256, data file. Body
+      `post-<sha256>.bin` (content-addressed); the body path derives from the
+      meta's validated sha256, never from the stored name; unreadable or
+      undecodable meta, missing or naive timestamps, bad hashes, and
+      unreadable bodies are misses; empty bodies refused; atomic writes.
+- [x] 2026-08-16, PR #15. Freshness (D6): `get_or_fetch(host, endpoint,
+      parameters, fetch, refresh=False)` calls `fetch(canonical)` only on a
+      miss or with `refresh=True` (so a hit needs no credentials, the slice 4
+      `peek` path); a served hit older than 30 days logs a warning naming
+      the table and the age; no TTL. `lookup` (no request, `None` on a
+      miss) and `store` are the primitives.
+- [x] 2026-08-16, PR #15. Tests as listed, plus: canonical form and
+      idempotence, undeclared and missing fields refused by name, secret
+      under a stray name never written, non-ASCII and empty values, entries
+      do not mix, second instance over the same directory, failed or empty
+      refresh keeps the entry, six damaged-meta variants, unreadable body,
+      meta `data_file` not trusted, no collision with the GET cache, the
+      sent form equals the keyed mapping (real `GenesisClient` under respx).
+- [x] 2026-08-16. Commit `feat(destatis): parameter-keyed POST cache` (PR #15).
+- [x] 2026-08-16. Planning repo: ADR 0003 (cache), status proposed,
+      committed locally (not pushed).
+- [ ] Slice 4 note: `fetch` must raise for a reply that is not the payload
+      (check `InspectedReply.kind == "zip"`); the `tablefile` builder owns
+      the per-field wire spelling and passes one mapping to the cache.
+      Whether the server treats `regionalkey` and `classifyingkey` as
+      unordered sets shows in the live smoke as a wire finding, never as a
+      wrong cache hit.
 
 ## Slice 4: tablefile, ffcsv parser, locator, reader (WP-B, week 2, about 32 h)
 
