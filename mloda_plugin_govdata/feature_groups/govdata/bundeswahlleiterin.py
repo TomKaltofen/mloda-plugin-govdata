@@ -7,9 +7,9 @@ from pathlib import Path
 import pyarrow as pa
 from mloda.user import Options
 
-from .core.discovery import ResolvedDistribution
 from .core.locator import GovDataLocator
 from .core.parse import ColumnType, parse_multi_header_csv
+from .core.provenance import Provenance
 from .reader import BaseGovDataReader
 
 # Feature-option keys steering the multi-header election parse; defaults are the btw25 kerg.csv
@@ -20,7 +20,7 @@ OPTION_WAHL_LABEL_COLUMNS = "govdata_wahl_label_columns"
 OPTION_WAHL_VALUE_TYPE = "govdata_wahl_value_type"
 
 
-class BundeswahlleiterinReader(BaseGovDataReader):
+class BundeswahlleiterinReader(BaseGovDataReader[GovDataLocator]):
     """Reads German election-result CSVs with the Bundeswahlleiterin kerg.csv as the default geometry.
 
     The header geometry defaults to the btw25 kerg.csv layout (5-line preamble, 3-row merged
@@ -32,7 +32,7 @@ class BundeswahlleiterinReader(BaseGovDataReader):
 
     @classmethod
     def _parse(
-        cls, path: Path, locator: GovDataLocator, distribution: ResolvedDistribution, options: Options | None = None
+        cls, path: Path, locator: GovDataLocator, provenance: Provenance, options: Options | None = None
     ) -> pa.Table:
         def int_option(key: str, default: int) -> int:
             value = options.get(key) if options is not None else None

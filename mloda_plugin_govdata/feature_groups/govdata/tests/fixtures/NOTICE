@@ -1,0 +1,37 @@
+Third-party data used as test fixtures. Each excerpt is small, unchanged, and used only to test parsing.
+
+population_sample.csv
+Source: GovData dataset "Einwohner nach Altersgruppen und Stadtbezirken" (einwohner-nach-altersgruppen-und-stadtbezirken), publisher Statistisches Amt der Landeshauptstadt Stuttgart, harvested into GovData via Open Data Baden-Württemberg.
+URL: https://opendata.stuttgart.de/dataset/85a06c70-d65e-46fd-861b-2de52c008579/resource/2842140d-8787-475d-b1b9-35a496b503e3/download/einwohner-in-stuttgart-nach-altersgruppen-und-stadtbezirken-seit-1986.csv
+License: CC BY 4.0 (distribution license http://dcat-ap.de/def/licenses/cc-by/4.0 in the CKAN record).
+Attribution: Statistisches Amt der Landeshauptstadt Stuttgart, CC BY 4.0
+Sample: a 1000-row excerpt of the CSV, unchanged rows.
+
+package_show.json
+Source: CKAN package_show response for the dataset above.
+URL: https://ckan.govdata.de/api/3/action/package_show?id=einwohner-nach-altersgruppen-und-stadtbezirken
+License: metadata record; the license above is read from its resources[0].license.
+Sample: full response body, unchanged.
+
+kerg_sample.csv
+Source: Bundeswahlleiterin open-data file kerg.csv (Bundestagswahl 2025, amtliches Endergebnis).
+URL: https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata/btw25/csv/kerg.csv
+Copyright line in the file: "(c) Die Bundeswahlleiterin, Wiesbaden 2025".
+License stated in the file: Datenlizenz Deutschland Namensnennung Version 2.0 (dl-de/by-2-0), https://www.govdata.de/dl-de/by-2-0
+Attribution: Die Bundeswahlleiterin, Wiesbaden 2025, dl-de/by-2-0
+Sample: the 5-line preamble, the 3 header rows, and the first Wahlkreis rows plus one Land row, unchanged.
+
+berlin_wahl_sample.csv
+Source: Datenexport CSV of the 2023 Abgeordnetenhaus election (Zweitstimme, Wahlbezirke), publisher Der Landeswahlleiter für Berlin / Amt für Statistik Berlin-Brandenburg (as stated in the site footer).
+URL: https://www.wahlen-berlin.de/wahlen/BE2023/AFSPRAES/agh/Datenexport_AGH2023_Zweitstimme_W_BE.csv
+License: not stated on the publisher's results and download pages as checked on 2026-08-16; used here as a small test excerpt only, with attribution to the publisher.
+Sample: header row plus the first 12 rows, unchanged.
+
+uba_measures.json
+Source: Umweltbundesamt Air Data API v4, measures endpoint (base https://luftdaten.umweltbundesamt.de/api/air-data/v4), station 143, component 3, scope 2, 2025-01-01. Publisher: Umweltbundesamt (UBA).
+Terms: per https://www.umweltbundesamt.de/datenschutz-haftung-urheberrecht, "Soweit nicht anders gekennzeichnet, ist die Nutzung von Daten im Sinne des § 12a EGovG zulässig", with attribution to the Umweltbundesamt as the source and a note of any changes; no license name is given for the API.
+Attribution: Umweltbundesamt, Luftdaten API v4
+Sample: unchanged response body.
+
+value_markers.csv
+Synthetic, written for the parser tests. No external source.
