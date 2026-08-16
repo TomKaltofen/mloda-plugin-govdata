@@ -12,7 +12,7 @@ Three example datasets cover the M1 themes: population (GovData CSV), elections 
 
 ## Status
 
-Young but working. All three example readers run end to end, with paginated dataset search, cached downloads with retries, and unit plus property-based tests behind them. Every reader is a thin subclass of `BaseGovDataReader` that overrides only the parse step; new datasets follow the same path (see [docs/adding-a-reader.md](https://github.com/mloda-ai/mloda-plugin-govdata/blob/main/docs/adding-a-reader.md)). Development happens in a 6-month Prototype Fund stage (June to November 2026), so the API may still shift between releases.
+Young but working. All three example readers run end to end, with paginated dataset search, cached downloads with retries, and unit plus property-based tests behind them. Every reader is a thin subclass of `BaseGovDataReader` that overrides the parse step (and the fetch step for a non-GovData source); new datasets follow the same path (see [docs/adding-a-reader.md](https://github.com/mloda-ai/mloda-plugin-govdata/blob/main/docs/adding-a-reader.md)). Development happens in a 6-month Prototype Fund stage (June to November 2026), so the API may still shift between releases.
 
 ## Usage
 

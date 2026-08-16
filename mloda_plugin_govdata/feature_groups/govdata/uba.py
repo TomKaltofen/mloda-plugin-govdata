@@ -19,9 +19,9 @@ from urllib.parse import urlencode
 import pyarrow as pa
 from mloda.user import Options
 
-from .core.discovery import ResolvedDistribution
 from .core.locator import GovDataLocator
 from .core.parse import ColumnType
+from .core.provenance import Provenance
 from .reader import BaseGovDataReader
 
 UBA_AIR_BASE = "https://luftdaten.umweltbundesamt.de/api/air-data/v4"
@@ -200,7 +200,7 @@ def parse_uba_measures(path: str | os.PathLike[str]) -> pa.Table:
     return parse_uba_measures_bytes(data)
 
 
-class UbaAirReader(BaseGovDataReader):
+class UbaAirReader(BaseGovDataReader[GovDataLocator]):
     """Reads the UBA Air Data v4 ``measures`` JSON endpoint into a typed Arrow table.
 
     The option value is a full ``measures`` URL (build one with :func:`uba_measures_url`);
@@ -215,6 +215,6 @@ class UbaAirReader(BaseGovDataReader):
 
     @classmethod
     def _parse(
-        cls, path: Path, locator: GovDataLocator, distribution: ResolvedDistribution, options: Options | None = None
+        cls, path: Path, locator: GovDataLocator, provenance: Provenance, options: Options | None = None
     ) -> pa.Table:
         return parse_uba_measures(path)

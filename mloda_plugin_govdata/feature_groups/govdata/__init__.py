@@ -7,6 +7,7 @@ from .bundeswahlleiterin import (
     OPTION_WAHL_VALUE_TYPE,
     BundeswahlleiterinReader,
 )
+from .core.cache import CacheMissError, DownloadCache
 from .core.client import build_client
 from .core.discovery import (
     Dataset,
@@ -16,8 +17,9 @@ from .core.discovery import (
     resolve_distribution,
     search_datasets,
 )
-from .core.locator import GovDataLocator
+from .core.locator import GovDataLocator, Locator
 from .core.parse import ColumnType, parse_german_csv, parse_german_csv_bytes, parse_multi_header_csv
+from .core.provenance import FetchedPayload, Provenance
 from .feature import GovDataFeature
 from .population import POPULATION_SCHEMA, POPULATION_SLUG, StuttgartPopulationReader
 from .reader import BaseGovDataReader, GovDataReader
@@ -33,11 +35,16 @@ __all__ = [
     "UBA_AIR_BASE",
     "BaseGovDataReader",
     "BundeswahlleiterinReader",
+    "CacheMissError",
     "ColumnType",
     "Dataset",
+    "DownloadCache",
+    "FetchedPayload",
     "GovDataFeature",
     "GovDataLocator",
     "GovDataReader",
+    "Locator",
+    "Provenance",
     "ResolvedDistribution",
     "Resource",
     "StuttgartPopulationReader",

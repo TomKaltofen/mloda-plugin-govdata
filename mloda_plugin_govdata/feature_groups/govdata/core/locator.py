@@ -3,8 +3,22 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Protocol, TypeVar, runtime_checkable
 
 DEFAULT_CKAN_BASE = "https://ckan.govdata.de/api/3/action"
+
+_L = TypeVar("_L", bound="Locator")
+
+
+@runtime_checkable
+class Locator(Protocol):
+    """What a reader needs from its locator type: coercion from an option value and a label for messages."""
+
+    # PYI019 wants `Self`, which is 3.11+; the package floor is 3.10.
+    @classmethod
+    def coerce(cls: type[_L], value: object) -> _L | None: ...  # noqa: PYI019
+
+    def describe(self) -> str: ...
 
 
 @dataclass(frozen=True)
@@ -40,3 +54,7 @@ class GovDataLocator:
         if isinstance(value, str) and value:
             return cls.from_string(value)
         return None
+
+    def describe(self) -> str:
+        """Label for messages: the dataset id, else the distribution URL."""
+        return self.dataset_id or self.distribution_url or ""

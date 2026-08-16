@@ -5,7 +5,9 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from types import TracebackType
 from typing import Any
@@ -15,12 +17,17 @@ import httpx
 from .client import build_client, request_with_retry
 
 
+class CacheMissError(RuntimeError):
+    """Raised when revalidate=False and the URL is not cached; no request is made."""
+
+
 @dataclass(frozen=True)
 class CachedFile:
     path: Path
     url: str
     sha256: str
     etag: str | None
+    retrieved_at: datetime  # when the bytes were downloaded; a 304 revalidation keeps it
 
 
 class DownloadCache:
@@ -28,7 +35,8 @@ class DownloadCache:
 
     Revalidates with ``If-None-Match`` / ``If-Modified-Since``; a ``304`` reuses
     the stored body (sha256-verified). Safe to share across runs: entries are
-    keyed by URL and content hash.
+    keyed by URL and content hash. ``revalidate=False`` reads the cache offline,
+    making no request.
     """
 
     def __init__(self, cache_dir: str | os.PathLike[str], client: httpx.Client | None = None) -> None:
@@ -68,9 +76,17 @@ class DownloadCache:
             return None  # unreadable metadata: treat as a cache miss and re-download
         return loaded if isinstance(loaded, dict) else None
 
-    def get_or_download(self, url: str) -> CachedFile:
+    def get_or_download(self, url: str, *, revalidate: bool = True) -> CachedFile:
         meta = self._read_meta(url)
         cached = self._cached_from_meta(url, meta) if meta is not None else None
+
+        if not revalidate:
+            if cached is not None:
+                return cached
+            raise CacheMissError(
+                f"{url} has no usable cache entry in {self.cache_dir} "
+                "(missing, corrupted, or without a retrieval time); no request made because revalidate=False"
+            )
 
         # Only revalidate conditionally when there is a valid body to fall back on;
         # otherwise request unconditionally so the server sends a full 200.
@@ -90,25 +106,36 @@ class DownloadCache:
         return self._store(url, response)
 
     def _cached_from_meta(self, url: str, meta: dict[str, Any]) -> CachedFile | None:
-        data_path = self.cache_dir / str(meta.get("data_file", ""))
+        sha = meta.get("sha256")
+        if not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{64}", sha):
+            return None  # untrusted or malformed hash; never trust meta["data_file"] as a path
+        data_path = self.cache_dir / f"{sha}.bin"
         if not data_path.exists():
             return None
         digest = hashlib.sha256(data_path.read_bytes()).hexdigest()
-        if digest != meta.get("sha256"):
+        if digest != sha:
             return None  # corrupted cache; force re-download
-        return CachedFile(path=data_path, url=url, sha256=digest, etag=meta.get("etag"))
+        try:
+            retrieved_at = datetime.fromisoformat(meta["retrieved_at"])
+        except (KeyError, ValueError, TypeError):
+            return None  # missing or unparseable timestamp; treat as a miss
+        if retrieved_at.tzinfo is None:
+            return None  # naive timestamp; treat as a miss
+        return CachedFile(path=data_path, url=url, sha256=digest, etag=meta.get("etag"), retrieved_at=retrieved_at)
 
     def _store(self, url: str, response: httpx.Response) -> CachedFile:
         body = response.content
         digest = hashlib.sha256(body).hexdigest()
         data_path = self.cache_dir / f"{digest}.bin"
         data_path.write_bytes(body)
+        retrieved_at = datetime.now(timezone.utc)
         meta: dict[str, Any] = {
             "url": url,
             "etag": response.headers.get("ETag"),
             "last_modified": response.headers.get("Last-Modified"),
             "sha256": digest,
             "data_file": data_path.name,
+            "retrieved_at": retrieved_at.isoformat(),
         }
         self._meta_path(url).write_text(json.dumps(meta), encoding="utf-8")
-        return CachedFile(path=data_path, url=url, sha256=digest, etag=meta["etag"])
+        return CachedFile(path=data_path, url=url, sha256=digest, etag=meta["etag"], retrieved_at=retrieved_at)
