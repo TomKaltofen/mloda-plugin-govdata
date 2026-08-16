@@ -244,50 +244,56 @@ work: the `time` format of `STAG` tables, whether `value_q` is present under
 Refactor only; M1 behavior unchanged. Everything a second locator type and a
 POST reader need from the base class lands here.
 
-- [ ] `reader.py`: parameterize the reader over its locator type
-      (`BaseGovDataReader(ReadFile, Generic[LocatorT])` or a `Locator`
-      Protocol) so `_coerce_locator`, `match_subclass_data_access`,
-      `_read_table`, `_fetch`, and `_parse` are typed on `LocatorT`.
-      `_unknown_features_message` uses a locator `describe()` instead of
-      `dataset_id` / `distribution_url` (verified: today all three are typed
-      on the concrete `GovDataLocator`, and an argument-narrowing override
-      fails `mypy --strict` as a Liskov violation).
-- [ ] Seam dataclasses defined first, in `core/provenance.py`: `Provenance`
-      (source label, url or endpoint plus parameters, and the license and
-      dataset metadata `ResolvedDistribution` carries today, verified in
-      `core/discovery.py`, so nothing the recipes' compliance block needs is
-      dropped) and `FetchedPayload` (`path`, `sha256`, `retrieved_at`,
-      `provenance`). The sha256 is over the bytes stored in the cache (for
-      Destatis: the raw zip; the extracted CSV hash is a second field if the
-      recipes need it; decide and write it down here).
-- [ ] `reader.py`: extract `_fetch(locator, client) -> FetchedPayload` out of
-      `_read_table`; `_parse(path, locator, provenance, options)` replaces the
-      `ResolvedDistribution` parameter. `ResolvedDistribution` stays exported.
-- [ ] `core/discovery.py`: `ResolvedDistribution` maps into `Provenance`; the
-      CKAN plus GET path stays the base implementation of `_fetch`.
-- [ ] Update `GovDataReader._parse` (in `reader.py`), `bundeswahlleiterin.py`,
-      `uba.py`; behavior unchanged (`population.py` has no `_parse`, verified).
-- [ ] `core/cache.py`: `DownloadCache.get_or_download(url, *,
-      revalidate=True)`; `revalidate=False` returns the stored body with no
-      request and raises a network error naming the URL on a miss (verified:
-      today every call issues a conditional GET, so there is no offline read).
-      The meta file gains `retrieved_at` (verified: not stored today, so
-      `FetchedPayload.retrieved_at` cannot be reconstructed on a hit); old
-      meta files without it are treated as a miss.
-- [ ] Tests: a throwaway second locator type plus a two-line reader subclass
-      local to the test module; `mypy --strict` green; a `{"FakeReader":
-      "x"}` option never yields a `GovDataLocator`; the fake `_fetch` override
-      never calls `resolve_distribution` (respx asserts zero CKAN calls); a
-      `revalidate=False` read makes zero HTTP calls.
-- [ ] Backfill `NOTICE` for the M1 fixtures (`population_sample.csv`,
-      `kerg_sample.csv`, `berlin_wahl_sample.csv`, `uba_measures.json`; none
-      has one today, verified).
-- [ ] `docs/adding-a-reader.md`: one paragraph on the locator type and the
-      `_fetch` seam.
-- [ ] Commit `refactor: locator-generic reader with fetch seam and offline
-      cache read`.
-- [ ] Planning repo: ADR 0002 (module layout and reader seams), status
-      proposed.
+All items below landed in fork PR #13
+(https://github.com/TomKaltofen/mloda-plugin-govdata/pull/13, 2026-08-16,
+CI green on 3.10 to 3.14, tox green).
+
+- [x] 2026-08-16, PR #13. `reader.py`: `BaseGovDataReader(ReadFile,
+      Generic[LocatorT])` with `LocatorT` bound to a `Locator` Protocol
+      (`coerce`, `describe`) in `core/locator.py`; a `locator_type()`
+      classmethod hook (base default `GovDataLocator`, one `cast`) drives
+      `match_subclass_data_access` and `_coerce_locator`, and an
+      already-coerced locator instance passes through unchanged (mloda hands
+      the matched locator back to `load_data`). `_unknown_features_message`
+      uses `describe()`.
+- [x] 2026-08-16, PR #13. `core/provenance.py`: `Provenance(source, url,
+      parameters, license, dataset)` and `FetchedPayload(path, sha256,
+      retrieved_at, provenance)`. Decision: the sha256 is over the bytes
+      stored in the cache only (for Destatis the raw zip); no second hash of
+      an extracted member until a recipe needs one (slice 6 decides).
+- [x] 2026-08-16, PR #13. `_fetch(locator, client) -> FetchedPayload`
+      extracted; `_parse(path, locator, provenance, options)`;
+      `ResolvedDistribution` stays exported.
+- [x] 2026-08-16, PR #13. The mapping is `Provenance.from_distribution()` in
+      `core/provenance.py` (not a method on `ResolvedDistribution`), so
+      `provenance` imports `discovery` and not the reverse and every
+      annotation resolves at runtime (a `TYPE_CHECKING`-only `Dataset` import
+      broke `typing.get_type_hints`, which a pydantic recipe model would trip
+      on). CKAN plus GET stays the base `_fetch`; the base raises
+      `NotImplementedError` for a foreign locator type (a runtime guard; an
+      intermediate CKAN class would let mypy enforce it instead, raised by
+      review, kept as designed here, owner call).
+- [x] 2026-08-16, PR #13. `GovDataReader._parse`, `bundeswahlleiterin.py`,
+      `uba.py` updated; behavior unchanged.
+- [x] 2026-08-16, PR #13. `core/cache.py`: `revalidate=False` returns the
+      stored body with no request and raises `CacheMissError` naming the URL
+      on a miss; meta stores `retrieved_at` (UTC, kept on a 304, it dates the
+      bytes); meta without it or with a naive timestamp is a miss; the body
+      path is derived from the meta's validated sha256, never from a stored
+      file name (review finding: a tampered meta could point outside the
+      cache directory, and the offline read would serve it forever).
+- [x] 2026-08-16, PR #13. Tests as listed, plus: the provenance handed to
+      `_parse` is the one `_fetch` produced, locator pass-through, cache
+      meta hardening, runtime-resolvable annotations. Note: the fake reader
+      is more than two lines because it must override `_fetch` and `_parse`.
+- [x] 2026-08-16, PR #13. `NOTICE` backfilled for all six fixture files.
+      Owner follow-up: the Berlin `Datenexport` license is not stated on the
+      publisher's results and download pages; the `NOTICE` says so.
+- [x] 2026-08-16, PR #13. `docs/adding-a-reader.md` paragraph added.
+- [x] 2026-08-16. Commit `refactor: locator-generic reader with fetch seam
+      and offline cache read` (PR #13).
+- [x] 2026-08-16. Planning repo: ADR 0002 (module layout and reader seams),
+      status proposed, committed locally (not pushed).
 
 ## Slice 2: Destatis credentials, client, envelope (WP-A, week 1, about 37 h)
 
