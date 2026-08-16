@@ -7,7 +7,7 @@ The Destatis connector talks to two GENESIS installations. Each needs its own fr
 | GENESIS-Online (Statistisches Bundesamt) | `genesis` (default) | `https://genesis.destatis.de/genesisWS/rest/2020/` | `GENESIS_TOKEN`, or `GENESIS_USER` and `GENESIS_PASSWORD` | https://genesis.destatis.de/datenbank/online/ |
 | Regionalstatistik (Regionaldatenbank Deutschland, IT.NRW) | `regionalstatistik` | `https://www.regionalstatistik.de/genesisws/rest/2020/` | `REGIONALSTATISTIK_TOKEN`, or `REGIONALSTATISTIK_USER` and `REGIONALSTATISTIK_PASSWORD` | https://www.regionalstatistik.de/datenbank/online/ |
 
-Registration is self-service and same-day: the token appears in the web UI right after signup ("Webservice-Schnittstelle (API)"). A new token invalidates the old one immediately.
+Registration is self-service (same-day in our own experience). The token is shown in the web UI under "Webservice-Schnittstelle (API)"; generating a new one invalidates the old one immediately (Anwenderdokumentation Webservice/API v5.1, section 2.1.3).
 
 ## Two paths
 
@@ -18,7 +18,7 @@ Credentials never go into the URL or the form body: the server ignores body cred
 
 ## Resolution order
 
-1. Explicit: `DestatisCredentials(host="genesis", token=...)` (or `user=..., password=...`) passed to `GenesisClient`, or in mloda `Options(context={"genesis_credentials": ...})`. Context only; the key is refused in `group`, which is hashed and printed with the feature.
+1. Explicit: `DestatisCredentials(host="genesis", token=...)` (or `user=..., password=...`) passed to `GenesisClient`, or in mloda `Options(context={"genesis_credentials": DestatisCredentials(...)})`. Only the instance is accepted (its repr is redacted; a plain dict would print its values with the options), and only in `context`: the key is refused in `group`, which is hashed and printed with the feature.
 2. Env vars of the host, chosen by the host prefix. Whitespace is stripped.
 3. Otherwise `MissingCredentialsError` names the env vars and the registration page for that host. Nothing is sent.
 
@@ -33,7 +33,7 @@ with GenesisClient("genesis") as client:  # credentials from GENESIS_TOKEN
 
 ## Redaction
 
-`repr` and `str` of credentials, of the `logincheck` reply, and of every raised error are redacted. The `Parameter` block that GENESIS echoes in each JSON reply loses `username` and `password` at parse time. The fixture capture script (`scripts/capture_genesis_fixtures.py`) redacts secret values in any case or URL-encoding before writing.
+`repr` and `str` of `DestatisCredentials` and of the `logincheck` reply are redacted, and every `GenesisError` raised by `GenesisClient.call` (and the methods built on it) has the known secrets scrubbed from its text. The `Parameter` block that GENESIS echoes in each JSON reply loses `username` and `password` at parse time. Errors raised below that layer (transport errors, a `ValueError` from your own code) are not scrubbed. The fixture capture script (`scripts/capture_genesis_fixtures.py`) redacts secret values in any case or URL-encoding before writing and refuses to keep a file in which a secret survived.
 
 ## Live tests
 

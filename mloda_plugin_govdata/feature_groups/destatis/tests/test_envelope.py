@@ -82,6 +82,24 @@ def test_logincheck_success_needs_a_real_username(fixtures_dir: Path) -> None:
     assert isinstance(guest, LoginCheckReply) and guest.is_guest and not guest.is_success
     with pytest.raises(GenesisAuthError, match="GAST"):
         raise_for_logincheck(guest)
+    for blank in (
+        {"Status": ok.status},
+        {"Status": ok.status, "Username": "  "},
+        {"Status": ok.status, "Username": None},
+    ):
+        nameless = LoginCheckReply.model_validate(blank)
+        assert not nameless.is_success
+        with pytest.raises(GenesisAuthError, match="without a username"):
+            raise_for_logincheck(nameless)
+
+
+def test_validation_failure_is_a_genesis_error_without_the_values() -> None:
+    with pytest.raises(GenesisUnknownEnvelope) as info:
+        parse_json_reply({"Status": {"Code": "not-a-number", "Content": "SECRET-ECHO"}})
+    assert "GenesisEnvelope" in str(info.value) and "Status.Code" in str(info.value)
+    assert "SECRET-ECHO" not in str(info.value) and "not-a-number" not in str(info.value)
+    with pytest.raises(GenesisUnknownEnvelope, match="Parameter"):
+        parse_json_reply({"Status": {"Code": 0}, "Parameter": "username=SECRET"})
 
 
 def test_logincheck_repr_redacts_the_echo() -> None:
@@ -151,6 +169,9 @@ def test_warning_passes_and_type_is_case_insensitive() -> None:
     raise_for_status_block(_status(22, "erfolgreich (Mindestens ein Parameter ...)", "Warnung"))
     assert _status(0, "x", "ERROR").is_error and _status(0, "x", "Fehler").is_error
     assert _status(22, "x", "WARNING").is_warning
+    # The too-large text heuristic never overrides a documented pass.
+    raise_for_status_block(_status(22, "erfolgreich (Auswahl zu groß, angepasst)", "Warnung"))
+    raise_for_status_block(_status(0, "zu groß steht hier nur im Text"))
 
 
 def test_unknown_status_quotes_the_block() -> None:
@@ -170,6 +191,9 @@ def test_parse_rejects_unknown_shapes() -> None:
 def test_inspect_zip_json_html_and_garbage(fixtures_dir: Path) -> None:
     zipped = inspect_response(_response(200, b"PK\x03\x04rest", "application/octet-stream"), "data/tablefile")
     assert zipped.kind == "zip" and zipped.reply is None and zipped.body.startswith(b"PK")
+    assert "PK" not in repr(zipped)  # the body stays out of reprs (a logincheck body echoes the username)
+    with pytest.raises(GenesisUnknownEnvelope, match="HTTP 403"):
+        inspect_response(_response(403, b"PK\x03\x04rest", "application/octet-stream"), "data/tablefile")
     ok = inspect_response(_response(200, (fixtures_dir / "genesis-guest-whoami.json").read_bytes(), "application/json"))
     assert ok.kind == "json" and isinstance(ok.reply, HelloWorldReply)
     with pytest.raises(GenesisMaintenance, match="HTML"):

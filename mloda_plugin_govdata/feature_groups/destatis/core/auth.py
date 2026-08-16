@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any
 
 from mloda.user import Options
 
@@ -29,6 +28,15 @@ def _clean(value: object) -> str | None:
     return text or None
 
 
+def _header_safe(value: str) -> bool:
+    """Printable latin-1 only: no control characters (a copied token with a newline would break the header)."""
+    try:
+        value.encode("latin-1")
+    except UnicodeEncodeError:
+        return False
+    return not any(ord(ch) < 32 or ord(ch) == 127 for ch in value)
+
+
 @dataclass(frozen=True, repr=False)
 class DestatisCredentials:
     """A token, or user plus password, scoped to one host by name.
@@ -43,7 +51,13 @@ class DestatisCredentials:
 
     def __post_init__(self) -> None:
         for name in ("host", "token", "user", "password"):
-            object.__setattr__(self, name, _clean(getattr(self, name)))
+            value = _clean(getattr(self, name))
+            if value is not None and not _header_safe(value):
+                # Named by field only: an httpx header error would otherwise print the value in a traceback.
+                raise ValueError(
+                    f"DestatisCredentials.{name} contains characters that cannot travel in an HTTP header."
+                )
+            object.__setattr__(self, name, value)
         if not self.host:
             raise ValueError("DestatisCredentials needs a host name.")
         if (self.user is None) != (self.password is None):
@@ -116,24 +130,16 @@ def resolve_credentials(
     return from_env
 
 
-def _coerce_explicit(value: object, host: GenesisHost) -> DestatisCredentials:
-    if isinstance(value, DestatisCredentials):
-        return value
-    if isinstance(value, Mapping):
-        fields: dict[str, Any] = {str(key): item for key, item in value.items()}
-        fields.setdefault("host", host.name)
-        return DestatisCredentials(**fields)
-    raise TypeError(
-        f"{OPTION_GENESIS_CREDENTIALS!r} must be DestatisCredentials or a mapping, got {type(value).__name__}"
-    )
-
-
 def credentials_from_options(
     options: Options | None,
     host: GenesisHost,
     environ: Mapping[str, str] | None = None,
 ) -> DestatisCredentials:
-    """Credentials for ``host`` from ``Options.context`` (explicit) or env; the key is refused in ``group``."""
+    """Credentials for ``host`` from ``Options.context`` (explicit) or env; the key is refused in ``group``.
+
+    Only a ``DestatisCredentials`` instance is accepted: a plain mapping would sit unredacted in the
+    context, which ``str(options)`` prints verbatim.
+    """
     explicit: DestatisCredentials | None = None
     if options is not None:
         if OPTION_GENESIS_CREDENTIALS in options.group:
@@ -143,5 +149,10 @@ def credentials_from_options(
             )
         raw = options.context.get(OPTION_GENESIS_CREDENTIALS)
         if raw is not None:
-            explicit = _coerce_explicit(raw, host)
+            if not isinstance(raw, DestatisCredentials):
+                raise TypeError(
+                    f"{OPTION_GENESIS_CREDENTIALS!r} must be a DestatisCredentials instance (its repr is redacted), "
+                    f"got {type(raw).__name__}"
+                )
+            explicit = raw
     return resolve_credentials(host, explicit, environ)

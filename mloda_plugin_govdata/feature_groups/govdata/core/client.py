@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.metadata
+from collections.abc import Callable
 from typing import Any
 
 import httpx
@@ -68,9 +69,17 @@ def _wait(state: RetryCallState) -> float:
 
 
 @retry(retry=retry_if_exception(_is_retryable), wait=_wait, stop=stop_after_attempt(MAX_ATTEMPTS), reraise=True)
-def request_with_retry(client: httpx.Client, method: str, url: str, **kwargs: Any) -> httpx.Response:
-    """Issue a request, retrying transport errors and retryable status codes."""
-    response = client.request(method, url, **kwargs)
+def send_with_retry(send: Callable[[], httpx.Response]) -> httpx.Response:
+    """Call ``send`` once per attempt, retrying transport errors and retryable status codes.
+
+    Callers that must wrap each attempt (for example in a lock) pass the wrapped sender here.
+    """
+    response = send()
     if response.status_code in RETRYABLE_STATUS:
         raise RetryableStatusError(response)
     return response
+
+
+def request_with_retry(client: httpx.Client, method: str, url: str, **kwargs: Any) -> httpx.Response:
+    """Issue a request, retrying transport errors and retryable status codes."""
+    return send_with_retry(lambda: client.request(method, url, **kwargs))

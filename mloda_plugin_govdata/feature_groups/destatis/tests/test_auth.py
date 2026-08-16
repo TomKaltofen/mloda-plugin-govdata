@@ -61,13 +61,23 @@ def test_options_group_is_refused() -> None:
         credentials_from_options(options, GENESIS_ONLINE, environ={})
 
 
-def test_options_mapping_form_is_coerced_and_scoped_to_the_host() -> None:
-    options = Options(context={OPTION_GENESIS_CREDENTIALS: {"user": USER, "password": PASSWORD}})
-    credentials = credentials_from_options(options, REGIONALSTATISTIK, environ={})
-    assert credentials.host == REGIONALSTATISTIK.name
-    assert credentials.headers()["username"] == USER
+def test_options_context_refuses_anything_but_the_redacting_instance() -> None:
+    # A plain mapping would sit unredacted in the context, which str(options) prints verbatim.
+    options = Options(context={OPTION_GENESIS_CREDENTIALS: {"token": TOKEN}})
+    assert TOKEN in str(options)  # the very reason the form is refused
+    with pytest.raises(TypeError, match="DestatisCredentials instance"):
+        credentials_from_options(options, GENESIS_ONLINE, environ={})
     with pytest.raises(TypeError):
         credentials_from_options(Options(context={OPTION_GENESIS_CREDENTIALS: 42}), GENESIS_ONLINE, environ={})
+
+
+def test_control_characters_and_non_latin1_are_refused_without_echo() -> None:
+    for bad in (f"{TOKEN}\nX-Injected: 1", "tok\x00en", "töken☃"):
+        with pytest.raises(ValueError) as info:
+            DestatisCredentials(token=bad)
+        assert "token" in str(info.value) and bad not in str(info.value)
+    with pytest.raises(ValueError, match="password"):
+        DestatisCredentials(user=USER, password="p\rw")
 
 
 def test_env_resolution_is_host_prefixed() -> None:

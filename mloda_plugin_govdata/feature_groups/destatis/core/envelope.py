@@ -10,11 +10,11 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Literal
 
 import httpx
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from .errors import (
     GenesisAuthError,
@@ -31,14 +31,14 @@ from .redact import CREDENTIAL_KEYS, REDACTED
 # Status codes. "documented": Anwenderdokumentation v5.1 examples; "observed": confirmed against the
 # live services; "pystatis": recorded by that client's maintainers, not observed here yet (re-pin from a capture).
 CODE_OK = 0  # documented
-CODE_GENERIC_ERROR = 2  # observed: backend outage and wrong credentials share it, the text decides
 CODE_NOT_AUTHORIZED = 15  # observed (HTTP 401): credential headers missing or not recognized
 CODE_PARAMETER_ADJUSTED = 22  # documented (Warnung): a parameter was corrected, the request ran
 CODE_TABLE_NOT_FOUND = 90  # pystatis
 CODE_RESULT_TOO_LARGE = 98  # pystatis
 CODE_NO_OBJECTS = 104  # documented (Information): no objects for the selection
 
-# Lower-cased Content substrings.
+# Lower-cased Content substrings. Code 2 (observed) is generic: the outage text and the wrong-credentials
+# text share it, so the text decides.
 TEXT_BACKEND_ERROR = "unerwarteten systemfehlers"  # observed
 TEXT_BAD_CREDENTIALS: tuple[str, ...] = (
     "nutzernamen bzw.",  # observed: wrong user or password
@@ -138,7 +138,8 @@ class LoginCheckReply(BaseModel):
 
     @property
     def is_success(self) -> bool:
-        return LOGINCHECK_OK in self.status.lower() and not self.is_guest
+        """The success text next to a real (non-empty, non-guest) username."""
+        return LOGINCHECK_OK in self.status.lower() and bool(self.username.strip()) and not self.is_guest
 
     def __repr_args__(self) -> Iterator[tuple[str | None, Any]]:
         yield "status", self.status
@@ -156,20 +157,33 @@ class HelloWorldReply(BaseModel):
 JsonReply = GenesisEnvelope | LoginCheckReply | HelloWorldReply | GenesisStatus
 
 
-def parse_json_reply(payload: Any) -> JsonReply:
-    """Pick the model by keys; a flat ``Code``/``Content``/``Type`` body parses as a bare ``GenesisStatus``."""
-    if not isinstance(payload, dict):
-        raise GenesisUnknownEnvelope(f"GENESIS reply is not a JSON object: {type(payload).__name__}")
+def _pick_model(payload: dict[str, Any]) -> type[JsonReply]:
     status = payload.get("Status")
     if isinstance(status, dict):
-        return GenesisEnvelope.model_validate(payload)
+        return GenesisEnvelope
     if isinstance(status, str):
-        return LoginCheckReply.model_validate(payload)
+        return LoginCheckReply
     if "Code" in payload and "Content" in payload:
-        return GenesisStatus.model_validate(payload)
+        return GenesisStatus
     if "User-Agent" in payload:
-        return HelloWorldReply.model_validate(payload)
+        return HelloWorldReply
     raise GenesisUnknownEnvelope(f"Unknown GENESIS reply shape with keys {sorted(map(str, payload))!r}")
+
+
+def parse_json_reply(payload: Any) -> JsonReply:
+    """Pick the model by keys; a flat ``Code``/``Content``/``Type`` body parses as a bare ``GenesisStatus``.
+
+    A recognized shape that fails validation raises ``GenesisUnknownEnvelope`` naming the model and the
+    offending fields only (a pydantic error would print the values, which may echo a credential).
+    """
+    if not isinstance(payload, dict):
+        raise GenesisUnknownEnvelope(f"GENESIS reply is not a JSON object: {type(payload).__name__}")
+    model = _pick_model(payload)
+    try:
+        return model.model_validate(payload)
+    except ValidationError as exc:
+        fields = sorted({".".join(str(part) for part in error["loc"]) for error in exc.errors()})
+        raise GenesisUnknownEnvelope(f"GENESIS reply does not fit {model.__name__}: invalid fields {fields}") from None
 
 
 def raise_for_status_block(
@@ -192,7 +206,7 @@ def raise_for_status_block(
         )
     if TEXT_JOB_ACCEPTED in text:
         raise GenesisJobAccepted(f"GENESIS queued a background job instead of a table: {status.content}", **details)
-    if status.code == CODE_RESULT_TOO_LARGE or TEXT_TOO_LARGE in text:
+    if status.code == CODE_RESULT_TOO_LARGE:
         raise GenesisResultTooLarge(f"GENESIS result too large for a direct download: {status.content}", **details)
     if status.code == CODE_TABLE_NOT_FOUND:
         raise GenesisUnknownTable(f"GENESIS does not know the table: {status.content}", **details)
@@ -200,6 +214,9 @@ def raise_for_status_block(
         raise GenesisEmptySelection(f"GENESIS found no objects for the selection: {status.content}", **details)
     if status.code in (CODE_OK, CODE_PARAMETER_ADJUSTED) and not status.is_error:
         return
+    # Text-only heuristics come after the pass, so a benign warning mentioning the phrase is not an error.
+    if TEXT_TOO_LARGE in text:
+        raise GenesisResultTooLarge(f"GENESIS result too large for a direct download: {status.content}", **details)
     raise GenesisUnknownEnvelope(f"Unknown GENESIS status block {status.as_dict()!r} (HTTP {http_status})", **details)
 
 
@@ -231,8 +248,12 @@ def raise_for_logincheck(
             "GENESIS installation is not valid here.",
             **details,
         )
-    if LOGINCHECK_OK in text:
+    if reply.is_success:
         return
+    if LOGINCHECK_OK in text:
+        raise GenesisAuthError(
+            "logincheck answered the success text without a username; not treated as a login.", **details
+        )
     raise GenesisUnknownEnvelope(f"Unknown logincheck status {reply.status!r} (HTTP {http_status})", **details)
 
 
@@ -244,7 +265,7 @@ class InspectedReply:
     http_status: int
     content_type: str
     reply: JsonReply | None
-    body: bytes
+    body: bytes = field(repr=False)  # a logincheck body echoes the username; keep it out of reprs
 
 
 def _looks_like_html(content_type: str, body: bytes) -> bool:
@@ -257,6 +278,12 @@ def inspect_response(response: httpx.Response, endpoint: str | None = None) -> I
     body = response.content
     http_status = response.status_code
     if body[: len(_ZIP_MAGIC)] == _ZIP_MAGIC:
+        if http_status >= 400:
+            raise GenesisUnknownEnvelope(
+                f"GENESIS answered HTTP {http_status} with a zip body; not treated as a download",
+                endpoint=endpoint,
+                http_status=http_status,
+            )
         return InspectedReply(kind="zip", http_status=http_status, content_type=content_type, reply=None, body=body)
     if _looks_like_html(content_type, body):
         raise GenesisMaintenance(

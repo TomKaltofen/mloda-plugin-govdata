@@ -23,6 +23,7 @@ from .core.envelope import (
     LoginCheckReply,
     inspect_response,
     parse_json_reply,
+    raise_for_logincheck,
     raise_for_status_block,
 )
 from .core.errors import (
@@ -69,6 +70,7 @@ __all__ = [
     "credentials_from_options",
     "inspect_response",
     "parse_json_reply",
+    "raise_for_logincheck",
     "raise_for_status_block",
     "redact_json",
     "redact_text",

@@ -27,7 +27,7 @@ from mloda_plugin_govdata.feature_groups.destatis.core.api import KNOWN_HOSTS, G
 from mloda_plugin_govdata.feature_groups.destatis.core.auth import DestatisCredentials
 from mloda_plugin_govdata.feature_groups.destatis.core.envelope import inspect_response
 from mloda_plugin_govdata.feature_groups.destatis.core.errors import GenesisError
-from mloda_plugin_govdata.feature_groups.destatis.core.redact import redact_json, redact_text
+from mloda_plugin_govdata.feature_groups.destatis.core.redact import redact_json, redact_text, secret_variants
 
 
 def _parse_pairs(pairs: Sequence[str]) -> dict[str, str]:
@@ -48,9 +48,14 @@ def _classify(response: httpx.Response, endpoint: str) -> str:
     return inspected.kind
 
 
-def _write(out: Path, name: str, data: bytes) -> str:
+def _write(out: Path, name: str, data: bytes, secrets: Sequence[str]) -> str:
+    """Write the fixture and refuse to leave it on disk if any secret variant survived redaction."""
     path = out / name
     path.write_bytes(data)
+    lowered = path.read_bytes().decode("utf-8", errors="replace").lower()
+    if any(variant.lower() in lowered for secret in secrets for variant in secret_variants(secret)):
+        path.unlink()
+        raise SystemExit(f"redaction failed for {name}; file removed, nothing else written")
     return hashlib.sha256(data).hexdigest()
 
 
@@ -73,11 +78,14 @@ def capture(
     client: GenesisClient, endpoint: str, params: Mapping[str, str], out: Path, name: str, secrets: Sequence[str]
 ) -> None:
     response = client.request(endpoint, params)
+    if response.is_redirect:
+        print(f"{name}: HTTP {response.status_code} redirect, not captured (base URL stale?)")
+        return
     kind = _classify(response, endpoint)
     body = response.content
     if body[:4] == b"PK\x03\x04":
         file_name = f"{name}.zip"
-        sha = _write(out, file_name, body)
+        sha = _write(out, file_name, body, secrets)
     else:
         try:
             payload = json.loads(body)
@@ -85,11 +93,12 @@ def capture(
             payload = None
         if payload is None:
             file_name = f"{name}.txt"
-            sha = _write(out, file_name, redact_text(body.decode("utf-8", errors="replace"), secrets).encode("utf-8"))
+            redacted = redact_text(body.decode("utf-8", errors="replace"), secrets).encode("utf-8")
+            sha = _write(out, file_name, redacted, secrets)
         else:
             file_name = f"{name}.json"
             text = json.dumps(redact_json(payload, secrets), ensure_ascii=False, indent=2) + "\n"
-            sha = _write(out, file_name, text.encode("utf-8"))
+            sha = _write(out, file_name, text.encode("utf-8"), secrets)
     shown = {k: redact_text(v, secrets) for k, v in params.items()}
     _notice_line(out, client.host.name, file_name, endpoint, shown, response.status_code, sha)
     print(f"{file_name}: HTTP {response.status_code}, {kind}")

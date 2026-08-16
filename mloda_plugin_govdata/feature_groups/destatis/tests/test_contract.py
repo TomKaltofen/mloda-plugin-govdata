@@ -118,6 +118,23 @@ def _request_side(spec: dict[str, Any]) -> dict[tuple[str, str], Any]:
     return side
 
 
+def test_notice_hashes_match_the_fixture_files(fixtures_dir: Path) -> None:
+    # Every "<file>" entry followed by a "sha256: <hex>" line must match the bytes on disk, so an edited
+    # fixture cannot drift from its recorded provenance.
+    entries: dict[str, str] = {}
+    current: str | None = None
+    for line in (fixtures_dir / "NOTICE").read_text(encoding="utf-8").splitlines():
+        if (fixtures_dir / line.strip()).is_file():
+            current = line.strip()
+        elif line.startswith("sha256:") and current is not None:
+            entries[current] = line.split(":", 1)[1].strip()
+            current = None
+    fixture_files = {p.name for p in fixtures_dir.iterdir() if p.is_file() and p.name != "NOTICE"}
+    assert set(entries) == fixture_files, "every fixture needs a NOTICE entry with a sha256 line"
+    for name, sha in entries.items():
+        assert hashlib.sha256((fixtures_dir / name).read_bytes()).hexdigest() == sha, f"{name} drifted from its NOTICE"
+
+
 def test_hosts_agree_on_request_side_except_known_differences(fixtures_dir: Path) -> None:
     genesis = _request_side(_load(fixtures_dir, GENESIS_ONLINE.name))
     regional = _request_side(_load(fixtures_dir, REGIONALSTATISTIK.name))

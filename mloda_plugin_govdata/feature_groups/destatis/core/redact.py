@@ -19,7 +19,7 @@ GUEST_MARKER = "GAST"
 
 def _is_public_marker(value: str) -> bool:
     text = value.strip()
-    return text.upper() == GUEST_MARKER or (bool(text) and set(text) == {"*"})
+    return text == GUEST_MARKER or (bool(text) and set(text) == {"*"})
 
 
 def secret_variants(secret: str) -> set[str]:

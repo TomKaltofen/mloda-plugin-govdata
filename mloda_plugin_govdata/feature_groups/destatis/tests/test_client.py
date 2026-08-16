@@ -5,6 +5,7 @@ import sys
 import threading
 import time
 from pathlib import Path
+from typing import Any
 from urllib.parse import parse_qs
 
 import httpx
@@ -12,7 +13,7 @@ import pytest
 import respx
 from filelock import FileLock
 
-from mloda_plugin_govdata.feature_groups.destatis.core.api import GenesisClient
+from mloda_plugin_govdata.feature_groups.destatis.core.api import GenesisClient, _process_lock
 from mloda_plugin_govdata.feature_groups.destatis.core.auth import DestatisCredentials
 from mloda_plugin_govdata.feature_groups.destatis.core.envelope import GenesisEnvelope, LoginCheckReply
 from mloda_plugin_govdata.feature_groups.destatis.core.errors import (
@@ -200,12 +201,44 @@ def test_redirects_are_not_followed_with_credentials(tmp_path: Path) -> None:
         assert stale.call_count == 1 and elsewhere.call_count == 0
 
 
+def test_injected_client_cannot_re_enable_redirects(tmp_path: Path) -> None:
+    with respx.mock(assert_all_called=False) as router:
+        stale = router.post(BASE + "helloworld/logincheck").mock(
+            return_value=httpx.Response(307, headers={"location": "https://elsewhere.example.org/x"})
+        )
+        elsewhere = router.post("https://elsewhere.example.org/x").mock(return_value=httpx.Response(200, json=OK_LOGIN))
+        with httpx.Client(follow_redirects=True) as injected:
+            client = GenesisClient(GENESIS_ONLINE, DestatisCredentials(token=TOKEN), client=injected, lock_dir=tmp_path)
+            with pytest.raises(GenesisUnknownEnvelope, match="stale"):
+                client.logincheck()
+        assert stale.call_count == 1 and elsewhere.call_count == 0
+
+
 @respx.mock
 def test_guest_mode_sends_no_headers_only_when_allowed(tmp_path: Path) -> None:
     route = respx.post(BASE + "helloworld/logincheck").mock(return_value=httpx.Response(200, json=GAST_LOGIN))
     with _client(tmp_path, allow_guest=True) as client, pytest.raises(GenesisAuthError):
         client.logincheck()
     assert "username" not in route.calls.last.request.headers
+    # A half-set env pair still runs as guest instead of aborting.
+    half = GenesisClient(GENESIS_ONLINE, lock_dir=tmp_path, environ={"GENESIS_USER": USER}, allow_guest=True)
+    with half, pytest.raises(GenesisAuthError):
+        half.logincheck()
+    assert "username" not in route.calls.last.request.headers
+
+
+@respx.mock
+def test_warning_log_is_redacted(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+    warned = dict(QUALITYSIGNS, Status={"Code": 22, "Content": f"erfolgreich (angepasst: {TOKEN})", "Type": "Warnung"})
+    respx.post(BASE + "metadata/table").mock(return_value=httpx.Response(200, json=warned))
+    with _client(tmp_path, DestatisCredentials(token=TOKEN)) as client, caplog.at_level("WARNING"):
+        client.metadata_table("12411-0015")
+    assert "angepasst" in caplog.text and TOKEN not in caplog.text
+
+
+def test_non_string_values_are_refused(tmp_path: Path) -> None:
+    with _client(tmp_path, DestatisCredentials(token=TOKEN)) as client, pytest.raises(TypeError, match="'job'"):
+        client.request("data/tablefile", {"name": "12411-0015", "job": False})  # type: ignore[dict-item]
 
 
 @respx.mock
@@ -224,10 +257,12 @@ def test_language_is_in_every_request(tmp_path: Path) -> None:
 
 
 @respx.mock
-def test_two_threads_serialize(tmp_path: Path) -> None:
+def test_two_threads_serialize_under_the_process_lock(tmp_path: Path) -> None:
     windows: list[tuple[float, float]] = []
+    held: list[bool] = []
 
     def slow(request: httpx.Request) -> httpx.Response:
+        held.append(_process_lock(GENESIS_ONLINE).locked())
         start = time.monotonic()
         time.sleep(0.15)
         windows.append((start, time.monotonic()))
@@ -240,9 +275,27 @@ def test_two_threads_serialize(tmp_path: Path) -> None:
             thread.start()
         for thread in threads:
             thread.join()
-    assert len(windows) == 2
+    assert len(windows) == 2 and held == [True, True]
     (_, first_end), (second_start, _) = sorted(windows)
     assert first_end <= second_start, "requests overlapped"
+
+
+@respx.mock
+def test_lock_is_released_between_retry_attempts(tmp_path: Path) -> None:
+    respx.post(BASE + "helloworld/logincheck").mock(
+        side_effect=[httpx.Response(503), httpx.Response(200, json=OK_LOGIN)]
+    )
+    client = _client(tmp_path, DestatisCredentials(token=TOKEN))
+    seen: list[bool] = []
+    original = client._serialized
+
+    def observed() -> Any:
+        seen.append(_process_lock(GENESIS_ONLINE).locked())
+        return original()
+
+    client._serialized = observed  # type: ignore[method-assign]
+    client.logincheck()
+    assert seen == [False, False], "the lock was still held when the next attempt started"
 
 
 def test_file_lock_blocks_another_process(tmp_path: Path) -> None:
@@ -262,4 +315,16 @@ def test_file_lock_blocks_another_process(tmp_path: Path) -> None:
     )
     assert held.stdout.strip() == "blocked"
     assert free.stdout.strip() == "acquired"
-    assert isinstance(FileLock(str(client.lock_path)), FileLock)
+
+
+def test_stuck_lock_holder_fails_loud(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("mloda_plugin_govdata.feature_groups.destatis.core.api.LOCK_TIMEOUT_SECONDS", 0.2)
+    client = _client(tmp_path, DestatisCredentials(token=TOKEN))
+    client.lock_path.parent.mkdir(parents=True, exist_ok=True)
+    holder = FileLock(str(client.lock_path))
+    holder.acquire()
+    try:
+        with pytest.raises(GenesisBackendError, match="held the GENESIS lock"), client._serialized():
+            pass
+    finally:
+        holder.release()

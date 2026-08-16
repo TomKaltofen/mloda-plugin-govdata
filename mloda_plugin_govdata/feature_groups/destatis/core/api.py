@@ -19,10 +19,10 @@ from types import TracebackType
 from typing import Any
 
 import httpx
-from filelock import FileLock
+from filelock import FileLock, Timeout
 
 from ...govdata.core.cache import DEFAULT_CACHE_DIR
-from ...govdata.core.client import RetryableStatusError, build_client, request_with_retry
+from ...govdata.core.client import RetryableStatusError, build_client, send_with_retry
 from .auth import DestatisCredentials, resolve_credentials
 from .envelope import (
     GenesisEnvelope,
@@ -31,7 +31,7 @@ from .envelope import (
     LoginCheckReply,
     inspect_response,
 )
-from .errors import GenesisBackendError, GenesisError, GenesisUnknownEnvelope
+from .errors import GenesisBackendError, GenesisError, GenesisUnknownEnvelope, MissingCredentialsError
 from .hosts import GENESIS_ONLINE, KNOWN_HOSTS, REGIONALSTATISTIK, GenesisHost, resolve_host
 from .redact import redact_text
 
@@ -50,6 +50,8 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_LANGUAGE = "de"
 LOCK_FILE_NAME = "genesis-{host}.lock"
+# One attempt holds the lock for at most connect plus read timeout; anything longer is a stuck holder.
+LOCK_TIMEOUT_SECONDS = 300.0
 
 
 @dataclass(frozen=True)
@@ -98,13 +100,13 @@ OPERATIONS: dict[str, Operation] = {
     "data/tablefile": Operation("data/tablefile", "POST", credentials=True, fields=TABLEFILE_FIELDS),
 }
 
-_process_locks: dict[str, threading.Lock] = {}
+_process_locks: dict[tuple[str, str], threading.Lock] = {}
 _process_locks_guard = threading.Lock()
 
 
 def _process_lock(host: GenesisHost) -> threading.Lock:
     with _process_locks_guard:
-        return _process_locks.setdefault(host.name, threading.Lock())
+        return _process_locks.setdefault((host.name, host.base_url), threading.Lock())
 
 
 class GenesisClient:
@@ -129,10 +131,9 @@ class GenesisClient:
         # Guest calls send no credential headers; only for characterizing replies (the capture script).
         self.allow_guest = allow_guest
         self._owns_client = client is None
-        # No redirects: the credential headers must never follow a Location to another host.
+        # Redirects are also disabled per request, so an injected client cannot re-enable them.
         self._client = client if client is not None else build_client(follow_redirects=False)
         lock_root = Path(lock_dir) if lock_dir is not None else DEFAULT_CACHE_DIR
-        lock_root.mkdir(parents=True, exist_ok=True)
         self.lock_path = lock_root / LOCK_FILE_NAME.format(host=self.host.name)
 
     def __enter__(self) -> GenesisClient:  # noqa: PYI034  (3.10 floor, class not subclassed)
@@ -155,28 +156,43 @@ class GenesisClient:
         return self._credentials
 
     def _auth_headers(self) -> dict[str, str]:
-        if (
-            self.allow_guest
-            and self._explicit is None
-            and DestatisCredentials.from_env(self.host, self._environ) is None
-        ):
-            return {}
+        if self.allow_guest and self._explicit is None:
+            try:
+                configured = DestatisCredentials.from_env(self.host, self._environ)
+            except MissingCredentialsError:
+                configured = None  # a half-set env pair still runs as guest here
+            if configured is None:
+                return {}
         return self.credentials.headers()
 
     @contextmanager
     def _serialized(self) -> Iterator[None]:
-        with _process_lock(self.host), FileLock(str(self.lock_path)):
-            yield
+        """One attempt at a time per host: this process's threads, then every process sharing the lock file."""
+        self.lock_path.parent.mkdir(parents=True, exist_ok=True)
+        with _process_lock(self.host):
+            try:
+                with FileLock(str(self.lock_path), timeout=LOCK_TIMEOUT_SECONDS):
+                    yield
+            except Timeout:
+                raise GenesisBackendError(
+                    f"Another process has held the GENESIS lock {self.lock_path} for more than {LOCK_TIMEOUT_SECONDS:g} s; "
+                    "wait for it or remove a stale lock file."
+                ) from None
 
     def request(self, endpoint: str, params: Mapping[str, str] | None = None) -> httpx.Response:
-        """One request under the lock; ``language`` is always sent, unknown fields are refused before the wire."""
+        """One request, each attempt under the lock; ``language`` is always sent, unknown fields are refused."""
         try:
             operation = OPERATIONS[endpoint]
         except KeyError:
             raise ValueError(
                 f"Unknown GENESIS operation {endpoint!r}; known: {', '.join(sorted(OPERATIONS))}"
             ) from None
-        sent: dict[str, str] = {str(k): str(v) for k, v in (params or {}).items()}
+        sent: dict[str, str] = {}
+        for key, value in (params or {}).items():
+            if not isinstance(value, str):
+                # The wire wants strings; str(True) would send "True" where the spec expects "true".
+                raise TypeError(f"{endpoint}: value for {key!r} must be a str, got {type(value).__name__}")
+            sent[str(key)] = value
         if "language" in operation.fields:
             sent.setdefault("language", self.language)
         unknown = sorted(set(sent) - operation.fields)
@@ -184,14 +200,18 @@ class GenesisClient:
             raise ValueError(f"{endpoint} does not declare {unknown}; allowed: {sorted(operation.fields)}")
         headers = self._auth_headers() if operation.credentials else {}
         url = self.host.url(operation.path)
-        kwargs: dict[str, Any] = {"headers": headers}
+        kwargs: dict[str, Any] = {"headers": headers, "follow_redirects": False}
         if operation.method == "GET":
             kwargs["params"] = sent
         else:
             kwargs["data"] = sent
-        try:
+
+        def attempt() -> httpx.Response:
             with self._serialized():
-                return request_with_retry(self._client, operation.method, url, **kwargs)
+                return self._client.request(operation.method, url, **kwargs)
+
+        try:
+            return send_with_retry(attempt)
         except RetryableStatusError as exc:
             raise GenesisBackendError(
                 f"GENESIS kept answering HTTP {exc.response.status_code} on {endpoint}; retry later.",
@@ -215,12 +235,16 @@ class GenesisClient:
             self._redact(exc)
             raise
         if isinstance(inspected.reply, GenesisEnvelope) and inspected.reply.status.is_warning:
-            logger.warning("GENESIS %s: %s", endpoint, inspected.reply.status.content)
+            logger.warning("GENESIS %s: %s", endpoint, redact_text(inspected.reply.status.content, self._secrets()))
         return inspected
 
+    def _secrets(self) -> tuple[str, ...]:
+        known = self._credentials if self._credentials is not None else self._explicit
+        return known.secrets() if known is not None else ()
+
     def _redact(self, exc: GenesisError) -> None:
-        """Server text quoted in an exception may echo a credential; scrub it with the resolved secrets."""
-        secrets = self._credentials.secrets() if self._credentials is not None else ()
+        """Server text quoted in an exception may echo a credential; scrub it with the known secrets."""
+        secrets = self._secrets()
         if not secrets:
             return
         exc.args = tuple(redact_text(arg, secrets) if isinstance(arg, str) else arg for arg in exc.args)
