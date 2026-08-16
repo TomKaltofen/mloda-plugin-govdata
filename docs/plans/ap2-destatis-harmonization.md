@@ -4,7 +4,8 @@ Status: draft v2, 2026-08-16. Living document until M2 (30 Sep 2026): update it
 when a checkpoint or cut line moves. Budget, funder-update dates, capacity
 scenarios, risks, and the ADR drafts live in the private planning companion
 repo (`planning/ap2-execution-notes.md` there); this file carries scope,
-architecture, rules, and schedule.
+architecture, rules, and schedule. The tickable build order (one slice per
+PR, checkpoints, cut lines) is [ap2-build-checklist.md](ap2-build-checklist.md).
 
 ## 1. Contract and acceptance
 
