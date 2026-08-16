@@ -15,6 +15,7 @@ from .core.auth import (
     DestatisCredentials,
     credentials_from_options,
 )
+from .core.cache import SELECTION_FIELDS, STALE_AFTER, CachedPayload, ParameterCache, canonical_parameters
 from .core.envelope import (
     GenesisEnvelope,
     GenesisIdent,
@@ -47,6 +48,9 @@ __all__ = [
     "OPERATIONS",
     "OPTION_GENESIS_CREDENTIALS",
     "REGIONALSTATISTIK",
+    "SELECTION_FIELDS",
+    "STALE_AFTER",
+    "CachedPayload",
     "DestatisCredentials",
     "GenesisAuthError",
     "GenesisBackendError",
@@ -66,7 +70,9 @@ __all__ = [
     "LoginCheckReply",
     "MissingCredentialsError",
     "Operation",
+    "ParameterCache",
     "WrongHostCredentialsError",
+    "canonical_parameters",
     "credentials_from_options",
     "inspect_response",
     "parse_json_reply",
