@@ -5,12 +5,16 @@ Companion to [ap2-destatis-harmonization.md](ap2-destatis-harmonization.md)
 Tick items in the PR that lands them. If a slice moves, a checkpoint slips, or
 a cut line is pulled, edit both files in the same PR.
 
-Status: draft v2.1, 2026-08-16. v1 was reviewed by three independent advisors
+Status: draft v2.2, 2026-08-16. v1 was reviewed by three independent advisors
 (two Claude models, one Codex run) against the M1 code and mloda 0.10.0; the
 findings are folded in below. Slice 0 step 0 (OpenAPI assessment) was done
 2026-08-16, reviewed by one Claude Sonnet run and one Codex run against the
 pinned spec, and folded into slices 0, 2, 4, 5, 12 and the stretch list.
-Items marked "verified" were checked against the installed code, not assumed.
+Slice 0 paper work was done 2026-08-16 (tables and hosts pinned, U2 change
+named, C2 on paper, kerg markers, ffcsv shape from Destatis' example files;
+four learnings in the planning repo) and folded into slices 2, 4, 7, 8, 9,
+11, the cut lines and the stretch list. Items marked "verified" were checked
+against the installed code or the real data, not assumed.
 
 ## How to use
 
@@ -28,7 +32,10 @@ Items marked "verified" were checked against the installed code, not assumed.
   8 h of join plumbing). The step-0 outcomes add no hours: the contract
   test replaces the manual endpoint check inside slice 2's 37 h, the
   options doc is 2 h of WP-G's 20 h (less polish later), and the extra
-  fixtures ride on the capture script.
+  fixtures ride on the capture script. The week-0 paper work moves the
+  Regionalstatistik host into WP-A scope (the plan's about 10 h); by owner
+  decision (2026-08-16, "ignore hours, finish slice 0") this is recorded, not
+  re-budgeted, and the week-1 overload options below stay unpicked.
 - External items (GitHub issues, ADRs, planning-repo updates, funder
   updates) are ticked with a URL or commit id next to the box, so the tick
   is evidence, not a memory.
@@ -61,7 +68,8 @@ nothing; (b) slice 8's week-1 de-risking (10 h) moves to the start of week
 4, accepting that the WP-D unknown is answered three weeks later; (c) cut
 line 1 is pre-pulled and slice 7's join plumbing shrinks to a Destatis-only
 join (saves about 4 h in week 3, not week 1). None of these is free; the
-checklist does not pick for you.
+checklist does not pick for you. Slice 0 outcome (2026-08-16): the owner
+deferred the pick ("ignore hours"); the three options stand.
 
 ## Standing rules (checked on every PR)
 
@@ -120,42 +128,93 @@ degraded backend (Aug 16) blocks nothing else.
 
 **Paper work (web UI and other portals, no webservice needed, about 4 h)**
 
-- [ ] Pin the three recipe tables: population by Kreis (12411 family), a
-      Kreis-level labor-market or income indicator, population by Land.
-      Check host (GENESIS-Online vs Regionalstatistik) for each in the web
-      UI. Write the codes into plan section 5 WP-F and section 9.
-- [ ] If any recipe table lives on Regionalstatistik: move that host into
-      WP-A scope, add about 10 h, update the plan and the execution notes.
-- [ ] Check Berlin in each pinned table: present as `11` (Land table) or
-      `11000` (Kreis tables) with a real value, not a null marker. Berlin is
-      the city-state case slice 8 tests and the Land row recipe 3 joins on.
-      If a Kreis table lists city-states differently or not at all, record
-      how (Hamburg `02000`, Bremen `04011` and `04012`) or pick another
-      table. The week-0 table in `learnings/` gets a "Berlin present" column.
-- [ ] Fetch the real full `kerg.csv` once and confirm which `gehört zu`
-      value marks Land rows and which marks Bundesgebiet (D2 assumes `99`;
-      the committed `kerg_sample.csv` has no Land rows, verified). Fix D2
-      wording if wrong.
-- [ ] Name the Gebietsstand change the U2 scenario will re-base across:
-      confirm in GV-ISys that it is Kreis-level (not Gemeinde-level), confirm
-      the BBSR Umsteigeschluessel cover that year pair, write old and new AGS
-      into plan section 5 WP-E, and record one fallback candidate. Osterode
-      am Harz into Göttingen (2016, 03156 into 03159) is a candidate; verify,
-      do not assume.
-- [ ] Make C2 reproducible on paper: for that change, write down the exact
-      GENESIS table and selection (code, years, regional keys), the source
-      and target Gebietsstand, the BBSR key file version and direction, and
-      compute the expected re-based values for two or three cells by hand
-      from the key file. This becomes the expected-value fixture in slice 9.
-- [ ] Decide whether to pre-pull cut line 2 (annual-only period parsing).
-      All six recipes and acceptance item 3 are annual, so this frees about
-      5 h of slice 7 as banked buffer. Record the decision in the plan.
-- [ ] Open one GitHub issue per WP (A to G) plus an M2 milestone on
-      `mloda-ai/mloda-plugin-govdata` (the fork has issues disabled).
-- [ ] Planning repo: milestones.md flips AP1 to done (residue listed) and AP2
-      to in progress; funder-update dates recorded (execution notes section 2).
+Done 2026-08-16 through the web UIs' own JSON backends
+(`genesis.destatis.de/genesis/api/rest`, `www.regionalstatistik.de/gngServer/api/rest`,
+unauthenticated, read-only), the full `kerg.csv`, the BBSR and GV-ISys files,
+and Destatis' ffcsv example zip. Evidence: planning repo
+`learnings/2026-08-16-week0-recipe-tables-hosts-and-kerg-markers.md`,
+`...-genesis-dash-marker-means-not-applicable-for-dissolved-kreise.md`,
+`...-bbsr-kreis-umsteigeschluessel-shape-defect-and-c2-cells.md`,
+`...-ffcsv-new-format-shape-from-official-examples.md`.
+
+- [x] 2026-08-16. Pinned: (1) `12411-0015` Bevölkerung: Kreise, Stichtag
+      (GENESIS-Online, `KREISE`, `STAG` 1995 to 2025); (2) `13211-02-05-4`
+      Arbeitslose und Arbeitslosenquoten, Jahresdurchschnitt ab 2009, Kreise
+      (Regionalstatistik, `KREISE`, `JAHR` 2001 to 2025, contents `ERWP06`
+      count and `ERWP10` rate); (3) `12411-0010` Bevölkerung: Bundesländer,
+      Stichtag (GENESIS-Online, `DLAND`, `STAG` 1958 to 2025). Written into
+      plan section 5 WP-F and section 9. GENESIS-Online has 31 Kreis-level
+      tables and no labor-market or income one; fallback for (2) if the
+      Regionalstatistik path fails: `12521-0040` over `12411-0015`.
+- [x] 2026-08-16. Recipe 2 lives on Regionalstatistik: host moved into WP-A
+      scope (plan D5, WP-A; slice 2 items below). Hours recorded (about 10 h
+      in the plan's terms), not re-budgeted (owner decision). Owner action:
+      register a Regionalstatistik webservice account (free, own token,
+      IT.NRW; the GENESIS-Online token is not valid there). Its spec is
+      pinned in the planning repo (`genesis-openapi-regionalstatistik-GOJsonApi-2026-08-16.json`,
+      sha256 `a9ce7944...`); request side identical for our endpoints, `servers`
+      is lower-case `/genesisws`.
+- [x] 2026-08-16. Berlin present with real values in all three: `11000` in
+      `12411-0015` (2015: 3,520,031) and in `13211-02-05-4` (rate men 2024:
+      10.0), `11` in `12411-0010`. Hamburg `02000`, Bremen `04011`,
+      Bremerhaven `04012` present in the Kreis tables. "Berlin present"
+      column is in the week-0 learning table.
+- [x] 2026-08-16. Full btw25 `kerg.csv` (163,828 bytes, sha256
+      `31ab2739...`): 299 Wahlkreis rows, 16 Land rows with `gehört zu = 99`
+      whose `Nr` is the Land AGS-2 (`11;Berlin;99`), one Bundesgebiet row
+      `99;Bundesgebiet;` with empty `gehört zu`, 16 `;` separator rows. D2
+      holds; join key is `Nr` = `DLAND` (plan D2 reworded). Correction: the
+      committed `kerg_sample.csv` does contain one Land row
+      (`01;Schleswig-Holstein;99`, line 12), so the earlier "no Land rows,
+      verified" note here was wrong; slice 7's join test can start from the
+      existing fixture and only needs more Land rows.
+- [x] 2026-08-16. Named: Landkreis Göttingen 2016, `03152` + `03156` into
+      `03159`, 01.11.2016; GV-ISys `Namens-Grenz-Aenderung/2016.xlsx` (sha256
+      `301a0b72...`) change `03/2016/0006-R`, rows of type `Kreis`, so it is
+      Kreis-level; BBSR `ref-kreise-1990-2024.xlsx` (sha256 `68c4d001...`)
+      sheet `2015-2016` maps both to `03159` with share 1. Fallback:
+      Eisenach `16056` into Wartburgkreis `16063`, 01.07.2021 (sheet
+      `2020-2021`). Fractional-share case: Cochem-Zell `07135` in sheet
+      `2013-2014` (0.9828486 population share stays, 0.0171514 to `07140`).
+      Written into plan section 5 WP-E.
+- [x] 2026-08-16. C2 on paper: `12411-0015`, `regionalvariable=KREISE`,
+      `regionalkey=03152,03156,03159`, `startyear=2013`, `endyear=2017`,
+      contents `BEVSTD`; source Gebietsstand of each Stichtag, target
+      31.12.2016; BBSR sheet `2015-2016`, population-proportional column,
+      direction 2015 to 2016. Expected `03159`: 322,616 (2013), 324,013
+      (2014), 329,538 (2015), observed 327,065 (2016), 328,036 (2017).
+      Fractional check: `07135` 2013 = 63,202 becomes 62,118, `07140` 100,770
+      becomes 101,854. Full table in the BBSR learning; slice 9 fixture.
+- [x] 2026-08-16. Cut line 2 pre-pulled: every pinned table is annual (`STAG`
+      31.12. or `JAHR`); recorded in the plan (section 5 WP-E, cut lines) and
+      below (slice 7, cut lines). Reversible at C1.
+- [-] GitHub issues per WP and the M2 milestone on
+      `mloda-ai/mloda-plugin-govdata`: deferred 2026-08-16 (owner: work only
+      on the fork for now; execution notes section 9 keeps the item).
+- [x] 2026-08-16. Planning repo: milestones.md flips AP1 to done (residue
+      listed) and AP2 to in progress; execution notes section 6a records the
+      slice-0 outcomes.
+- [ ] Planning repo: funder-update dates recorded (execution notes section 2;
+      needs the Zulip history).
+
+Findings that changed later slices (all 2026-08-16): GENESIS writes `-` for
+a Kreis outside its Gebietsstand validity, on both hosts (slices 4, 8, 9,
+11); the current ffcsv is long format with English headers and `value_unit`
+in the row key, known from Destatis' example zip (slice 4); the BBSR Kreis
+file has year-pair sheets, Excel-mangled 8-digit keys, and stale fractions on
+two sheets (slices 8, 9); Regionalstatistik is a second host with its own
+registration (slice 2, stretch list).
 
 **Live webservice checks (last; run when the backend answers, before slice 2, about 3 h)**
+
+Skipped on 2026-08-16 by owner decision (webservice degraded all day). The
+exact selections to run are in the week-0 learning: `12411-0015` with
+`regionalkey=03152,03156,03159`, years 2013 to 2017; `13211-02-05-4` on
+Regionalstatistik with `contents=ERWP06,ERWP10`, `regionalkey=11000,03159`,
+years 2014 to 2017 (needs that host's token); `12411-0010` all Länder, years
+2021 to 2025. Extra things to record per payload, from the offline shape
+work: the `time` format of `STAG` tables, whether `value_q` is present under
+`quality=off`, the zip member name.
 
 - [ ] Run a live `helloworld/whoami`, then characterize
       `helloworld/logincheck` with token-only, user plus password, and both.
@@ -258,12 +317,27 @@ Package `mloda_plugin_govdata/feature_groups/destatis/` with `core/` and
       response shapes and HTTP status codes (the spec has neither).
       Re-pinning is manual: download, sha256, replace, run, record the
       diff as a learning.
+- [ ] Second host, Regionalstatistik (week 0): commit its spec as a second
+      fixture `tests/fixtures/openapi/GOJsonApi-regionalstatistik-2026-08-16.json`
+      (about 230 KB, sha256 `a9ce7944...`, `NOTICE`); the contract test runs
+      once per pinned spec and compares request sides only (its response
+      schemas are generated differently). Known request-side differences to
+      assert are outside the client's surface: `data/chart2table` (extra
+      `contents`), `data/table` (no `structureinformation`), and GET still
+      declared on `profile/password` and `profile/removeResult`. Base URL
+      `https://www.regionalstatistik.de/genesisws/rest/2020/` (lower-case
+      `genesisws`, per its `servers`); host table in `core/api.py` with the
+      two known hosts and their env prefixes; unknown hosts allowed with an
+      explicit base URL and prefix.
 - [ ] `core/auth.py`: `DestatisCredentials` (token, or user plus password;
       host-scoped). Resolution order: explicit option, then env
       (`GENESIS_TOKEN`, `GENESIS_USER`, `GENESIS_PASSWORD`, host-prefixed
-      variants). Whitespace normalized. `__repr__` and `__str__` redact.
-      `MissingCredentialsError` names the env vars, says registration is free
-      and same-day, and gives the URL.
+      variants such as `REGIONALSTATISTIK_TOKEN`, chosen by the locator's
+      host). Whitespace normalized. `__repr__` and `__str__` redact.
+      `MissingCredentialsError` names the env vars for that host, says
+      registration is free and same-day, and gives the host's registration
+      URL (the two registrations are separate; a GENESIS-Online token on the
+      Regionalstatistik host is a wrong-host failure, rulebook).
 - [ ] Env-var names live in a tuple or frozenset, not in `*_TOKEN` or
       `*_PASSWORD` named constants and not as dict keys with string-literal
       values (verified: bandit B105 flags all three forms and `tox` runs
@@ -327,13 +401,16 @@ Package `mloda_plugin_govdata/feature_groups/destatis/` with `core/` and
       credentials and must not be skipped by this hook (verified: no root
       conftest exists today; the only one is
       `feature_groups/govdata/tests/conftest.py`).
-- [ ] `docs/credentials.md` created here (env names, registration URL,
-      dual-path explanation); slice 5 adds the too-large paragraph, slice 12
-      polishes.
+- [ ] `docs/credentials.md` created here (env names per host, both
+      registration URLs, dual-path explanation); slice 5 adds the too-large
+      paragraph, slice 12 polishes.
 - [ ] Tests (respx): each auth path, each envelope mapping, no retry on auth
       failure, the lock serializes concurrent threads, `language` present in
-      every request body, credentials absent from any logged or raised text.
-- [ ] Live smoke (`live` and `genesis_live`): `whoami` plus `logincheck`.
+      every request body, credentials absent from any logged or raised text,
+      host selection picks the matching env prefix and never sends one host's
+      credentials to the other.
+- [ ] Live smoke (`live` and `genesis_live`): `whoami` plus `logincheck`, on
+      each host whose token is present (skip per host with a visible reason).
 - [ ] Commit series `feat(destatis): credentials and client`,
       `feat(destatis): status envelope mapping`, `test(destatis): fixtures`.
 
@@ -380,31 +457,55 @@ payloads, not a guess.
 - [ ] Zip handling from the week-0 characterization: reject empty archives
       and unexpected member sets; enforce a decompressed-size cap; the CSV
       member is written into the cache entry.
-- [ ] ffcsv shape contract written down from the three payloads: fixed
-      prefix columns, N repeated variable blocks
-      (`1_variable_attribute_code`, `2_...`), value and quality columns. The
+- [ ] ffcsv shape contract, written down in week 0 from Destatis' own example
+      zip (`Aenderung_Struktur_Flatfile-CSV.zip`, sha256 `46c5bb2f...`) and
+      confirmed against the three live payloads: fixed prefix
+      `statistics_code; statistics_label; time_code; time_label; time`, N
+      repeated blocks `{N}_variable_code; {N}_variable_label;
+      {N}_variable_attribute_code; {N}_variable_attribute_label`, value block
+      `value; value_unit; value_variable_code; value_variable_label;
+      value_q`. Long format; the row key is (time, all attribute codes,
+      `value_variable_code`, `value_unit`), because one `value_variable_code`
+      can carry two units (`PREIS1` as `2020=100` and `%`). utf-8 with BOM,
+      LF, semicolon, decimal comma in `de`, one CSV member per zip. The
       layout guard asserts the shape (block structure, no duplicates, all
       declared blocks present), not a literal name list, because width grows
-      with the number of classifying variables. Test: the guard passes all
-      three fixtures and raises on a hand-edited fourth with a dropped block.
+      with the number of classifying variables. Test: the guard passes the
+      three live fixtures and the three example files, raises on a hand-edited
+      copy with a dropped block, and raises on the old-format example
+      (`Statistik_Code; ...; <CODE>__<Label>__<Unit>`, German wide headers,
+      shipped in the same zip) as the layout-drift case.
 - [ ] Declared column schema per fixture, recorded before the parser is
       written: required columns and optional columns (quality flags) with
       their Arrow types, following the M1 rule that parsing needs explicit
       types (`parse.py` `_typed_table`, verified). Policy: optional columns
       are read when declared and absent otherwise; undeclared columns raise
       (this is how "quality flags if present" and "unknown columns raise"
-      coexist).
+      coexist). Live check inside this slice: whether `value_q` is present
+      and empty or absent under `quality=off` (the examples were made with
+      the flags on).
 - [ ] `destatis/core/parse.py`: `parse_ffcsv_bytes(data, schema)` and path
       wrapper. Reuse `govdata/core/parse.detect_encoding`, `_clean_number`,
       `ZERO_MARKERS`, `NULL_MARKERS` (import, do not copy). `time` column
       parsed through the period model (until slice 7 lands, annual only as
-      `int64` year with a TODO to the period model). A cell that cannot be
-      typed raises with the offending cell and column.
+      `int64` year with a TODO to the period model; the `time` format of
+      `STAG` tables, `2015-12-31` or `31.12.2015`, is a live finding). A cell
+      that cannot be typed raises with the offending cell and column.
+- [ ] `value_marker` column (week 0 decision, plan D1 and section 6): the
+      parser always emits the raw sign of the `value` cell (`-`, `.`, `...`,
+      `/`, `x`, `()`, empty for numeric cells) as a string column next to the
+      delivered `value_q`; `-` still types to 0, the null-like signs to null.
+      Reason: GENESIS writes `-` for a Kreis outside its Gebietsstand
+      validity (`03159` before 2016, `03152` and `03156` after 2016, on both
+      hosts), and a silent 0 there is the U1/U2 hazard. Test: a `-` cell and
+      a numeric `0` cell are distinguishable through `value_marker`, and the
+      column is present on every Destatis table regardless of `quality`.
 - [ ] `destatis/locator.py`: `DestatisLocator` (D10 validation): table code
-      (`12411-0015` style, validated), optional region and classifying
-      selection, optional `contents` (measure codes, D1), start and end
-      year, `quality` (bool, default off), `host` (GENESIS-Online default,
-      D5), `language`, `format` pinned to `ffcsv`. Not locator fields in
+      (`12411-0015` style and the Regionalstatistik `13211-02-05-4` style,
+      both validated), optional region and classifying selection, optional
+      `contents` (measure codes, D1), start and end year, `quality` (bool,
+      default off), `host` (GENESIS-Online default, `regionalstatistik` as
+      the second known name, D5), `language`, `format` pinned to `ffcsv`. Not locator fields in
       M2: `area`, `compress`, `transpose`, `timeslices`, `job`, `stand`
       (pinned wire values or not sent, documented in
       `docs/destatis-options.md`). Frozen (frozen dataclass with
@@ -435,8 +536,10 @@ payloads, not a guess.
       documented Destatis surface, run `mloda.run_all` over a fixture, and
       assert the plan resolves to the chosen root FeatureGroup, so
       registration does not depend on an unrelated import.
-- [ ] Fixtures: the three week-0 ffcsv zips plus an empty-result payload.
-      `NOTICE` present.
+- [ ] Fixtures: the three week-0 ffcsv zips plus an empty-result payload,
+      and the six Destatis example files from `Aenderung_Struktur_Flatfile-CSV.zip`
+      (three new-format `_flat.zip`, three old-format `_flat.csv`; Destatis
+      2024, quotation permitted with attribution). `NOTICE` present.
 - [ ] Tests: parser pinned to fixtures; zero-vs-missing (`-` is zero, `.`
       `...` `/` `x` `()` are null) per fixture; the marker sets pinned
       against the `qualitysigns` fixture from slice 2 (`0 - ... / . x ()
@@ -540,17 +643,22 @@ it is what acceptance item 3 and recipe 3 stand on, so it is built and
 tested here, three weeks before it is needed.
 
 - [ ] Characterize each source's temporal semantics before coding:
-      Destatis annual (reference date per table, often 31 Dec); kerg is an
-      election snapshot with no time column at all (verified: the header is
-      `Nr;Gebiet;gehört zu;Gewählt ...`), so the election date comes from
-      the locator or recipe, not the file; UBA `date_start` is an ISO string
-      per hour. Write the Arrow representation down: `period_start`
-      (date32) plus `frequency` (string) columns.
+      Destatis annual (`12411-0015` and `12411-0010` are `STAG` reference
+      dates 31.12., `13211-02-05-4` is `JAHR` annual average, verified in
+      week 0 from the table structures); kerg is an election snapshot with
+      no time column at all (verified: the header is `Nr;Gebiet;gehört
+      zu;Gewählt ...`), so the election date comes from the locator or
+      recipe, not the file; UBA `date_start` is an ISO string per hour. Write
+      the Arrow representation down: `period_start` (date32) plus
+      `frequency` (string) columns.
 - [ ] `mloda_plugin_govdata/harmonization/__init__.py` (pure Python, no mloda
       import) and `harmonization/period.py`: `Period(start: date, freq)` with
-      `freq` in `{year, quarter, month}`; `parse_genesis_time(label)` for the
-      labels present in the chosen tables (years first); `from_snapshot(date,
-      freq)` for the election date; parser for UBA `date_start`.
+      `freq` in `{year, quarter, month}` (the enum keeps the three values,
+      only the annual parser ships in M2); `parse_genesis_time(label)` for
+      the annual labels present in the chosen tables (`JAHR` `2015`, `STAG`
+      `2015-12-31` or `31.12.2015`, whichever the live payload shows);
+      `from_snapshot(date, freq)` for the election date; parser for UBA
+      `date_start`.
 - [ ] Snapshot-to-annual join policy, decided and documented: which Destatis
       reference year an election on date D joins to (for example the year
       containing D, or the last 31 Dec before D). One policy, stated in the
@@ -561,18 +669,22 @@ tested here, three weeks before it is needed.
 - [ ] Hypothesis: period round-trip, unknown label raises with the label.
 - [ ] Wire the ffcsv `time` column to the period model (replaces the slice 4
       TODO).
-- [ ] `[-]` Quarter and month parsing: dropped if cut line 2 was pre-pulled
-      in slice 0, else the first candidate at C2.
+- [-] Quarter and month parsing: dropped, cut line 2 was pre-pulled in slice
+      0 (2026-08-16); the freed hours are banked buffer. Comes back only if
+      a live payload forces it (decided at C1).
 - [ ] Join plumbing (verified against mloda 0.10: `Link.inner_on` reads
       `index_columns()`, which `GovDataFeature` does not define; a
       `DestatisReader` feature and a `BundeswahlleiterinReader` feature both
       resolve to `GovDataFeature`, so discriminators are mandatory):
       `index_columns()` on the joining feature group(s) returning the Land
-      key; `Link.inner(...)` with `left_discriminator` / `right_discriminator`
-      keyed on the reader option; the root-FeatureGroup decision from slice 4
-      applied. Test: `run_all(features, links=...)` over fixtures returns one
-      joined table with 16 Land rows (Destatis fixture on the left, a kerg
-      fixture with Land rows on the right).
+      key (kerg `Nr` on Land rows is already the AGS-2, week 0, so the join
+      is `Nr` = `DLAND` with no name mapping); `Link.inner(...)` with
+      `left_discriminator` / `right_discriminator` keyed on the reader
+      option; the root-FeatureGroup decision from slice 4 applied. Test:
+      `run_all(features, links=...)` over fixtures returns one joined table
+      with 16 Land rows (Destatis fixture on the left, a kerg fixture with
+      all 16 Land rows on the right; the committed sample has one Land row,
+      `01;Schleswig-Holstein;99`, so the fixture is extended, not created).
 - [ ] Commit series `feat(harmonization): period model`,
       `feat(govdata): Land-level join plumbing`.
 
@@ -585,9 +697,17 @@ loaders, key model, edition model, mapping.
 - [ ] Week 1: capture one small redistributable extract per reference source
       (Eurostat NUTS correspondence, LAU-to-NUTS, GV-ISys, BBSR
       Umsteigeschluessel Kreise) with URL and sha256 pinned; `NOTICE` with the
-      Destatis, Eurostat, and BBSR long-form attributions.
-- [ ] Week 1: map five hand-picked AGS keys (one city-state, the merged
-      Kreis from slice 0, one Gemeindefreies Gebiet, two ordinary Kreise) to
+      Destatis, Eurostat, and BBSR long-form attributions. Already pinned in
+      week 0 (URLs and hashes in the plan references): BBSR
+      `ref-kreise-1990-2024.xlsx` (sha256 `68c4d001...`; extract the sheets
+      `2013-2014`, `2015-2016`, `2020-2021`, header row plus the Göttingen,
+      Osterode, Eisenach, Wartburgkreis, Cochem-Zell, Mayen-Koblenz and
+      Rhein-Hunsrück rows) and GV-ISys `2016.xlsx` (sha256 `301a0b72...`;
+      extract change `03/2016/0006-R`).
+- [ ] Week 1: map five hand-picked AGS keys (Berlin `11000` as the
+      city-state, `03159` Göttingen as the merged Kreis from slice 0, the
+      Gemeindefreies Gebiet `03159501` Harz (Ldkr. Göttingen), formerly
+      `03156501`, from the same GV-ISys change, and two ordinary Kreise) to
       NUTS-3 by hand from the captured extracts and paste the table into ADR
       0006. If no direct 5-digit correspondence exists in the sources (LAU is
       Gemeinde-level), the derivation is designed here, not in week 4.
@@ -604,12 +724,24 @@ loaders, key model, edition model, mapping.
       for the whole tox run on a five-version matrix).
 - [ ] `harmonization/keys.py`: AGS 2, 5, 8 digit and 12-digit ARS detection;
       keys are strings with leading zeros end to end; Excel-mangled integer
-      keys repaired only when unambiguous by level and length, else raise;
-      mixed levels in one input raise.
+      keys repaired only when unambiguous by level and length, else raise
+      (the BBSR Kreis file is the first real case: 8-digit `1001000` numbers
+      whose first five digits are the Kreis and whose last three are always
+      `000`, verified in week 0; repair `str(int(v)).zfill(8)[:5]` only
+      when the `000` suffix holds); mixed levels in one input raise.
 - [ ] `harmonization/reference/`: one loader per source (xlsx via openpyxl,
       GV100 fixed-width ASCII), each reading through the GET `DownloadCache`
       with `revalidate=False` by default (offline first, explicit refresh),
-      pinned by URL plus sha256, with the fixture extract for tests.
+      pinned by URL plus sha256, with the fixture extract for tests. BBSR
+      Kreis loader, from the week-0 characterization: one sheet per
+      consecutive year pair named `<y>-<y+1>` (34 sheets, 1990 to 2024),
+      header row 0, columns source key, source name, area share, population
+      share, employee share, area, population and SvB weights, target key,
+      target name; direction is old to new (forward) and is read from the
+      sheet name; trailing all-empty rows end the data; a split source has
+      several rows. Validity windows for keys come from GV-ISys change files
+      and these sheets, never from labels (Regionalstatistik has no `(bis
+      ...)` suffix).
 - [ ] `harmonization/edition.py`: `Edition(gebietsstand, nuts_version)` plus
       the reference-data identity it was built from (source, URL, sha256,
       covered year range); default per the week-1 decision (read from the
@@ -643,17 +775,35 @@ Checkpoint C2 target (Sep 20). Week 5 is three working days (SciCAR).
 - [ ] `harmonization/rebase.py`: apply BBSR proportional keys onto a target
       Gebietsstand; direction and key edition explicit arguments; documented
       rounding; share-sum check with tolerance (renormalize inside, raise
-      beyond); every re-based value carries a flag column; observed values
-      never replaced in place; census breaks (2011, 2022) noted in output
+      beyond) scoped to the source keys in the request, with the rest of the
+      sheet reported, not raised (the real file's sheets `2014-2015` and
+      `2015-2016` carry stale fractions on `07135` and `07137`, per-source
+      sums 0.983 and 0.017, verified in week 0); every re-based value carries
+      a flag column; observed values never replaced in place; a `-` cell
+      whose key is outside its validity at that Stichtag is excluded and
+      reported, never summed as 0; census breaks (2011, 2022) noted in output
       metadata, not smoothed.
-- [ ] Expected-value fixture from slice 0: the hand-computed re-based cells
-      for the named series, key file version, and direction, committed under
-      `harmonization/tests/fixtures/` with the `NOTICE`.
+- [ ] Expected-value fixture from slice 0, computed by hand 2026-08-16 (BBSR
+      learning in the planning repo): source `12411-0015`,
+      `regionalkey=03152,03156,03159`, 2013 to 2017, target Gebietsstand
+      31.12.2016, key `ref-kreise-1990-2024.xlsx` sheet `2015-2016`
+      population share, direction 2015 to 2016: `03159` re-based 322,616
+      (2013), 324,013 (2014), 329,538 (2015), observed 327,065 (2016),
+      328,036 (2017); inputs `03152` 248,249 / 250,220 / 255,653 and `03156`
+      74,367 / 73,793 / 73,885. Fractional case, sheet `2013-2014`, 2013 to
+      Gebietsstand 2014: `07135` 63,202 becomes 62,118 (share 0.9828486,
+      exact), 1,084 moves to `07140` (100,770 becomes 101,854). Committed
+      under `harmonization/tests/fixtures/` with the `NOTICE`; the input
+      cells are re-read from the slice-2 live fixture before the test is
+      pinned.
 - [ ] Tests: hypothesis share-sum property; direction asserted from the key
-      file's own metadata in a fixture test; duplicated pairs and zero-share
-      rows detected; the named multi-year Kreis series re-based across the
-      slice-0 Gebietsstand change matches the expected-value fixture cell
-      for cell, with flag column and edition metadata asserted.
+      file's own metadata (sheet name, header years) in a fixture test;
+      duplicated pairs and zero-share rows detected; the known stale-share
+      defect is a fixture that the scoped check tolerates and the report
+      names; the named multi-year Kreis series re-based across the slice-0
+      Gebietsstand change matches the expected-value fixture cell for cell,
+      with flag column and edition metadata asserted; the fractional case
+      matches to the integer.
 - [ ] Commit `feat(harmonization): re-basing with BBSR keys`.
 - [ ] Planning repo: ADR 0005 (harmonization as data plus flags), status
       proposed.
@@ -689,15 +839,23 @@ Checkpoint C2 target (Sep 20). Week 5 is three working days (SciCAR).
 ## Slice 11: six recipes (WP-F part 2, week 6, about 23 h)
 
 - [ ] `harmonization/land_codes.py`: the 16-row Land name to AGS-2 constant
-      (D2), with a test against the kerg Land rows using the marker verified
-      in slice 0.
-- [ ] Recipe 1: population by Kreis over time (12411 family), the U2
-      re-basing scenario; runs against fixture; compliance block filled.
-- [ ] Recipe 2: Kreis-level labor-market or income indicator, the U1
-      rate-with-denominator scenario; zero-vs-missing test.
-- [ ] Recipe 3: Destatis population by Land joined with Bundestagswahl results
-      by Land (D2) through the slice 7 `links` block; the flagship
-      integration test and the Demo Day story.
+      (D2), used as a name check against the kerg Land rows (`gehört zu =
+      99`, `Nr` = AGS-2, Bundesgebiet `Nr = 99` with empty `gehört zu`,
+      verified in slice 0 on the full file), not as the join key.
+- [ ] Recipe 1: population by Kreis over time, GENESIS-Online `12411-0015`
+      over `03152`, `03156`, `03159`, 2013 to 2017, the U2 re-basing scenario;
+      runs against fixture; compliance block filled; zero-vs-missing test
+      uses `03159` before 2016 (`-`, not applicable) against a numeric cell.
+- [ ] Recipe 2: Kreis-level labor-market indicator, Regionalstatistik
+      `13211-02-05-4` with `contents=ERWP06,ERWP10` (Arbeitslose in Anzahl,
+      Quote in %), the U1 rate-with-denominator scenario in one file (two
+      `value_unit` values per key); zero-vs-missing test. Fallback if the
+      Regionalstatistik path is not usable by then: `12521-0040` over
+      `12411-0015` on GENESIS-Online, same scenario.
+- [ ] Recipe 3: Destatis population by Land (GENESIS-Online `12411-0010`)
+      joined with Bundestagswahl results by Land (D2, `Nr` = `DLAND`) through
+      the slice 7 `links` block; the flagship integration test and the Demo
+      Day story.
 - [ ] Retrofit 1: population (M1) as a recipe file.
 - [ ] Retrofit 2: elections (M1) as a recipe file.
 - [ ] Retrofit 3: UBA (M1) as a recipe file.
@@ -719,8 +877,9 @@ Checkpoint C2 target (Sep 20). Week 5 is three working days (SciCAR).
       recipes).
 - [ ] `docs/adding-a-reader.md`: the Destatis path (POST reader over the
       fetch seam).
-- [ ] `docs/credentials.md`: env names, registration URL, dual-path
-      explanation, too-large guidance.
+- [ ] `docs/credentials.md`: env names per host, both registration URLs
+      (GENESIS-Online, Regionalstatistik), dual-path explanation, too-large
+      guidance.
 - [ ] `docs/destatis-options.md` (from slice 4): polish, link from the
       README Destatis section, mark stretch endpoint options as deferred.
 - [ ] `demos/govdata_demo.py`: Destatis chapter (recipe 3 as the story).
@@ -761,8 +920,9 @@ have to reconstruct that under deadline pressure.
 ## Cut lines (pull in this order, tick when pulled, name the slice)
 
 - [ ] 1. Cross-portal recipe becomes Destatis-only (slice 11).
-- [ ] 2. Quarter and month period parsing drop (slice 7). May be pre-pulled
-      in slice 0 as banked buffer.
+- [x] 2. Quarter and month period parsing drop (slice 7). Pre-pulled in
+      slice 0 on 2026-08-16 as banked buffer (all pinned tables are annual);
+      reversible at C1.
 - [ ] 3. Harmonization FeatureGroups drop to module plus notebook (slice 10;
       recipes 1 and 3 degrade as described in slice 11).
 - [ ] 4. Retrofits shrink to one plus template (slice 11).
@@ -774,8 +934,8 @@ values, `tox` green.
 
 - [ ] Full job path (submit, poll, download, remove), about 20 h.
 - [ ] Gemeinde-level mapping, about 15 h.
-- [ ] Regionalstatistik host, about 10 h (moves into scope in slice 0 if a
-      recipe table needs it).
+- [-] Regionalstatistik host, about 10 h: moved into WP-A scope in slice 0
+      (2026-08-16), recipe 2 needs it (slice 2 items).
 - [ ] Discovery helper, about 8 h (kept out of AP2 by D5, re-checked in
       step 0): `describe_table(code)` typed by the spec's
       `TableMetadataEntry` (regional variable from `Structure.Rows[].Code`),

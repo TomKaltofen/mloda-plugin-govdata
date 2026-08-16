@@ -1,8 +1,11 @@
 # AP2 implementation plan: Destatis connector and harmonization
 
-Status: draft v2.1, 2026-08-16 (v2 plus the slice-0 OpenAPI assessment,
-recorded in section 5 WP-A). Living document until M2 (30 Sep 2026): update it
-when a checkpoint or cut line moves. Budget, funder-update dates, capacity
+Status: draft v2.2, 2026-08-16 (v2 plus the slice-0 OpenAPI assessment in
+section 5 WP-A, plus the slice-0 paper work: recipe tables and hosts pinned,
+Regionalstatistik in scope, U2 change named, C2 on paper, cut line 2
+pre-pulled; details in the checklist and the planning repo `learnings/`).
+Living document until M2 (30 Sep 2026): update it when a checkpoint or cut
+line moves. Budget, funder-update dates, capacity
 scenarios, risks, and the ADR drafts live in the private planning companion
 repo (`planning/ap2-execution-notes.md` there); this file carries scope,
 architecture, rules, and schedule. The tickable build order (one slice per
@@ -66,7 +69,24 @@ repo):
   CSV variants arrive zipped. ffcsv has fixed English headers and is the tidy
   choice. Quirks remain: windows-1252, semicolons, decimal commas, value
   markers. The M1 encoding ladder and marker sets apply (`core/parse.py`:
-  `-` is zero, `. ... / x ()` are null-like).
+  `-` is zero, `. ... / x ()` are null-like), with one Destatis-specific
+  rule from week 0: the raw sign is kept next to the typed value, because
+  GENESIS writes `-` both for a genuine "nothing present" and for a Kreis
+  outside its Gebietsstand validity (section 6, WP-B).
+- Week 0 (2026-08-16), the host question: GENESIS-Online serves exactly 31
+  Kreis-level tables and none of them is a labor-market or income table;
+  those live on Regionalstatistik (`www.regionalstatistik.de`, same
+  webservice software, same API contract for our endpoints, own free
+  registration and token, run by IT.NRW). Recipe 2 therefore pulls
+  Regionalstatistik into WP-A scope; recipes 1 and 3 stay on GENESIS-Online.
+  The web UIs of both hosts have an unauthenticated JSON backend
+  (`genesis.destatis.de/genesis/api/rest/...`,
+  `www.regionalstatistik.de/gngServer/api/rest/...`) that answered every
+  paper-work question (table lists, structures, values) while the webservice
+  was degraded; it is a characterization tool, not a connector target.
+- kerg.csv Land rows (`gehört zu = 99`) carry the Land AGS-2 in `Nr`
+  (`11;Berlin;99`), the Bundesgebiet row is `99;Bundesgebiet;` with an empty
+  `gehört zu` (verified on the full btw25 file, 299 + 16 + 1 rows).
 - Licensing is clean: GENESIS dl-de/by-2-0; Eurostat correspondence and LAU
   tables CC-BY-4.0; GV-ISys reproduction with attribution; BBSR confirmed in
   writing that the Umsteigeschluessel are dl-de/by-2-0 and may be bundled and
@@ -113,17 +133,22 @@ Recorded here so the work packages can be short. Each becomes an ADR in the
 planning repo (`decisions/`) at the first implementation PR.
 
 - **D1 Feature surface.** Reader level: feature names are the ffcsv column
-  names (`value`, `time`, `1_variable_attribute_code`, ...), long format, one
-  locator per table selection. Measure and region selection happen in the
-  locator, not in feature names. Harmonized, application-style names
+  names (`value`, `value_unit`, `value_variable_code`, `value_q`, `time`,
+  `1_variable_attribute_code`, ...; the current long format, confirmed
+  offline in week 0 from Destatis' own example files), plus the reader's
+  `value_marker` column, one locator per table selection. Measure and region
+  selection happen in the locator, not in feature names. Harmonized, application-style names
   (`destatis__bevoelkerung__kreise`) are derived FeatureGroups in WP-E; ASCII
   rule: ä/ö/ü/ß become ae/oe/ue/ss.
 - **D2 Cross-portal join level.** M1 sources carry no AGS: `kerg.csv` keys on
   Wahlkreis number (`Nr;Gebiet;gehört zu`), UBA keys on `station_id`. The AP2
   cross-portal recipe joins Destatis population with Bundestagswahl results at
-  Land level (kerg rows with `gehört zu = 99`) through a 16-row Land-to-AGS-2
-  constant. Kreis-level cross-portal joins and UBA station-to-region mapping
-  are out of scope for AP2.
+  Land level: kerg rows with `gehört zu = 99` are the Land rows and their
+  `Nr` already is the Land AGS-2 that Destatis' `DLAND` uses (verified in
+  week 0 on the full file), so the join key is `Nr` = `DLAND` and the 16-row
+  Land-to-AGS-2 constant is a name check on those rows, not the join path.
+  Kreis-level cross-portal joins and UBA station-to-region mapping are out
+  of scope for AP2.
 - **D3 Job path.** M2 scope is detection of the "result too large" envelope
   plus an actionable error (why the password path is needed, how to shrink
   the selection, how to fetch manually). The full submit/poll/download/remove
@@ -132,11 +157,14 @@ planning repo (`decisions/`) at the first implementation PR.
   and 12-digit ARS are stretch; the data model keeps keys as strings so the
   levels can be added without migration.
 - **D5 Hosts and discovery.** The base URL is a field on the locator with
-  GENESIS-Online as default. Regionalstatistik and the Zensus database are not
-  implemented and not designed beyond that field. No catalogue/discovery
-  helper in AP2; recipes name table codes. (The slice-0 OpenAPI assessment
-  considered pulling a typed helper into slice 4 and kept it out under this
-  rule; WP-A records what is captured instead.)
+  GENESIS-Online as default. Regionalstatistik is a second implemented host
+  since week 0 (recipe 2 lives there): same client, host-scoped credentials
+  (own registration and token), its own pinned spec fixture and contract
+  test, its own live smoke. The Zensus database is not implemented and not
+  designed beyond the base-URL field. No catalogue/discovery helper in AP2;
+  recipes name table codes. (The slice-0 OpenAPI assessment considered
+  pulling a typed helper into slice 4 and kept it out under this rule; WP-A
+  records what is captured instead.)
 - **D6 POST cache freshness.** Cache hit wins (deterministic reruns), explicit
   `refresh` escape hatch, no TTL refetch. A warning is logged when a cached
   payload is older than 30 days. Recipes carry retrieval timestamp and sha256
@@ -234,8 +262,22 @@ scenarios are in the planning companion.
   `Structure.Rows[].Code` names the regional variable, PDF 2.6.3 example
   `DLAND`) and one `catalogue/qualitysigns` reply, so slice 4 configures
   `regionalvariable` from a fixture and the marker legend exists offline.
+- Second host, Regionalstatistik (week 0, 2026-08-16): base URL
+  `https://www.regionalstatistik.de/genesisws/rest/2020/` (lower-case
+  `genesisws`; its spec's `servers` says so), spec pinned in the planning
+  repo as `genesis-openapi-regionalstatistik-GOJsonApi-2026-08-16.json`
+  (sha256 `a9ce7944...`): 45 paths, 48 operations (GET still declared on
+  `profile/password` and `profile/removeResult`), request side identical to
+  GENESIS-Online for `whoami`, `logincheck`, `data/tablefile`,
+  `metadata/table`, `catalogue/qualitysigns` (only `data/chart2table` and
+  `data/table` differ), response schemas generated by an older tool, so the
+  contract test compares request sides only and runs once per pinned spec.
+  Registration is separate and free (own token; the GENESIS-Online token is
+  not valid there); user service regionaldatenbank@it.nrw.de. The
+  host-prefixed env variants below are what selects the credential set.
 - `DestatisCredentials`: explicit option, then env (`GENESIS_TOKEN`,
-  `GENESIS_USER`, `GENESIS_PASSWORD`; host-prefixed variants). Whitespace
+  `GENESIS_USER`, `GENESIS_PASSWORD`; host-prefixed variants, for example
+  `REGIONALSTATISTIK_TOKEN`, resolved from the locator's host). Whitespace
   normalized. Never logged, never in cache keys, metadata, recipes, snapshots,
   or fixtures.
 - POST request layer: form-encoded body, credentials in the `username` and
@@ -279,6 +321,22 @@ scenarios are in the planning companion.
   server defaults apply (`area` in particular: spec default `free`, PDF
   2.5.12 lists `Alle` and `Katalog/Öffentlich`, the examples send `all`;
   not sending it avoids guessing).
+- ffcsv shape, known offline since week 0 from Destatis' own example zip
+  (`docs/Aenderung_Struktur_Flatfile-CSV.zip`, Sept 2024, sha256 `46c5bb2f...`,
+  the same file on both hosts): fixed prefix `statistics_code;
+  statistics_label; time_code; time_label; time`, then N blocks
+  `{N}_variable_code; {N}_variable_label; {N}_variable_attribute_code;
+  {N}_variable_attribute_label`, then `value; value_unit;
+  value_variable_code; value_variable_label; value_q`. Long format, one row
+  per (time, attributes, value variable, unit); the same `value_variable_code`
+  can occur with two units (`PREIS1` as `2020=100` and as `%`), so the row
+  key includes `value_unit`. utf-8 with BOM, LF line endings, semicolon,
+  decimal comma in `de`, one CSV member per zip. Markers sit in the `value`
+  cell (`-`, `.` seen) with `value_q` empty; `value_q` otherwise `e` or `()`.
+  The old format (German wide headers `Statistik_Code; ...;
+  <CODE>__<Label>__<Unit>`) is in the same zip and is the layout-drift
+  fixture. Live-only remainder: the `time` format for `STAG` tables, `value_q`
+  under `quality=off`, webservice zip member names, `language=en` decimals.
 - ffcsv parser in `destatis/core/parse.py`: import the encoding ladder,
   dialect, decimal-comma and marker handling from `govdata/core/parse.py`;
   add the English header contract, time column parsing (delegated to the
@@ -287,6 +345,14 @@ scenarios are in the planning companion.
   `catalogue/qualitysigns` fixture (PDF 2.4.6: `0`, `-`, `...`, `/`, `.`,
   `x`, `()`, `p`, `r`, `s`); a test pins M1's `ZERO_MARKERS` and
   `NULL_MARKERS` against it, and `p`, `r`, `s` are flags, never values.
+  Destatis rule (week 0): the parser emits `value_marker` (the raw sign of
+  the value cell, empty for numeric cells) next to the delivered `value_q`
+  on every Destatis table, because GENESIS writes `-` ("nichts vorhanden")
+  both for a real zero count and for a Kreis outside its Gebietsstand
+  validity (`03159 Göttingen` before 2016, `03152` and `03156` after 2016, on
+  both hosts). `-` still parses to 0 and `. ... / x ()` to null; nothing is
+  lost, and the harmonization step, which knows validity windows, is the
+  place that turns a `-` outside validity into "not applicable" (section 6).
 - `DestatisLocator`: table code (`12411-0015` style), optional region and
   classifying selection, optional `contents` (measure codes; D1 puts
   measure selection in the locator), start/end year, `quality` (bool,
@@ -311,7 +377,19 @@ without mloda, wrapped by FeatureGroups in WP-E.
   GV-ISys (xlsx and GV100 fixed-width), BBSR Umsteigeschluessel (xlsx,
   Kreise; Gemeinden with D4 stretch). Runtime fetch through the GET cache,
   pinned by URL plus sha256; a small redistributable extract per source ships
-  as a fixture (D9).
+  as a fixture (D9). BBSR Kreis file, characterized in week 0
+  (`ref-kreise-1990-2024.xlsx`, sha256 `68c4d001...`): 34 sheets named
+  `1990-1991` to `2023-2024`, one per consecutive year pair, forward
+  direction; columns source key, source name, area / population / employee
+  share, area, population, SvB weights, target key, target name; keys are
+  8-digit ARS-style numbers with the leading zero lost by Excel (`1001000`
+  is Kreis `01001`); trailing empty rows; and two sheets (`2014-2015`,
+  `2015-2016`) carry stale fractional shares on identity rows of `07135` and
+  `07137` (per-source sums 0.983 and 0.017), so the share-sum check is
+  scoped to the keys being re-based and the defect is recorded as a known
+  fixture. GV-ISys yearly change files (`Namens-Grenz-Aenderung/<year>.xlsx`)
+  list Kreis-level changes with change id, old and new key, and effective
+  date; the 2016 file confirms the U2 change below.
 - Mapping core: 5-digit AGS to NUTS-1/2/3 for a named edition pair. Keys are
   strings with leading zeros everywhere.
 - Edition model: every call names Gebietsstand and NUTS version; default
@@ -324,13 +402,34 @@ without mloda, wrapped by FeatureGroups in WP-E.
 ### WP-E: Period model, re-basing, mloda integration (about 40 h)
 
 - Period model: typed representation (period start date plus frequency tag)
-  with parsers for GENESIS time labels (years first; quarters and months as
-  found in the chosen tables) and for the M1 time columns. Join at equal
-  frequency only; mismatch raises with resampling guidance.
+  with parsers for GENESIS time labels (annual only for M2: cut line 2 was
+  pre-pulled in week 0 because every pinned table is annual, `STAG` 31.12.
+  or `JAHR`; quarter and month parsing return only if a live payload forces
+  it) and for the M1 time columns. Join at equal frequency only; mismatch
+  raises with resampling guidance.
 - Re-basing: BBSR proportional keys onto a target Gebietsstand; explicit
   direction and key edition, documented rounding, share-sum check with
-  tolerance (renormalize inside, raise beyond). Every re-based value carries a
-  flag column; census breaks (2011, 2022) are noted, not smoothed.
+  tolerance (renormalize inside, raise beyond; scoped to the source keys in
+  the request, see WP-D). Every re-based value carries a flag column; census
+  breaks (2011, 2022) are noted, not smoothed. Cells whose key is outside its
+  Gebietsstand validity (GENESIS writes `-` there) are excluded and reported,
+  never summed as 0.
+- The U2 change, named and verified in week 0 (2026-08-16): Landkreis
+  Göttingen 2016. `03152 Göttingen, Landkreis` and `03156 Osterode am Harz,
+  Landkreis` merged into `03159 Göttingen, Landkreis` on 01.11.2016
+  (GV-ISys change `03/2016/0006-R`, Kreis level; BBSR sheet `2015-2016` maps
+  both to `03159` with share 1 for area, population and employees; GENESIS
+  labels say `(bis 31.10.2016)`). Fallback: Eisenach `16056` into
+  Wartburgkreis `16063`, 01.07.2021 (BBSR sheet `2020-2021`). Fractional
+  case for the share arithmetic: Cochem-Zell `07135` in BBSR sheet
+  `2013-2014` (0.9828486 population share stays, 0.0171514 to `07140`).
+  C2 on paper: source `12411-0015`, `regionalkey=03152,03156,03159`, years
+  2013 to 2017, target Gebietsstand 31.12.2016, population-proportional key,
+  direction 2015 to 2016; expected re-based `03159` = 322,616 (2013),
+  324,013 (2014), 329,538 (2015), observed 327,065 (2016), 328,036 (2017);
+  fractional check `07135` 2013 = 63,202 becomes 62,118 with 1,084 moving to
+  `07140` (100,770 becomes 101,854). Full table in the planning repo
+  learning; it becomes the slice 9 expected-value fixture.
 - mloda integration: harmonization and alignment as derived FeatureGroups over
   the reader outputs (`input_features` composition). Read mloda-registry
   guides 02, 03, 04, 08, 11, 26, 27 first; the D1 naming scheme is applied
@@ -343,11 +442,21 @@ without mloda, wrapped by FeatureGroups in WP-E.
   block (D10 model): license id, attribution string, dataset URI, retrieval
   timestamp, payload sha256, modification markers, required credential env
   names. No credentials in recipes.
-- Three new recipes (tables to be pinned in week 0/1; all sized to skip the
-  job path): (1) population by Kreis over time, GENESIS 12411 family, the U2
-  re-basing scenario; (2) a Kreis-level labor-market or income indicator, the
-  U1 rate-with-denominator scenario; (3) Destatis population by Land joined
-  with Bundestagswahl results by Land (D2), the U3 and Demo Day scenario.
+- Three new recipes (tables pinned in week 0, 2026-08-16; all sized to skip
+  the job path): (1) population by Kreis over time: GENESIS-Online
+  `12411-0015` Bevölkerung: Kreise, Stichtag (`KREISE`, `STAG` 1995 to 2025,
+  contents `BEVSTD`; 477 keys incl. 75 dissolved ones, Berlin `11000`), the
+  U2 re-basing scenario over `03152`, `03156`, `03159`; (2) a Kreis-level
+  labor-market indicator: Regionalstatistik `13211-02-05-4` Arbeitslose nach
+  ausgewählten Personengruppen sowie Arbeitslosenquoten, Jahresdurchschnitt
+  (ab 2009), Kreise (`KREISE` 490 keys incl. Berlin `11000`, `JAHR` 2001 to
+  2025, contents `ERWP06` Arbeitslose in Anzahl and `ERWP10` Quote in %),
+  the U1 rate-with-denominator scenario in one file (GENESIS-Online-only
+  fallback if that host fails: `12521-0040` Ausländer: Kreise over
+  `12411-0015`); (3) Destatis population by Land, GENESIS-Online `12411-0010`
+  Bevölkerung: Bundesländer, Stichtag (`DLAND`, 16 keys, Berlin `11`, `STAG`
+  1958 to 2025), joined with Bundestagswahl results by Land (D2, join key
+  kerg `Nr` = `DLAND`), the U3 and Demo Day scenario.
 - Three M1 retrofits (population, elections, UBA) authored and tested as
   recipe files. Not free: budgeted here.
 
@@ -399,7 +508,11 @@ Payload and parsing
 - Markers: `-` is zero; `. ... / x ()` are null-like; the marker sets are
   pinned to the `qualitysigns` fixture, so a new sign in a re-captured
   fixture fails the test; quality flags pinned by fixture. Zero-vs-missing
-  gets a dedicated test per recipe.
+  gets a dedicated test per recipe. Destatis addition: the raw sign always
+  survives in `value_marker`, and a `-` for a key outside its Gebietsstand
+  validity is "not applicable", decided by the harmonization step from
+  validity windows (GV-ISys, BBSR), never by the parser; the per-recipe
+  zero-vs-missing test uses `03159` before 2016 as that case.
 - Numbers: decimal commas, thousands dots, negatives, int64 counts never via
   float, empty trailing cells.
 - Time labels: every frequency present in the chosen tables; unexpected label
@@ -411,7 +524,11 @@ Payload and parsing
 Region keys and mapping
 
 - Leading zeros: strings end to end; Excel-mangled integer keys (01001 as
-  1001) are repaired only when unambiguous by level and length, else raise.
+  1001, and the BBSR Kreis file's 8-digit `1001000` for `01001`) are
+  repaired only when unambiguous by level and length, else raise.
+- Validity windows: a key's Gebietsstand validity comes from GV-ISys and the
+  BBSR key files, not from labels (GENESIS-Online suffixes dissolved Kreise
+  with `(bis DD.MM.YYYY)`, Regionalstatistik does not).
 - Levels: 2, 5, 8 digit AGS and 12-digit ARS detected; mixed levels in one
   input raise.
 - City-states (Berlin, Hamburg, Bremen's two cities) treated consistently.
@@ -421,8 +538,11 @@ Region keys and mapping
   Kreis merger, verified against GV-ISys before the test is pinned.
 - Unmatched keys: structured report, fail-loud default, flagged pass-through
   option.
-- Crosswalk quality: share sums within tolerance; duplicated pairs; zero-share
-  rows; direction asserted from the key file's own metadata in a fixture test.
+- Crosswalk quality: share sums within tolerance for the source keys being
+  re-based (raise), reported for the rest of the sheet (the real BBSR file
+  has two sheets with stale fractions on unrelated keys, week 0); duplicated
+  pairs; zero-share rows; direction asserted from the key file's own metadata
+  (sheet name and header years) in a fixture test.
 - Edition mismatch: data year outside key coverage raises with the range; the
   "partially validated" LAU table is a documented caveat.
 - NUTS version drift: outputs name their version; joining across versions
@@ -463,12 +583,14 @@ state is the update material. Exact update dates are tracked in the planning
 companion.
 
 - **Week 0 (Aug 14 to 16):** plan reviewed; OpenAPI spec assessed (done
-  2026-08-16, decisions in section 5 WP-A); recipe-candidate tables checked
-  for size and host
-  (GENESIS-Online vs Regionalstatistik), the single riskiest unknown; GitHub
-  issues per WP opened; live `whoami` and `logincheck` last, when the
-  webservice answers (it was degraded on Aug 16), at the latest before
-  slice 2.
+  2026-08-16, decisions in section 5 WP-A); recipe tables pinned and their
+  hosts checked (done 2026-08-16: recipe 2 lives on Regionalstatistik, that
+  host is in WP-A scope, section 5 WP-F); U2 change named and C2 written on
+  paper (WP-E); cut line 2 pre-pulled; GitHub issues per WP not opened
+  (owner decision: fork only for now); live `whoami` and `logincheck` last,
+  when the webservice answers (it was degraded on Aug 16), at the latest
+  before slice 2. Sizes: `12411-0015` is 31 x 477 cells, `12411-0010` 68 x
+  16, `13211-02-05-4` about 25 x 490 x 7 measures; none needs the job path.
 - **Week 1 (Aug 17 to 23):** WP-A auth, endpoint verification, envelope
   characterization; fixture capture tooling and the committed fixture set,
   including the reference-data extracts (WP-D does not wait for the
@@ -496,7 +618,9 @@ Cut lines, in the order they are pulled:
 
 1. The Land-level cross-portal recipe becomes a Destatis-only two-table join
    (recipe 3 still exists; the "cross-portal" claim moves to AP3).
-2. Quarter and month period parsing drop; annual only for M2.
+2. Quarter and month period parsing drop; annual only for M2. **Pulled in
+   week 0 (2026-08-16):** every pinned table is annual; the freed slice 7
+   hours are banked buffer. Reversible at C1 if a live payload forces it.
 3. mloda FeatureGroup wrappers for harmonization drop to "pure module plus a
    worked notebook example"; the M2 harmonization claim is carried by the
    module and its tests.
@@ -511,12 +635,19 @@ harmonized values, `tox` green. A smaller honest M2 beats a wider silent one.
 
 ## 9. Open questions (owner: this plan, resolve in the week named)
 
-- Week 0: which host serves the recipe tables; exact table codes for recipes
-  1 and 2. (The OpenAPI question is resolved: section 5 WP-A.)
-- Week 1: exact auth mechanism, envelope shapes, ffcsv quality-flag layout,
-  zip member layout, whether `regionalkey` selection works on `data/tablefile`
-  for the chosen tables; whether the live `Parameter` echo is masked or
-  real; whether `catalogue/qualitysigns` runs without credentials.
+- Week 0: resolved 2026-08-16. Hosts and codes: `12411-0015` and
+  `12411-0010` on GENESIS-Online, `13211-02-05-4` on Regionalstatistik
+  (section 5 WP-F); the OpenAPI question: section 5 WP-A; the U2 change and
+  C2 cells: section 5 WP-E; cut line 2: pulled.
+- Week 1: successful `logincheck` (auth mechanism itself is confirmed by doc
+  v5.1, both specs, and the header echo), envelope shapes, `value_q`
+  behaviour under `quality=off`, the `time` format of `STAG` tables, zip
+  member names from the webservice, whether `regionalkey` selection works on
+  `data/tablefile` for the chosen tables (and on the Regionalstatistik host
+  once its token exists); whether the live `Parameter` echo is masked or
+  real; whether `catalogue/qualitysigns` runs without credentials. The ffcsv
+  column layout itself is known from Destatis' example files (WP-B) and only
+  needs confirming.
 - Week 4: which NUTS version the current Destatis regional series align to
   (exposed as the edition parameter either way).
 - Week 5: whether the first user interviews (5 to 8, planning repo) run at
@@ -524,8 +655,9 @@ harmonized values, `tox` green. A smaller honest M2 beats a wider silent one.
 
 ## 10. Out of scope for AP2
 
-New data sources beyond Destatis; resampling or aggregation across
-frequencies; seasonal adjustment; a no-code or web interface; scheduled live
+New data sources beyond Destatis (Regionalstatistik counts as the GENESIS
+family under D5, the Zensus database does not); resampling or aggregation
+across frequencies; seasonal adjustment; a no-code or web interface; scheduled live
 CI against any portal; bulk mirroring of whole statistics; pystatis interop
 shims; Kreis-level cross-portal joins (no AGS in M1 sources); UBA
 station-to-region mapping.
@@ -547,8 +679,27 @@ station-to-region mapping.
   2026-08-16 in the planning repo as
   `planning/research/genesis-openapi-GOJsonApi-2026-08-16.json`, sha256
   `1a0dc57a85e391b6c7c42de4120156f92a8b0f6a6e10d3e51b8be59536c1e8e6`.
-- Eurostat NUTS/LAU correspondence tables (CC-BY-4.0); Destatis GV-ISys; BBSR
-  Umsteigeschluessel (dl-de/by-2-0, attribution "Laufende Raumbeobachtung des
-  BBSR").
+- Regionalstatistik (Regionaldatenbank Deutschland) webservice:
+  `https://www.regionalstatistik.de/genesisws/rest/2020/`; spec
+  `.../genesisws/rest/2020/GOJsonApi.json`, pinned 2026-08-16 in the planning
+  repo as `planning/research/genesis-openapi-regionalstatistik-GOJsonApi-2026-08-16.json`,
+  sha256 `a9ce7944d21fc1a9f5330790d9dff939748320486bfb40eadc82608000cd684c`;
+  Swagger UI `.../genesisws/swagger-ui/index.html`; own registration.
+- Destatis ffcsv example zip (old and new format, PDF with reader code):
+  `https://genesis.destatis.de/datenbank/online/docs/Aenderung_Struktur_Flatfile-CSV.zip`,
+  sha256 `46c5bb2fd5ad3836a01d57efbd7b755d3d1670b1a42b167b47830c643fda1dc8`
+  (2026-08-16).
+- Eurostat NUTS/LAU correspondence tables (CC-BY-4.0); Destatis GV-ISys
+  (yearly changes:
+  `https://www.destatis.de/DE/Themen/Laender-Regionen/Regionales/Gemeindeverzeichnis/Namens-Grenz-Aenderung/2016.xlsx`,
+  sha256 `301a0b72381d78ece5b3fe811fd29e7739258da55ebda9dacb1a0d2651f2b0b7`);
+  BBSR Umsteigeschluessel (dl-de/by-2-0, attribution "Laufende Raumbeobachtung
+  des BBSR"; Kreise:
+  `https://www.bbsr.bund.de/BBSR/DE/forschung/raumbeobachtung/Raumabgrenzungen/umstiegsschluessel/ref-kreise-1990-2024.xlsx`,
+  sha256 `68c4d001cc450115938d37c42aa8cc090fb9e6381e7e29d00f049cffdbcc8f1f`,
+  fetched 2026-08-16).
+- Bundeswahlleiterin btw25 `kerg.csv`, sha256
+  `31ab27391d5753a6a972936d436092879f5c9cca11570272cd72e3e272d16731`
+  (2026-08-16), the M1 election source.
 - Private planning companion: `planning/ap2-execution-notes.md`,
   `planning/research/`, `decisions/`, `learnings/`.
