@@ -1,6 +1,7 @@
 # AP2 implementation plan: Destatis connector and harmonization
 
-Status: draft v2, 2026-08-16. Living document until M2 (30 Sep 2026): update it
+Status: draft v2.1, 2026-08-16 (v2 plus the slice-0 OpenAPI assessment,
+recorded in section 5 WP-A). Living document until M2 (30 Sep 2026): update it
 when a checkpoint or cut line moves. Budget, funder-update dates, capacity
 scenarios, risks, and the ADR drafts live in the private planning companion
 repo (`planning/ap2-execution-notes.md` there); this file carries scope,
@@ -42,17 +43,22 @@ repo):
 
 - GENESIS account and token exist; a live `whoami` has not been run yet. That
   is the first task.
-- Every request except `helloworld/whoami` needs auth. `job=true` and
-  `profile/*` calls need username plus password; the token is not accepted
-  there. Dual-path credentials are a verified constraint.
-- POST-only API since 15 Jul 2025 (SOAP and REST GET are gone). Third-party
+- Every request except `helloworld/whoami` needs auth (PDF 2.1.3). The
+  OpenAPI spec and PDF 2.4.6 declare `catalogue/qualitysigns` without
+  credentials too; whether it really runs unauthenticated is a live check in
+  slice 0, not an assumption. `job=true` and `profile/*` calls need username
+  plus password; the token is not accepted there. Dual-path credentials are
+  a verified constraint.
+- POST-only API since 15 Jul 2025 (SOAP and the REST GET variants are gone;
+  only `whoami` and `catalogue/qualitysigns` still answer GET). Third-party
   examples predate this; the Anwenderdokumentation v5.1 (01.06.2026) is the
   contract. `pyproject.toml` still says "GENESIS API v3"; fix in WP-G.
 - Base URL is `https://genesis.destatis.de/genesisWS/rest/2020/` (week 0,
   verified: `www-genesis.destatis.de` answers with a 307 to it). Credentials
   travel as HTTP headers `username` and `password`; body credentials are
-  ignored and the call runs as guest `GAST`. `whoami` is GET-only, everything
-  else POST with `application/x-www-form-urlencoded`.
+  ignored and the call runs as guest `GAST`. `whoami` is GET-only,
+  `catalogue/qualitysigns` answers GET and POST, everything else is POST
+  with `application/x-www-form-urlencoded`.
 - Documented limits: a cap on parallel requests (value not fixed), server-side
   termination of requests over 15 minutes, `pagelength` max 25000. No
   per-day quota is documented.
@@ -128,7 +134,9 @@ planning repo (`decisions/`) at the first implementation PR.
 - **D5 Hosts and discovery.** The base URL is a field on the locator with
   GENESIS-Online as default. Regionalstatistik and the Zensus database are not
   implemented and not designed beyond that field. No catalogue/discovery
-  helper in AP2; recipes name table codes.
+  helper in AP2; recipes name table codes. (The slice-0 OpenAPI assessment
+  considered pulling a typed helper into slice 4 and kept it out under this
+  rule; WP-A records what is captured instead.)
 - **D6 POST cache freshness.** Cache hit wins (deterministic reruns), explicit
   `refresh` escape hatch, no TTL refetch. A warning is logged when a cached
   payload is older than 30 days. Recipes carry retrieval timestamp and sha256
@@ -162,21 +170,70 @@ scenarios are in the planning companion.
 `feature_groups/destatis/core/` next to the govdata core, reusing
 `client.py`.
 
-- Endpoints in scope (verified against doc v5.1 in week 0):
-  `helloworld/whoami`, `helloworld/logincheck`, `data/tablefile`
-  (parameters: `name`, `area`, `startyear`, `endyear`, `timeslices`,
-  `regionalvariable`, `regionalkey`, `classifyingvariable1..5`,
-  `classifyingkey1..5`, `format`, `language`, `job`, `compress` (suppresses
+- Endpoints in scope (verified against doc v5.1 and the pinned OpenAPI spec
+  in week 0): `helloworld/whoami` (GET), `helloworld/logincheck`,
+  `data/tablefile` (25 form fields: `name`, `area`, `compress` (suppresses
   empty rows and columns; the zip download is unconditional), `transpose`,
-  `stand`, `quality`), and for the stretch job path `catalogue/jobs`,
-  `data/resultfile`, `profile/removeresult`.
-- OpenAPI spec as a second contract: `genesisWS/rest/2020/GOJsonApi.json`
-  (Swagger UI at `genesisWS/swagger-ui/index.html`) declares every endpoint,
-  parameter, default, the header auth, and the response schemas, but no
-  descriptions or enums. Pinned in week 0; the slice-0 assessment decides
-  how far it drives the client (contract test on names), the D10 models,
-  a user-facing options reference (`docs/destatis-options.md`), and the
-  discovery helper (stretch unless the assessment moves it).
+  `contents`, `startyear`, `endyear`, `timeslices`, `regionalvariable`,
+  `regionalkey`, `classifyingvariable1..5`, `classifyingkey1..5`, `format`,
+  `quality` (in the spec, absent from the PDF), `job`, `stand`, `language`),
+  `catalogue/qualitysigns` (GET, fixture source for the value-marker legend,
+  see WP-B), and for the stretch job path `catalogue/jobs`,
+  `data/resultfile`, `profile/removeResult` (camelCase in the spec and in
+  the PDF's URL, section 2.7.2; the prose in 2.1.3 writes it lowercase).
+- OpenAPI spec, assessed in slice 0 (2026-08-16), pinned in the planning
+  repo (`planning/research/genesis-openapi-GOJsonApi-2026-08-16.json`,
+  sha256 `1a0dc57a...`). What it is: 45 paths, 46 operations (44 POST, 2
+  GET), 110 component schemas; `servers` is the relative `/genesisWS`, so
+  the host stays client configuration; `username` / `password` are header
+  parameters (default `GAST`) on 43 operations and absent on `whoami` and
+  the two `qualitysigns` operations; every request input is a string with
+  no description, enum, or `required`; every response is `default` (no HTTP
+  status codes); the four `*file` operations declare
+  `application/octet-stream` with a generic `Response` object that says
+  nothing about the zip or the JSON error body; the 36 JSON operations
+  share `Ident {Service, Method}`, `Status {Code: int, Content, Type}`, an
+  endpoint-specific `Parameter` (all 33 `*Parameter` schemas declare
+  `username` and `password`), `Copyright`, and `Object` or `List` or
+  neither (`RemoveResult`, `Password`); `LoginCheck {Status: str,
+  Username}` and `HelloWorldInformation {User-Agent}` are flat; catalogue
+  rows are typed via `AbstractCatalogueEntry {Code, Content}` plus a few
+  strings (`TableCatalogueEntry` adds `Time`, `Valid`); `metadata/table` is
+  typed down to the recursive `StructureElement`. What it is used for,
+  decided:
+  (a) an offline contract test in slice 2 (about 2 h, replaces the manual
+  endpoint check): the full spec is a test fixture with a `NOTICE`; for
+  every operation `GenesisClient` implements, assert exact path and method,
+  the header credential declaration, that every form field the client can
+  send is declared on that operation's request body (never derived from a
+  response `Parameter` schema: `JobCatalogueParameter` lists `area`, the
+  `catalogue/jobs` request body does not), and the defaults the client
+  relies on (`format` `datencsv`, so `ffcsv` is always sent explicitly;
+  `quality` `off`; `job` `false`; `language` `de`; `area` `free`, which
+  the client does not send). Response shapes and HTTP
+  status codes stay fixture-based; the spec has neither. The client is
+  hand-written over the M1 httpx client, not generated from the spec (no
+  auth scheme, no enums, string-only inputs, the `Response` leak, and the D7
+  lock, redaction, and typed exceptions are hand-written anyway).
+  (b) D10 envelope models (slice 2) take `Status` and `Ident` from the
+  spec, one model per reply shape, never one generic parser keyed on the
+  field name `Status` (a string on `LoginCheck`, an object elsewhere);
+  `Object` / `List` optional; `Parameter` kept as a string map with
+  `username` and `password` stripped at parse time (the PDF examples mask
+  them, the observed `logincheck` echo is real, assume real); `Type`
+  compared case-insensitively (`ERROR` observed, `Error` documented, no
+  enum in the spec); the flat tablefile error body (HTTP 404 observed) is
+  modelled from observation.
+  (c) `docs/destatis-options.md` (slice 4, about 2 h counted under WP-G):
+  one table for `data/tablefile` (parameter, spec default, allowed values
+  with the PDF section cited, `DestatisLocator` field or the pinned wire
+  value or "not exposed in M2" with the reason), plus a paragraph each on
+  `whoami` / `logincheck` and on `qualitysigns`.
+  (d) the discovery helper stays stretch (D5); slice 2's capture script
+  also records `metadata/table` for each pinned table (its
+  `Structure.Rows[].Code` names the regional variable, PDF 2.6.3 example
+  `DLAND`) and one `catalogue/qualitysigns` reply, so slice 4 configures
+  `regionalvariable` from a fixture and the marker legend exists offline.
 - `DestatisCredentials`: explicit option, then env (`GENESIS_TOKEN`,
   `GENESIS_USER`, `GENESIS_PASSWORD`; host-prefixed variants). Whitespace
   normalized. Never logged, never in cache keys, metadata, recipes, snapshots,
@@ -191,7 +248,9 @@ scenarios are in the planning companion.
   accepted): `helloworld/*` flat `Status` plus `Username` in HTTP 200; the
   documented data shape `Status: {Code, Content, Type}` plus `Parameter`,
   `Object`, `Copyright`; and a flat top-level `Code`, `Content`, `Type` with
-  HTTP 404 (observed for an unauthenticated `data/tablefile`). Mapped to
+  HTTP 404 (observed for an unauthenticated `data/tablefile`). The spec
+  confirms the nested `Status` object (`Code` integer) and the flat
+  `LoginCheck` reply, and declares no HTTP status codes. Mapped to
   typed exceptions with the HTTP status inspected too. The generic
   "unerwarteter Systemfehler" text is what the backend returns during an
   outage and, as observed, also for guest or wrong credentials; it maps to
@@ -211,15 +270,30 @@ scenarios are in the planning companion.
   excluded; D6 freshness rules; shares the cache directory with the GET path
   without collisions.
 - `data/tablefile` with `format=ffcsv`, zip unpacking (characterize member
-  count and names), decompressed-size cap.
+  count and names), decompressed-size cap. Wire policy: every value is sent
+  as a string (the spec types every input as string; booleans as `true` /
+  `false`, years as `jjjj`); `format=ffcsv`, `language`, `job=false`,
+  `quality`, `compress=false`, and `transpose=false` are always sent
+  explicitly because their server defaults shape the payload; `area`,
+  `stand`, `timeslices`, and unset selection fields are not sent, so the
+  server defaults apply (`area` in particular: spec default `free`, PDF
+  2.5.12 lists `Alle` and `Katalog/Öffentlich`, the examples send `all`;
+  not sending it avoids guessing).
 - ffcsv parser in `destatis/core/parse.py`: import the encoding ladder,
   dialect, decimal-comma and marker handling from `govdata/core/parse.py`;
   add the English header contract, time column parsing (delegated to the
   WP-E period model), quality-flag columns if present. A column that cannot be
-  typed raises with the offending cell.
+  typed raises with the offending cell. The value-marker legend is the
+  `catalogue/qualitysigns` fixture (PDF 2.4.6: `0`, `-`, `...`, `/`, `.`,
+  `x`, `()`, `p`, `r`, `s`); a test pins M1's `ZERO_MARKERS` and
+  `NULL_MARKERS` against it, and `p`, `r`, `s` are flags, never values.
 - `DestatisLocator`: table code (`12411-0015` style), optional region and
-  classifying selection, start/end year, host, language, format pin;
-  `from_string` accepts a bare table code.
+  classifying selection, optional `contents` (measure codes; D1 puts
+  measure selection in the locator), start/end year, `quality` (bool,
+  default off), host, language, format pin; `from_string` accepts a bare
+  table code. `area`, `compress`, `transpose`, `timeslices`, `job`, and
+  `stand` are not locator fields in M2; `docs/destatis-options.md` says
+  which wire value each is pinned to and why.
 - `DestatisReader(BaseGovDataReader)` with `_fetch`, `_parse`, `suffix`, and
   `peek`.
 
@@ -280,7 +354,9 @@ without mloda, wrapped by FeatureGroups in WP-E.
 ### WP-G: Docs, demo, handoff (about 20 h, woven through)
 
 README Destatis section, `docs/adding-a-reader.md` extension for the
-Destatis path, credential setup doc, demo notebook chapter, `pyproject.toml`
+Destatis path, credential setup doc, `docs/destatis-options.md` (the
+`data/tablefile` option table from WP-A item (c), authored in slice 4,
+about 2 h of this budget), demo notebook chapter, `pyproject.toml`
 description fix (v3 to v5.0), planning-repo updates (milestone status, ADRs
 0002 onward, learnings as they happen). One GitHub issue per WP plus an M2
 milestone on the upstream repo, so U4 and the cut lines are visible.
@@ -308,14 +384,22 @@ API behavior
 - Maintenance HTML instead of JSON: useful error, not a JSONDecodeError.
 - Version drift: changed envelope or ffcsv layout fails loudly (the UBA
   `_check_layout` pattern, ported).
+- Spec drift: the pinned OpenAPI spec is a fixture; the contract test fails
+  when the client sends a field the operation does not declare, or when a
+  re-pinned spec drops or renames anything the client uses. Request fields
+  are never derived from response `Parameter` schemas.
+- Credential echo: `Parameter.username` and `Parameter.password` in every
+  JSON reply are stripped before anything is logged, cached, or committed.
 - Sequential requests only (D7).
 
 Payload and parsing
 
 - Zip: empty, multiple members, unexpected names, decompressed-size cap.
 - Encodings: ladder reused; test utf-8 and BOM variants too.
-- Markers: `-` is zero; `. ... / x ()` are null-like; quality flags pinned by
-  fixture. Zero-vs-missing gets a dedicated test per recipe.
+- Markers: `-` is zero; `. ... / x ()` are null-like; the marker sets are
+  pinned to the `qualitysigns` fixture, so a new sign in a re-captured
+  fixture fails the test; quality flags pinned by fixture. Zero-vs-missing
+  gets a dedicated test per recipe.
 - Numbers: decimal commas, thousands dots, negatives, int64 counts never via
   float, empty trailing cells.
 - Time labels: every frequency present in the chosen tables; unexpected label
@@ -378,8 +462,9 @@ Weeks are Mon-Sun. Biweekly funder updates fall on Mondays; each Friday's
 state is the update material. Exact update dates are tracked in the planning
 companion.
 
-- **Week 0 (Aug 14 to 16):** plan reviewed; OpenAPI spec assessed first
-  (offline); recipe-candidate tables checked for size and host
+- **Week 0 (Aug 14 to 16):** plan reviewed; OpenAPI spec assessed (done
+  2026-08-16, decisions in section 5 WP-A); recipe-candidate tables checked
+  for size and host
   (GENESIS-Online vs Regionalstatistik), the single riskiest unknown; GitHub
   issues per WP opened; live `whoami` and `logincheck` last, when the
   webservice answers (it was degraded on Aug 16), at the latest before
@@ -427,12 +512,11 @@ harmonized values, `tox` green. A smaller honest M2 beats a wider silent one.
 ## 9. Open questions (owner: this plan, resolve in the week named)
 
 - Week 0: which host serves the recipe tables; exact table codes for recipes
-  1 and 2; how far the OpenAPI spec drives the client, the D10 models, the
-  options reference, and the discovery helper (checklist slice 0, first
-  item).
+  1 and 2. (The OpenAPI question is resolved: section 5 WP-A.)
 - Week 1: exact auth mechanism, envelope shapes, ffcsv quality-flag layout,
   zip member layout, whether `regionalkey` selection works on `data/tablefile`
-  for the chosen tables.
+  for the chosen tables; whether the live `Parameter` echo is masked or
+  real; whether `catalogue/qualitysigns` runs without credentials.
 - Week 4: which NUTS version the current Destatis regional series align to
   (exposed as the edition parameter either way).
 - Week 5: whether the first user interviews (5 to 8, planning repo) run at
@@ -455,10 +539,14 @@ station-to-region mapping.
 - GENESIS-Online RESTful/JSON API, Anwenderdokumentation "Webservice/API"
   v5.1 (01.06.2026), served by the web UI at
   `https://genesis.destatis.de/datenbank/online/docs/GENESIS-Webservices_Einfuehrung.pdf`
-  (English: `GENESIS-Webservices_Introduction.pdf`).
+  (English: `GENESIS-Webservices_Introduction.pdf`). Sections used by this
+  plan: 1.7, 2.1.2, 2.1.3, 2.2, 2.4.6, 2.4.10, 2.5.12, 2.6.3, 2.7.2.
 - GENESIS OpenAPI 3.0.1 spec:
   `https://genesis.destatis.de/genesisWS/rest/2020/GOJsonApi.json`; Swagger
-  UI: `https://genesis.destatis.de/genesisWS/swagger-ui/index.html`.
+  UI: `https://genesis.destatis.de/genesisWS/swagger-ui/index.html`. Pinned
+  2026-08-16 in the planning repo as
+  `planning/research/genesis-openapi-GOJsonApi-2026-08-16.json`, sha256
+  `1a0dc57a85e391b6c7c42de4120156f92a8b0f6a6e10d3e51b8be59536c1e8e6`.
 - Eurostat NUTS/LAU correspondence tables (CC-BY-4.0); Destatis GV-ISys; BBSR
   Umsteigeschluessel (dl-de/by-2-0, attribution "Laufende Raumbeobachtung des
   BBSR").

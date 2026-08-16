@@ -5,10 +5,12 @@ Companion to [ap2-destatis-harmonization.md](ap2-destatis-harmonization.md)
 Tick items in the PR that lands them. If a slice moves, a checkpoint slips, or
 a cut line is pulled, edit both files in the same PR.
 
-Status: draft v2, 2026-08-16. v1 was reviewed by three independent advisors
+Status: draft v2.1, 2026-08-16. v1 was reviewed by three independent advisors
 (two Claude models, one Codex run) against the M1 code and mloda 0.10.0; the
-findings are folded in below. Items marked "verified" were checked against the
-installed code, not assumed.
+findings are folded in below. Slice 0 step 0 (OpenAPI assessment) was done
+2026-08-16, reviewed by one Claude Sonnet run and one Codex run against the
+pinned spec, and folded into slices 0, 2, 4, 5, 12 and the stretch list.
+Items marked "verified" were checked against the installed code, not assumed.
 
 ## How to use
 
@@ -23,7 +25,10 @@ installed code, not assumed.
   checklist prices work the plan did not (join plumbing, week-0
   characterization, offline cache mode), it says so and the WP total moves.
   Checklist total: about 251 h against the plan's 245 h (WP-E carries the
-  8 h of join plumbing).
+  8 h of join plumbing). The step-0 outcomes add no hours: the contract
+  test replaces the manual endpoint check inside slice 2's 37 h, the
+  options doc is 2 h of WP-G's 20 h (less polish later), and the extra
+  fixtures ride on the capture script.
 - External items (GitHub issues, ADRs, planning-repo updates, funder
   updates) are ticked with a URL or commit id next to the box, so the tick
   is evidence, not a memory.
@@ -85,25 +90,33 @@ degraded backend (Aug 16) blocks nothing else.
 
 **Step 0: OpenAPI analysis (offline, about 1 h)**
 
-- [ ] Assess the OpenAPI spec as a discovery and configuration aid. Spec:
-      `https://genesis.destatis.de/genesisWS/rest/2020/GOJsonApi.json`
-      (Swagger UI: `https://genesis.destatis.de/genesisWS/swagger-ui/index.html`),
-      pinned 2026-08-16 in the planning repo (`planning/research/`, sha256
-      `1a0dc57a...`). Found so far: 45 paths, credentials declared as
-      `username` / `password` header parameters, every form parameter with
-      its default (`data/tablefile` has `quality`, default `off`, absent from
-      the PDF), 110 response schemas (`Status`, `Ident`, `TableMetadata`,
-      `TablesCatalogue`, ...), but no parameter descriptions and no enums, so
-      allowed values still come from the PDF. Decide and write into plan
-      section 5: (a) slice 2 contract test that `GenesisClient` endpoint and
-      parameter names match the spec; (b) D10 envelope models derived from
-      `Status` / `Ident` / `Parameter` / `Object` / `Copyright`; (c) a
-      user-facing `docs/destatis-options.md` (parameter, default from the
-      spec, allowed values from the PDF, which `DestatisLocator` field it
-      maps to) so users can discover options before configuring a
-      FeatureGroup; (d) whether a typed discovery helper over
-      `catalogue/tables`, `metadata/table`, `catalogue/qualitysigns` moves
-      from stretch into slice 4 (about 8 h) or stays stretch.
+- [x] 2026-08-16, plan section 5 WP-A. Assessed the pinned spec
+      (`https://genesis.destatis.de/genesisWS/rest/2020/GOJsonApi.json`,
+      Swagger UI `.../genesisWS/swagger-ui/index.html`, planning repo
+      `planning/research/genesis-openapi-GOJsonApi-2026-08-16.json`, sha256
+      `1a0dc57a...`) against the PDF v5.1 text: 45 paths, 46 operations (44
+      POST, 2 GET: `whoami` and `catalogue/qualitysigns`), `username` /
+      `password` as header parameters on 43 operations (none on `whoami`
+      and the two `qualitysigns` operations; PDF 2.4.6 agrees, PDF 2.1.3
+      says only `whoami` is exempt, so it is a live check), 110 component
+      schemas, every request input a string with no description, enum, or
+      `required`, every response `default` (no HTTP status codes), the four
+      `*file` operations typed `application/octet-stream` with a generic
+      `Response` object, `Parameter` declaring `username` and `password` on
+      all 33 `*Parameter` schemas (masked in the PDF examples, the observed
+      `logincheck` echo is real), `data/tablefile` carrying `quality`
+      (default `off`, absent from the PDF), the path spelled
+      `profile/removeResult` (spec and PDF 2.7.2 URL), and the
+      `qualitysigns` list (`0 - ... / . x () p r s`, PDF 2.4.6) being the
+      machine-readable form of M1's marker sets. Decisions: (a) contract
+      test in slice 2 (about 2 h, replaces the manual endpoint check);
+      (b) envelope models from `Status` / `Ident`, one model per reply
+      shape, `Object` / `List` optional, `Parameter` credentials stripped,
+      `Type` case-insensitive; (c) `docs/destatis-options.md` in slice 4
+      (about 2 h under WP-G); (d) discovery helper stays stretch (D5),
+      slice 2 captures `metadata/table` per pinned table and one
+      `qualitysigns` reply instead. Corrections landed in slices 2, 4, 5,
+      12 and the stretch list below.
 
 **Paper work (web UI and other portals, no webservice needed, about 4 h)**
 
@@ -159,8 +172,12 @@ degraded backend (Aug 16) blocks nothing else.
       envelope status block, zip member names and count, header line, row
       count, Berlin present, and whether the too-large envelope appears.
       Save the three payloads, redacted, for commit as fixtures in slice 2.
-      Done state: a table in `learnings/` with those columns filled for all
-      three.
+      With the same script: one `metadata/table` per pinned table (its
+      `Structure.Rows[].Code` is the `regionalvariable` slice 4 needs) and
+      one GET `catalogue/qualitysigns` without credentials (records
+      whether it really runs unauthenticated, and whether the live
+      `Parameter` echo is masked or real). Done state: a table in
+      `learnings/` with those columns filled for all three.
 - [ ] Merge the plan PR (#12) after review, with this checklist.
 
 ## Slice 1: reader seams and offline cache mode (WP-B, week 1, about 10 h)
@@ -218,11 +235,29 @@ POST reader need from the base class lands here.
 Package `mloda_plugin_govdata/feature_groups/destatis/` with `core/` and
 `tests/`. WP-A total 45 h = slice 0 (8 h) + this slice.
 
-- [ ] Verify against Anwenderdokumentation v5.1 (01.06.2026) and the week-0
-      observation: endpoint names, POST form parameters, and the auth
-      mechanism (credentials as `username` / `password` HTTP headers, token
-      in `username` with empty `password`; body credentials are ignored and
-      run as `GAST`). Record in ADR 0004.
+- [ ] Verify against Anwenderdokumentation v5.1 (01.06.2026), the pinned
+      OpenAPI spec, and the week-0 observation: endpoint names, POST form
+      parameters, and the auth mechanism (credentials as `username` /
+      `password` HTTP headers, token in `username` with empty `password`;
+      body credentials are ignored and run as `GAST`). Record in ADR 0004.
+      The contract test below is the executable form of the name check.
+- [ ] Contract test against the pinned spec (about 2 h, inside this
+      slice's budget): commit the full spec as
+      `tests/fixtures/openapi/GOJsonApi-2026-08-16.json` (about 170 KB)
+      with a `NOTICE` (URL, date, sha256). For every operation
+      `GenesisClient` implements, iterate `(path, method)` pairs (not
+      paths: `qualitysigns` has two operations) and assert exact path and
+      method (`profile/removeResult` casing), the header credential
+      declaration (present, or absent for `whoami` and `qualitysigns`),
+      that every form field the client can send is declared on that
+      operation's request body (never read from a response `*Parameter`
+      schema: `JobCatalogueParameter` lists `area`, the `catalogue/jobs`
+      body does not), and the defaults the client relies on (`format`
+      `datencsv`, so `ffcsv` is always explicit; `quality` `off`; `job`
+      `false`; `language` `de`; `area` `free`). Out of scope by design:
+      response shapes and HTTP status codes (the spec has neither).
+      Re-pinning is manual: download, sha256, replace, run, record the
+      diff as a learning.
 - [ ] `core/auth.py`: `DestatisCredentials` (token, or user plus password;
       host-scoped). Resolution order: explicit option, then env
       (`GENESIS_TOKEN`, `GENESIS_USER`, `GENESIS_PASSWORD`, host-prefixed
@@ -249,22 +284,40 @@ Package `mloda_plugin_govdata/feature_groups/destatis/` with `core/` and
       an inter-process file lock; pick one, test both halves (two threads
       serialize; two processes never overlap or the second refuses), and
       correct the D7 wording in the plan in the same PR.
-- [ ] `core/envelope.py`: pydantic model for the application status block
-      inside HTTP 200 bodies (D10). Map to typed exceptions:
-      `GenesisAuthError`, `GenesisUnknownTable`, `GenesisEmptySelection`,
+- [ ] `core/envelope.py`: pydantic models for the reply shapes (D10), one
+      per shape, from the spec where it types them: `GenesisStatus(code:
+      int, content, type)` (spec `Status`; `type` compared
+      case-insensitively, `ERROR` observed vs `Error` documented, no enum),
+      `GenesisIdent(service, method)` (checked against the endpoint
+      called), the JSON envelope (`ident`, `status`, `parameter` as a
+      string map with `username` and `password` stripped at parse time,
+      `copyright`, `object` or `list` or neither, as on `RemoveResult`),
+      `LoginCheckReply(status: str, username: str)` flat (its `Status` is
+      a string; never merge it into the generic model), the flat tablefile
+      error body (HTTP 404 observed, not in the spec) as a bare
+      `GenesisStatus` detected by keys, with the HTTP status kept next to
+      it. Inspect HTTP status and content type before parsing: zip, JSON,
+      or HTML. Map to typed exceptions: `GenesisAuthError`,
+      `GenesisUnknownTable`, `GenesisEmptySelection`,
       `GenesisResultTooLarge`, `GenesisJobAccepted`, `GenesisMaintenance`
       (HTML body), `GenesisUnknownEnvelope` (raw status block quoted).
 - [ ] Fixture capture tooling at `scripts/capture_genesis_fixtures.py` (repo
       root, not shipped): records real responses, redacts credentials from
-      request and response (including the echoed `Username` field), writes
-      the `NOTICE`. One test asserts redaction on a synthetic payload
-      containing the token in original, upper-, and lower-cased form and the
-      password URL-encoded (week 0 leaked a case-flipped echo this way).
+      request and response (the echoed `Username` field of `logincheck` and
+      the `Parameter.username` / `Parameter.password` fields that every
+      JSON envelope declares; the PDF examples mask them, assume real),
+      writes the `NOTICE`. One test asserts redaction on a synthetic payload
+      containing the token in original, upper-, and lower-cased form, the
+      password URL-encoded (week 0 leaked a case-flipped echo this way), and
+      both credentials inside a `Parameter` block.
 - [ ] Fixtures under `feature_groups/destatis/tests/fixtures/`: `whoami`,
       `logincheck` ok and bad, one envelope per mapped error (bad
       credentials, unknown table, empty selection, too large, job accepted),
-      a maintenance HTML page, and the three redacted week-0 tablefile
-      payloads. `NOTICE` present. `tests/conftest.py` with `fixtures_dir`.
+      a maintenance HTML page, the three redacted week-0 tablefile payloads,
+      one `metadata/table` reply per pinned table, one `qualitysigns` reply
+      (about 0.5 h on top of the capture run; step-0 decision (d)), and the
+      pinned OpenAPI spec under `fixtures/openapi/`. `NOTICE` present.
+      `tests/conftest.py` with `fixtures_dir`.
 - [ ] Live-test gating scoped to Destatis: a second marker `genesis_live`
       registered in `pyproject.toml` next to `live` (and added to `addopts`
       deselection); Destatis live tests carry both. Repo-root `conftest.py`
@@ -308,13 +361,22 @@ Package `mloda_plugin_govdata/feature_groups/destatis/` with `core/` and
 Checkpoint C1 target (Aug 30). Designed against the three real week-0
 payloads, not a guess.
 
-- [ ] `core/api.py`: `tablefile(...)` with `name`, `startyear`, `endyear`,
+- [ ] `core/api.py`: `tablefile(...)` over the 25 spec fields: `name`,
+      `area`, `compress` (empty rows and columns suppression, not zip),
+      `transpose`, `contents`, `startyear`, `endyear`, `timeslices`,
       `regionalvariable`, `regionalkey`, `classifyingvariable1..5`,
-      `classifyingkey1..5`, `format=ffcsv`, `language`, `compress` (empty
-      rows and columns suppression, not zip), `transpose`, `stand`,
-      `quality` (default `off`; characterize `on` against one fixture, it is
-      the quality-flag switch); envelope and HTTP status inspected before any
-      parsing.
+      `classifyingkey1..5`, `format`, `quality` (default `off`; characterize
+      `on` against one fixture, it is the quality-flag switch), `job`,
+      `stand`, `language`. Wire policy (plan WP-B): every value a string
+      (`true` / `false`, `jjjj`); `format=ffcsv`, `language`, `job=false`,
+      `quality`, `compress=false`, `transpose=false` always sent; `area`,
+      `stand`, `timeslices`, and unset selection fields not sent (server
+      defaults; `area` values differ between spec `free` and PDF `Alle`,
+      so no guessing). Test: the sent field set for a full locator equals
+      the expected list, and never contains a name outside the spec's
+      `tablefile` body (`regionalkeycode`, `classifyingkeycode1..3` exist
+      only on the timeseries endpoints). Envelope and HTTP status inspected
+      before any parsing.
 - [ ] Zip handling from the week-0 characterization: reject empty archives
       and unexpected member sets; enforce a decompressed-size cap; the CSV
       member is written into the cache entry.
@@ -340,8 +402,12 @@ payloads, not a guess.
       typed raises with the offending cell and column.
 - [ ] `destatis/locator.py`: `DestatisLocator` (D10 validation): table code
       (`12411-0015` style, validated), optional region and classifying
-      selection, start and end year, `host` (GENESIS-Online default, D5),
-      `language`, `format` pinned to `ffcsv`. Frozen (frozen dataclass with
+      selection, optional `contents` (measure codes, D1), start and end
+      year, `quality` (bool, default off), `host` (GENESIS-Online default,
+      D5), `language`, `format` pinned to `ffcsv`. Not locator fields in
+      M2: `area`, `compress`, `transpose`, `timeslices`, `job`, `stand`
+      (pinned wire values or not sent, documented in
+      `docs/destatis-options.md`). Frozen (frozen dataclass with
       pydantic validation, or `ConfigDict(frozen=True)`) so it hashes
       natively inside `Options.group` like `GovDataLocator` does. `from_string`
       accepts a bare table code; `coerce` accepts a `DestatisLocator`, a
@@ -372,7 +438,12 @@ payloads, not a guess.
 - [ ] Fixtures: the three week-0 ffcsv zips plus an empty-result payload.
       `NOTICE` present.
 - [ ] Tests: parser pinned to fixtures; zero-vs-missing (`-` is zero, `.`
-      `...` `/` `x` `()` are null) per fixture; decimal comma and thousands
+      `...` `/` `x` `()` are null) per fixture; the marker sets pinned
+      against the `qualitysigns` fixture from slice 2 (`0 - ... / . x ()
+      p r s`, PDF 2.4.6): every fixture code is either in `ZERO_MARKERS`,
+      in `NULL_MARKERS`, or a flag letter (`p`, `r`, `s`) that never
+      becomes a value, so a new sign in a re-captured fixture fails
+      loudly; decimal comma and thousands
       dot; int64 counts never via float; utf-8, BOM, and cp1252 variants;
       empty result yields the declared schema and `peek` lists columns;
       duplicate or extra columns raise; reader end to end via
@@ -381,6 +452,18 @@ payloads, not a guess.
 - [ ] Live smoke (`live` and `genesis_live`): one tiny table via
       `mloda.run_all`.
 - [ ] README: Destatis quickstart snippet (credentials via env, one table).
+- [ ] `docs/destatis-options.md` (about 2 h, counted under WP-G; step-0
+      decision (c)): one table for `data/tablefile` with parameter, spec
+      default, allowed values with the PDF section cited (2.5.12: `format`
+      csv / datencsv / ffcsv / xlsx / genml / html, `language` de / en,
+      booleans `true` / `false`, `startyear` / `endyear` `jjjj` 1900 to
+      2100, `regionalkey` up to 8 digits with `*`, `contents` comma list),
+      and the `DestatisLocator` field, the pinned wire value, or "not sent
+      in M2" with the reason; a paragraph on `whoami` / `logincheck` and one
+      on `qualitysigns` (written from the captured fixture, not the spec,
+      which types its rows only as `{Code, Content}`). Skeleton rows may be
+      printed from the pinned spec while authoring; the contract test keeps
+      the names honest.
 - [ ] Commit series `feat(destatis): tablefile request and zip handling`,
       `feat(destatis): ffcsv parser`, `feat(destatis): locator and reader`.
 - [ ] **C1 (Aug 30):** a real GENESIS table arrives as a typed Arrow table via
@@ -398,7 +481,9 @@ payloads, not a guess.
 - [ ] Docs: the too-large paragraph in `docs/credentials.md` (created in
       slice 2).
 - [ ] `[-]` Full job path (`catalogue/jobs`, `data/resultfile`,
-      `profile/removeresult`): stretch, only after acceptance is green.
+      `profile/removeResult`; camelCase per spec and PDF 2.7.2 URL, and
+      its `name` field has no spec default, so the client validates it
+      before sending): stretch, only after acceptance is green.
 - [ ] Commit `feat(destatis): actionable error for oversized results`.
 
 ## Slice 6: recipe format and writer (WP-F part 1, week 3, about 12 h)
@@ -636,6 +721,8 @@ Checkpoint C2 target (Sep 20). Week 5 is three working days (SciCAR).
       fetch seam).
 - [ ] `docs/credentials.md`: env names, registration URL, dual-path
       explanation, too-large guidance.
+- [ ] `docs/destatis-options.md` (from slice 4): polish, link from the
+      README Destatis section, mark stretch endpoint options as deferred.
 - [ ] `demos/govdata_demo.py`: Destatis chapter (recipe 3 as the story).
 - [ ] `pyproject.toml` description: "GENESIS API v3" becomes "GENESIS API
       v5.0" (or drop the version).
@@ -689,4 +776,9 @@ values, `tox` green.
 - [ ] Gemeinde-level mapping, about 15 h.
 - [ ] Regionalstatistik host, about 10 h (moves into scope in slice 0 if a
       recipe table needs it).
-- [ ] Discovery helper, about 8 h.
+- [ ] Discovery helper, about 8 h (kept out of AP2 by D5, re-checked in
+      step 0): `describe_table(code)` typed by the spec's
+      `TableMetadataEntry` (regional variable from `Structure.Rows[].Code`),
+      `search_tables(term)` rows typed `{Code, Content, Time, Valid}`,
+      `quality_signs()` rows `{Code, Content}`; starts from the slice-2
+      fixtures; needs its own pagination and auth characterization.
