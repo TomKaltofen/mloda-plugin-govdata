@@ -46,8 +46,13 @@ repo):
   `profile/*` calls need username plus password; the token is not accepted
   there. Dual-path credentials are a verified constraint.
 - POST-only API since 15 Jul 2025 (SOAP and REST GET are gone). Third-party
-  examples predate this; the Anwenderdokumentation v5.0 (06.05.2025) is the
+  examples predate this; the Anwenderdokumentation v5.1 (01.06.2026) is the
   contract. `pyproject.toml` still says "GENESIS API v3"; fix in WP-G.
+- Base URL is `https://genesis.destatis.de/genesisWS/rest/2020/` (week 0,
+  verified: `www-genesis.destatis.de` answers with a 307 to it). Credentials
+  travel as HTTP headers `username` and `password`; body credentials are
+  ignored and the call runs as guest `GAST`. `whoami` is GET-only, everything
+  else POST with `application/x-www-form-urlencoded`.
 - Documented limits: a cap on parallel requests (value not fixed), server-side
   termination of requests over 15 minutes, `pagelength` max 25000. No
   per-day quota is documented.
@@ -157,24 +162,43 @@ scenarios are in the planning companion.
 `feature_groups/destatis/core/` next to the govdata core, reusing
 `client.py`.
 
-- Endpoints in scope (verify names and parameters against doc v5.0 in
-  week 1): `helloworld/whoami`, `helloworld/logincheck`, `data/tablefile`
-  (parameters: `name`, `startyear`, `endyear`, `regionalvariable`,
-  `regionalkey`, `classifyingvariable1..3`, `classifyingkey1..3`, `format`,
-  `language`, `job`, `compress`, `transpose`, `stand`), and for the stretch
-  job path `catalogue/jobs`, `data/resultfile`, `profile/removeresult`.
+- Endpoints in scope (verified against doc v5.1 in week 0):
+  `helloworld/whoami`, `helloworld/logincheck`, `data/tablefile`
+  (parameters: `name`, `area`, `startyear`, `endyear`, `timeslices`,
+  `regionalvariable`, `regionalkey`, `classifyingvariable1..5`,
+  `classifyingkey1..5`, `format`, `language`, `job`, `compress` (suppresses
+  empty rows and columns; the zip download is unconditional), `transpose`,
+  `stand`, `quality`), and for the stretch job path `catalogue/jobs`,
+  `data/resultfile`, `profile/removeresult`.
+- OpenAPI spec as a second contract: `genesisWS/rest/2020/GOJsonApi.json`
+  (Swagger UI at `genesisWS/swagger-ui/index.html`) declares every endpoint,
+  parameter, default, the header auth, and the response schemas, but no
+  descriptions or enums. Pinned in week 0; the slice-0 assessment decides
+  how far it drives the client (contract test on names), the D10 models,
+  a user-facing options reference (`docs/destatis-options.md`), and the
+  discovery helper (stretch unless the assessment moves it).
 - `DestatisCredentials`: explicit option, then env (`GENESIS_TOKEN`,
   `GENESIS_USER`, `GENESIS_PASSWORD`; host-prefixed variants). Whitespace
   normalized. Never logged, never in cache keys, metadata, recipes, snapshots,
   or fixtures.
-- POST request layer: form-encoded, auth mechanism verified against the doc
-  (do not trust token-as-username folklore), `language` pinned per request,
-  the D7 lock.
-- Error envelope: application status inside HTTP 200 bodies, characterized
-  in week 1 (bad credentials, unknown table, empty selection, too large, job
-  accepted), mapped to typed exceptions. Missing credentials error names the
-  env vars and says registration is free and same-day, with the URL. Auth
-  failures are not retried.
+- POST request layer: form-encoded body, credentials in the `username` and
+  `password` HTTP headers (doc v5.1 and week-0 observation; the token goes
+  in `username` with an empty `password`), `language` pinned per request,
+  the D7 lock. A `logincheck` reply of `Username: GAST` means the headers
+  were not sent; treat it as an auth failure, never as success.
+- Error envelope: three shapes seen or documented, characterized in week 1
+  (bad credentials, unknown table, empty selection, too large, job
+  accepted): `helloworld/*` flat `Status` plus `Username` in HTTP 200; the
+  documented data shape `Status: {Code, Content, Type}` plus `Parameter`,
+  `Object`, `Copyright`; and a flat top-level `Code`, `Content`, `Type` with
+  HTTP 404 (observed for an unauthenticated `data/tablefile`). Mapped to
+  typed exceptions with the HTTP status inspected too. The generic
+  "unerwarteter Systemfehler" text is what the backend returns during an
+  outage and, as observed, also for guest or wrong credentials; it maps to
+  a "backend error, retry later, then check credentials in the web UI"
+  exception, never to bad credentials alone. Missing credentials error
+  names the env vars and says registration is free and same-day, with the
+  URL. Auth failures are not retried.
 
 ### WP-B: Table retrieval, ffcsv parsing, reader (about 50 h)
 
@@ -354,9 +378,12 @@ Weeks are Mon-Sun. Biweekly funder updates fall on Mondays; each Friday's
 state is the update material. Exact update dates are tracked in the planning
 companion.
 
-- **Week 0 (Aug 14 to 16):** plan reviewed; live `whoami`; recipe-candidate
-  tables checked for size and host (GENESIS-Online vs Regionalstatistik), the
-  single riskiest unknown; GitHub issues per WP opened.
+- **Week 0 (Aug 14 to 16):** plan reviewed; OpenAPI spec assessed first
+  (offline); recipe-candidate tables checked for size and host
+  (GENESIS-Online vs Regionalstatistik), the single riskiest unknown; GitHub
+  issues per WP opened; live `whoami` and `logincheck` last, when the
+  webservice answers (it was degraded on Aug 16), at the latest before
+  slice 2.
 - **Week 1 (Aug 17 to 23):** WP-A auth, endpoint verification, envelope
   characterization; fixture capture tooling and the committed fixture set,
   including the reference-data extracts (WP-D does not wait for the
@@ -400,7 +427,9 @@ harmonized values, `tox` green. A smaller honest M2 beats a wider silent one.
 ## 9. Open questions (owner: this plan, resolve in the week named)
 
 - Week 0: which host serves the recipe tables; exact table codes for recipes
-  1 and 2.
+  1 and 2; how far the OpenAPI spec drives the client, the D10 models, the
+  options reference, and the discovery helper (checklist slice 0, first
+  item).
 - Week 1: exact auth mechanism, envelope shapes, ffcsv quality-flag layout,
   zip member layout, whether `regionalkey` selection works on `data/tablefile`
   for the chosen tables.
@@ -423,7 +452,13 @@ station-to-region mapping.
   `docs/adding-a-reader.md`.
 - mloda: `load_features_from_config` (JSON), `ParallelizationMode` default
   SYNC; registry guides feature-group-patterns 02, 03, 04, 08, 11, 26, 27.
-- GENESIS-Online RESTful/JSON API, Anwenderdokumentation v5.0 (06.05.2025).
+- GENESIS-Online RESTful/JSON API, Anwenderdokumentation "Webservice/API"
+  v5.1 (01.06.2026), served by the web UI at
+  `https://genesis.destatis.de/datenbank/online/docs/GENESIS-Webservices_Einfuehrung.pdf`
+  (English: `GENESIS-Webservices_Introduction.pdf`).
+- GENESIS OpenAPI 3.0.1 spec:
+  `https://genesis.destatis.de/genesisWS/rest/2020/GOJsonApi.json`; Swagger
+  UI: `https://genesis.destatis.de/genesisWS/swagger-ui/index.html`.
 - Eurostat NUTS/LAU correspondence tables (CC-BY-4.0); Destatis GV-ISys; BBSR
   Umsteigeschluessel (dl-de/by-2-0, attribution "Laufende Raumbeobachtung des
   BBSR").

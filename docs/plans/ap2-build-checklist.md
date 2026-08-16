@@ -74,30 +74,51 @@ checklist does not pick for you.
       its own `conftest.py` with `fixtures_dir`.
 - [ ] Silent wrong output is the only forbidden outcome (rulebook, section 6).
 
-## Slice 0: week 0 pre-flight and characterization (Aug 14 to 16, about 8 h)
+## Slice 0: week 0 spec analysis, pre-flight and characterization (Aug 14 to 16, live checks may spill into week 1, about 8 h)
 
 Throwaway code only. Resolves plan section 9 week-0 questions and moves the
 three unknowns that gate C1 (auth mechanism, ffcsv shape, table size) two
-weeks earlier. Hours count toward WP-A.
+weeks earlier. Hours count toward WP-A. Order: step 0 is the spec analysis
+(offline), then the paper work (needs the GENESIS web UI and the other
+portals, not the webservice), and the live webservice checks come last, so a
+degraded backend (Aug 16) blocks nothing else.
 
-- [ ] Run a live `helloworld/whoami` with the token (the only call the plan
-      knows works token-only), then characterize `helloworld/logincheck` with
-      token-only, user plus password, and both. One-off script, not
-      committed; responses recorded redacted. Record the result and the exact
-      auth mechanism observed in the planning repo (`learnings/`).
+**Step 0: OpenAPI analysis (offline, about 1 h)**
+
+- [ ] Assess the OpenAPI spec as a discovery and configuration aid. Spec:
+      `https://genesis.destatis.de/genesisWS/rest/2020/GOJsonApi.json`
+      (Swagger UI: `https://genesis.destatis.de/genesisWS/swagger-ui/index.html`),
+      pinned 2026-08-16 in the planning repo (`planning/research/`, sha256
+      `1a0dc57a...`). Found so far: 45 paths, credentials declared as
+      `username` / `password` header parameters, every form parameter with
+      its default (`data/tablefile` has `quality`, default `off`, absent from
+      the PDF), 110 response schemas (`Status`, `Ident`, `TableMetadata`,
+      `TablesCatalogue`, ...), but no parameter descriptions and no enums, so
+      allowed values still come from the PDF. Decide and write into plan
+      section 5: (a) slice 2 contract test that `GenesisClient` endpoint and
+      parameter names match the spec; (b) D10 envelope models derived from
+      `Status` / `Ident` / `Parameter` / `Object` / `Copyright`; (c) a
+      user-facing `docs/destatis-options.md` (parameter, default from the
+      spec, allowed values from the PDF, which `DestatisLocator` field it
+      maps to) so users can discover options before configuring a
+      FeatureGroup; (d) whether a typed discovery helper over
+      `catalogue/tables`, `metadata/table`, `catalogue/qualitysigns` moves
+      from stretch into slice 4 (about 8 h) or stays stretch.
+
+**Paper work (web UI and other portals, no webservice needed, about 4 h)**
+
 - [ ] Pin the three recipe tables: population by Kreis (12411 family), a
       Kreis-level labor-market or income indicator, population by Land.
-      Check host (GENESIS-Online vs Regionalstatistik) for each. Write the
-      codes into plan section 5 WP-F and section 9.
-- [ ] With the same script, run one real `data/tablefile` request per
-      candidate table with the intended selection (`format=ffcsv`, years,
-      `regionalvariable` and `regionalkey`). Record per table: HTTP status,
-      envelope status block, zip member names and count, header line, row
-      count, and whether the too-large envelope appears. Save the three
-      payloads, redacted, for commit as fixtures in slice 2. Done state: a
-      table in `learnings/` with those columns filled for all three.
+      Check host (GENESIS-Online vs Regionalstatistik) for each in the web
+      UI. Write the codes into plan section 5 WP-F and section 9.
 - [ ] If any recipe table lives on Regionalstatistik: move that host into
       WP-A scope, add about 10 h, update the plan and the execution notes.
+- [ ] Check Berlin in each pinned table: present as `11` (Land table) or
+      `11000` (Kreis tables) with a real value, not a null marker. Berlin is
+      the city-state case slice 8 tests and the Land row recipe 3 joins on.
+      If a Kreis table lists city-states differently or not at all, record
+      how (Hamburg `02000`, Bremen `04011` and `04012`) or pick another
+      table. The week-0 table in `learnings/` gets a "Berlin present" column.
 - [ ] Fetch the real full `kerg.csv` once and confirm which `gehört zu`
       value marks Land rows and which marks Bundesgebiet (D2 assumes `99`;
       the committed `kerg_sample.csv` has no Land rows, verified). Fix D2
@@ -120,6 +141,26 @@ weeks earlier. Hours count toward WP-A.
       `mloda-ai/mloda-plugin-govdata` (the fork has issues disabled).
 - [ ] Planning repo: milestones.md flips AP1 to done (residue listed) and AP2
       to in progress; funder-update dates recorded (execution notes section 2).
+
+**Live webservice checks (last; run when the backend answers, before slice 2, about 3 h)**
+
+- [ ] Run a live `helloworld/whoami`, then characterize
+      `helloworld/logincheck` with token-only, user plus password, and both.
+      One-off script, not committed; responses recorded redacted. Record the
+      result and the exact auth mechanism observed in the planning repo
+      (`learnings/`). 2026-08-16: mechanism confirmed against doc v5.1, the
+      OpenAPI spec, and the echoed `Username` (headers); a successful
+      `logincheck` ("Sie wurden erfolgreich an- und abgemeldet!") is still
+      outstanding because the webservice backend returned "unerwarteter
+      Systemfehler" all day (same result in the official Swagger UI).
+- [ ] With the same script, run one real `data/tablefile` request per
+      pinned table with the intended selection (`format=ffcsv`, years,
+      `regionalvariable` and `regionalkey`). Record per table: HTTP status,
+      envelope status block, zip member names and count, header line, row
+      count, Berlin present, and whether the too-large envelope appears.
+      Save the three payloads, redacted, for commit as fixtures in slice 2.
+      Done state: a table in `learnings/` with those columns filled for all
+      three.
 - [ ] Merge the plan PR (#12) after review, with this checklist.
 
 ## Slice 1: reader seams and offline cache mode (WP-B, week 1, about 10 h)
@@ -177,10 +218,11 @@ POST reader need from the base class lands here.
 Package `mloda_plugin_govdata/feature_groups/destatis/` with `core/` and
 `tests/`. WP-A total 45 h = slice 0 (8 h) + this slice.
 
-- [ ] Verify against Anwenderdokumentation v5.0 and the week-0 observation:
-      endpoint names, POST form parameters, and the auth mechanism (token vs
-      user plus password). Do not trust token-as-username folklore. Record in
-      ADR 0004.
+- [ ] Verify against Anwenderdokumentation v5.1 (01.06.2026) and the week-0
+      observation: endpoint names, POST form parameters, and the auth
+      mechanism (credentials as `username` / `password` HTTP headers, token
+      in `username` with empty `password`; body credentials are ignored and
+      run as `GAST`). Record in ADR 0004.
 - [ ] `core/auth.py`: `DestatisCredentials` (token, or user plus password;
       host-scoped). Resolution order: explicit option, then env
       (`GENESIS_TOKEN`, `GENESIS_USER`, `GENESIS_PASSWORD`, host-prefixed
@@ -214,8 +256,10 @@ Package `mloda_plugin_govdata/feature_groups/destatis/` with `core/` and
       (HTML body), `GenesisUnknownEnvelope` (raw status block quoted).
 - [ ] Fixture capture tooling at `scripts/capture_genesis_fixtures.py` (repo
       root, not shipped): records real responses, redacts credentials from
-      request and response, writes the `NOTICE`. One test asserts redaction
-      on a synthetic payload containing the token.
+      request and response (including the echoed `Username` field), writes
+      the `NOTICE`. One test asserts redaction on a synthetic payload
+      containing the token in original, upper-, and lower-cased form and the
+      password URL-encoded (week 0 leaked a case-flipped echo this way).
 - [ ] Fixtures under `feature_groups/destatis/tests/fixtures/`: `whoami`,
       `logincheck` ok and bad, one envelope per mapped error (bad
       credentials, unknown table, empty selection, too large, job accepted),
@@ -265,9 +309,12 @@ Checkpoint C1 target (Aug 30). Designed against the three real week-0
 payloads, not a guess.
 
 - [ ] `core/api.py`: `tablefile(...)` with `name`, `startyear`, `endyear`,
-      `regionalvariable`, `regionalkey`, `classifyingvariable1..3`,
-      `classifyingkey1..3`, `format=ffcsv`, `language`, `compress`,
-      `transpose`, `stand`; envelope inspected before any parsing.
+      `regionalvariable`, `regionalkey`, `classifyingvariable1..5`,
+      `classifyingkey1..5`, `format=ffcsv`, `language`, `compress` (empty
+      rows and columns suppression, not zip), `transpose`, `stand`,
+      `quality` (default `off`; characterize `on` against one fixture, it is
+      the quality-flag switch); envelope and HTTP status inspected before any
+      parsing.
 - [ ] Zip handling from the week-0 characterization: reject empty archives
       and unexpected member sets; enforce a decompressed-size cap; the CSV
       member is written into the cache entry.
