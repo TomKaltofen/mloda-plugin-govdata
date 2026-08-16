@@ -1,573 +1,430 @@
 # AP2 implementation plan: Destatis connector and harmonization
 
-Status: draft v1, 2026-08-14. Covers work package AP2 (01 Aug to 30 Sep 2026,
-290 budgeted hours) toward milestone M2 (30 Sep 2026): Destatis connector
-working, harmonization implemented, 6 recipes total.
+Status: draft v2, 2026-08-16. Living document until M2 (30 Sep 2026): update it
+when a checkpoint or cut line moves. Budget, funder-update dates, capacity
+scenarios, risks, and the ADR drafts live in the private planning companion
+repo (`planning/ap2-execution-notes.md` there); this file carries scope,
+architecture, rules, and schedule.
 
-Inputs: the M1 codebase in this repo, the verified constraints research in the
-private planning companion repo (GENESIS API doc v5.0 findings, harmonization
-reference-data survey, license clarifications), and the first-run user research
-plan (three target segments).
+## 1. Contract and acceptance
 
-As of 2026-08-14 no AP2 code exists; roughly 6.5 weeks remain to M2. This plan
-is deliberately walking-skeleton biased: a thin Destatis end-to-end path lands
-first, depth follows, and every Friday state is demoable for the biweekly
-funder updates (Aug 17, Aug 31, Sep 14, Sep 28) and the conference abstract
-that must be drafted from early-M2 material by late October.
+From the funding application (Vorhabenbeschreibung, AP2 row), the scope is:
 
-## 1. Goal and acceptance
+> GENESIS-API-Anbindung mit Authentifizierung. AGS-NUTS-Mapper,
+> Zeitreihen-Alignment. 3 weitere reproduzierbare Rezepte.
 
-M2 acceptance, verbatim from the funding application: Destatis connector
-working, harmonization implemented, 6 recipes total.
+and the milestone is:
 
-Interpreted as a checkable definition of done:
+> M2 (30.09.): Destatis-Connector funktionsfähig, Harmonisierung
+> implementiert, 6 Rezepte gesamt.
 
-1. A `DestatisReader` pulls at least two real GENESIS tables end to end
-   (auth, request, download, parse) into typed Arrow tables via the same
+Definition of done, checkable:
+
+1. A `DestatisReader` pulls at least two real GENESIS tables end to end (auth,
+   request, download, parse) into typed Arrow tables via the same
    `mloda.run_all` call shape as the M1 readers.
-2. The harmonization layer maps AGS region keys to NUTS codes with explicit
-   edition/version selection, and re-bases at least one real multi-year series
-   across a Gebietsstand change using the BBSR Umsteigeschluessel.
-3. Time-series alignment produces a documented, typed period representation
-   that joins Destatis data with at least one M1 source.
-4. Three new recipes exist (six total), each carrying license, attribution
-   string, dataset URI, and modification-marking fields.
+2. The harmonization module maps 5-digit AGS (Kreis) keys to NUTS-1/2/3 with
+   explicit edition selection, and re-bases at least one real multi-year Kreis
+   series across a Gebietsstand change using the BBSR Umsteigeschluessel.
+3. A documented, typed period representation joins Destatis annual data with
+   one M1 source at Land level (see decision D2).
+4. Six recipe files exist (three new, three M1 retrofits), each carrying
+   license id, attribution string, dataset URI, retrieval timestamp, payload
+   sha256, and modification markers.
 5. `tox` green (pytest, ruff, mypy strict, bandit), no live network in the
    default test run, README and demo notebook updated.
 
-## 2. Starting position (what is already settled)
+## 2. Starting position
 
-Carried over from M1 and the research phase; none of this is open:
+Settled by M1 and the research phase (details and sources in the planning
+repo):
 
-- **Account and token exist** (registered 2026-06-16, token issued same day).
-  Still unverified: a live `whoami` call. That is task one of week 1.
-- **Dual-path credentials are mandatory.** Every GENESIS request except
-  `whoami` needs auth. Requests with `job=true` (the documented path for
-  oversized tables) plus `profile/*` calls cannot use the 32-character token
-  and need username/password. This is a verified hard constraint, not a
-  design choice.
-- **POST-only API.** The SOAP interface and REST GET methods were shut down
-  15 Jul 2025. Only RESTful/JSON POST remains. Most blog posts and older
-  library code predate this; treat third-party examples as stale until
-  checked against the v5.0 Anwenderdokumentation.
-- **Rate limits:** only a cap on parallel requests is documented (value not
-  fixed; Destatis reserves the right to change it) plus auto-termination of
-  requests running over 15 minutes. No requests-per-day quota. `pagelength`
-  caps at 25000.
-- **Delivery formats:** `data/tablefile` offers csv, datencsv (default),
-  ffcsv, xlsx, genml, html; all CSV variants arrive zipped. ffcsv has uniform
-  English column headers and is the tidy, machine-friendly choice. Residual
-  quirks remain: windows-1252, semicolons, decimal commas, statistical value
-  markers. The M1 encoding ladder and value-marker table apply.
-- **Licensing is clean end to end.** GENESIS data is dl-de/by-2-0. Eurostat
-  correspondence and LAU tables are CC-BY-4.0. Destatis GV-ISys permits
-  reproduction with attribution. BBSR Referat RS 6 confirmed in writing
-  (2026-06-17) that the Umsteigeschluessel are dl-de/by-2-0 like INKAR and may
-  be bundled and redistributed; the only hard requirement is visible
-  attribution to "Laufende Raumbeobachtung des BBSR". The earlier
-  runtime-fetch-only constraint is lifted.
-- **The AGS-to-NUTS mapper is net-new work.** No maintained Python library
-  does it (2026 survey). Reference inputs are Excel and GV100 fixed-width
-  ASCII, not CSV, so the M1 German-CSV parser contributes little here.
-- **M1 gave us the chassis:** pooled httpx client with four-part timeouts and
-  polite User-Agent, tenacity retries with Retry-After handling,
-  content-addressed download cache with conditional-GET revalidation, the
-  `BaseGovDataReader` / `ReadFile` integration pattern, `peek`, the
-  fixture-first three-level test posture, and the per-source module layout
-  documented in `docs/adding-a-reader.md`.
+- GENESIS account and token exist; a live `whoami` has not been run yet. That
+  is the first task.
+- Every request except `helloworld/whoami` needs auth. `job=true` and
+  `profile/*` calls need username plus password; the token is not accepted
+  there. Dual-path credentials are a verified constraint.
+- POST-only API since 15 Jul 2025 (SOAP and REST GET are gone). Third-party
+  examples predate this; the Anwenderdokumentation v5.0 (06.05.2025) is the
+  contract. `pyproject.toml` still says "GENESIS API v3"; fix in WP-G.
+- Documented limits: a cap on parallel requests (value not fixed), server-side
+  termination of requests over 15 minutes, `pagelength` max 25000. No
+  per-day quota is documented.
+- `data/tablefile` formats: csv, datencsv (default), ffcsv, xlsx, genml, html;
+  CSV variants arrive zipped. ffcsv has fixed English headers and is the tidy
+  choice. Quirks remain: windows-1252, semicolons, decimal commas, value
+  markers. The M1 encoding ladder and marker sets apply (`core/parse.py`:
+  `-` is zero, `. ... / x ()` are null-like).
+- Licensing is clean: GENESIS dl-de/by-2-0; Eurostat correspondence and LAU
+  tables CC-BY-4.0; GV-ISys reproduction with attribution; BBSR confirmed in
+  writing that the Umsteigeschluessel are dl-de/by-2-0 and may be bundled and
+  redistributed with visible attribution to "Laufende Raumbeobachtung des
+  BBSR" (long form in the planning repo).
+- AGS-to-NUTS mapping is net-new: no maintained Python library does it (2026
+  survey). Reference inputs are Excel and GV100 fixed-width ASCII.
+- M1 chassis, and what it does and does not give AP2:
+  - `core/client.py`: httpx client with four-part timeout, polite User-Agent,
+    tenacity retry with jitter; Retry-After is honored in seconds form only.
+  - `core/cache.py`: `DownloadCache` is GET-only, keyed by URL, conditional
+    revalidation. It has no POST, parameter, or refresh support; the POST
+    cache in WP-B is a sibling, not an extension.
+  - `reader.py`: `BaseGovDataReader._read_table` hardcodes CKAN resolution
+    plus a GET download; `_parse` receives a `ResolvedDistribution`. A POST
+    reader needs a fetch seam first (WP-B, first item).
+  - Tests: three-level posture by convention (fixture, recorded, live), live
+    gated by the pytest marker `live` (`addopts = -m 'not live'`), no env
+    gating today. `respx` and `hypothesis` are already dev dependencies.
+  - `docs/adding-a-reader.md`, `peek`, `search_datasets` (lazy pagination),
+    the UBA `_check_layout` drift guard, and the demo notebook
+    `demos/govdata_demo.py`.
 
-## 3. Users and acceptance scenarios
+## 3. Users, in one line each
 
-AP2 scope decisions below are justified against these five users. The first
-three are the researched target segments; the last two are operational
-personas the repo must serve anyway.
+Full personas and the interview plan are in the planning repo
+(`planning/research/user-research-mom-test-first-run.md`). What each must
+never hit:
 
-### U1: Data journalist (newsroom, Correctiv-like)
+- U1 data journalist: silent zero-vs-missing confusion, or a region silently
+  dropped because its AGS changed.
+- U2 empirical researcher: an unlabeled re-based value, or a crosswalk applied
+  in the wrong direction.
+- U3 civic-tech Python user (often on pystatis): raw-access rebuilds; our layer
+  is harmonization, typed output, one interface across portals.
+- U4 contributor: needing a GENESIS account to run the fixture tests, or more
+  than an hour to add a table recipe by following the docs.
+- U5 CI and unattended runs: any credential or network need in the default
+  test run; fork PRs must pass.
 
-Deadline-driven, Python-capable but not an API archaeologist, works
-Germany-wide at Kreis level, must be able to say where every number came from.
+## 4. Decisions made in this plan (v2)
 
-Acceptance scenario: "Unemployment and population by Kreis for 2015 to 2024 as
-one tidy typed table on current district boundaries, in a handful of lines,
-and a colleague reruns it next month and gets the same table or a loud
-explanation of what changed." Exercises: connector, harmonization to a single
-Gebietsstand, caching, provenance fields.
+Recorded here so the work packages can be short. Each becomes an ADR in the
+planning repo (`decisions/`) at the first implementation PR.
 
-What U1 must never hit: silent zero-vs-missing confusion (a `-` cell is zero,
-a `.` cell is blocked data; a story built on the wrong one is a correction),
-or a region silently dropped because its AGS changed in 2021.
+- **D1 Feature surface.** Reader level: feature names are the ffcsv column
+  names (`value`, `time`, `1_variable_attribute_code`, ...), long format, one
+  locator per table selection. Measure and region selection happen in the
+  locator, not in feature names. Harmonized, application-style names
+  (`destatis__bevoelkerung__kreise`) are derived FeatureGroups in WP-E; ASCII
+  rule: ä/ö/ü/ß become ae/oe/ue/ss.
+- **D2 Cross-portal join level.** M1 sources carry no AGS: `kerg.csv` keys on
+  Wahlkreis number (`Nr;Gebiet;gehört zu`), UBA keys on `station_id`. The AP2
+  cross-portal recipe joins Destatis population with Bundestagswahl results at
+  Land level (kerg rows with `gehört zu = 99`) through a 16-row Land-to-AGS-2
+  constant. Kreis-level cross-portal joins and UBA station-to-region mapping
+  are out of scope for AP2.
+- **D3 Job path.** M2 scope is detection of the "result too large" envelope
+  plus an actionable error (why the password path is needed, how to shrink
+  the selection, how to fetch manually). The full submit/poll/download/remove
+  path is stretch. Recipes are chosen small enough not to need it.
+- **D4 Mapping level.** Kreis (5-digit AGS) is M2 scope. Gemeinde (8-digit)
+  and 12-digit ARS are stretch; the data model keeps keys as strings so the
+  levels can be added without migration.
+- **D5 Hosts and discovery.** The base URL is a field on the locator with
+  GENESIS-Online as default. Regionalstatistik and the Zensus database are not
+  implemented and not designed beyond that field. No catalogue/discovery
+  helper in AP2; recipes name table codes.
+- **D6 POST cache freshness.** Cache hit wins (deterministic reruns), explicit
+  `refresh` escape hatch, no TTL refetch. A warning is logged when a cached
+  payload is older than 30 days. Recipes carry retrieval timestamp and sha256
+  so staleness is visible.
+- **D7 Politeness.** The Destatis client serializes GENESIS calls behind a
+  process-level lock, so mloda's threading or multiprocessing modes cannot
+  fan out requests. No client-side parallelism, ever.
+- **D8 Live tests.** Marker `live` stays; live tests additionally skip with a
+  visible reason when `GENESIS_TOKEN` (or user plus password) is absent. Run
+  manually before each biweekly funder update, never scheduled: the
+  application mentions a weekly live CI run, and the reconciliation (ToS
+  question open, manual smoke instead) is written for the funder in the
+  planning repo.
+- **D9 Fixture attribution.** Real payloads committed as fixtures ship with a
+  `NOTICE` in the fixture directory naming source, license, and attribution
+  string (Destatis, Eurostat, BBSR long form).
+- **D10 Validation.** Pydantic models for the error envelope, the locator, and
+  the recipe file (fail-fast, as the application names it); table columns are
+  typed through the Arrow schema and layout drift raises.
+- **D11 Excel reader.** openpyxl (pandas is already a dependency and
+  `read_excel` needs it anyway); recorded with the 7-day exclude-newer window
+  in mind.
 
-### U2: Empirical researcher (DIW-like)
+## 5. Work packages
 
-Long time series across territorial reforms, citation and method requirements,
-version pinning matters more than convenience.
+Estimates are effort, not calendar. Sum: about 245 h. Budget and pace
+scenarios are in the planning companion.
 
-Acceptance scenario: "Population 1995 to 2024 for all Kreise, re-based to
-Gebietsstand 2024 with the BBSR proportional keys, with the method, key
-edition, and citation strings exportable for a paper appendix." Exercises: the
-Umsteigeschluessel path, edition selection (Gebietsstand, NUTS version, key
-vintage), modification marking, deterministic reruns.
+### WP-A: GENESIS client and auth (about 45 h)
 
-What U2 must never hit: an unlabeled re-based value (every harmonized number
-must be distinguishable from a reported number), or a crosswalk applied to the
-wrong direction (old-to-new vs new-to-old).
+`feature_groups/destatis/core/` next to the govdata core, reusing
+`client.py`.
 
-### U3: Civic-tech Python user (CorrelAid / pystatis user)
+- Endpoints in scope (verify names and parameters against doc v5.0 in
+  week 1): `helloworld/whoami`, `helloworld/logincheck`, `data/tablefile`
+  (parameters: `name`, `startyear`, `endyear`, `regionalvariable`,
+  `regionalkey`, `classifyingvariable1..3`, `classifyingkey1..3`, `format`,
+  `language`, `job`, `compress`, `transpose`, `stand`), and for the stretch
+  job path `catalogue/jobs`, `data/resultfile`, `profile/removeresult`.
+- `DestatisCredentials`: explicit option, then env (`GENESIS_TOKEN`,
+  `GENESIS_USER`, `GENESIS_PASSWORD`; host-prefixed variants). Whitespace
+  normalized. Never logged, never in cache keys, metadata, recipes, snapshots,
+  or fixtures.
+- POST request layer: form-encoded, auth mechanism verified against the doc
+  (do not trust token-as-username folklore), `language` pinned per request,
+  the D7 lock.
+- Error envelope: application status inside HTTP 200 bodies, characterized
+  in week 1 (bad credentials, unknown table, empty selection, too large, job
+  accepted), mapped to typed exceptions. Missing credentials error names the
+  env vars and says registration is free and same-day, with the URL. Auth
+  failures are not retried.
 
-Already solves raw API access, often with pystatis; our differentiators are
-harmonization, typed Arrow output, cross-portal composition, and the GovData
-side. Most likely early contributor.
+### WP-B: Table retrieval, ffcsv parsing, reader (about 50 h)
 
-Acceptance scenario: "Pull one GENESIS table without learning EVAS internals,
-join it with UBA air data by region and month, all typed, then share the pull
-as a recipe file." Exercises: cross-source alignment, the recipe format, low
-ceremony credentials.
+- Fetch seam in `BaseGovDataReader`: extract `_fetch(locator, client) ->
+  cached path` from `_read_table` so M1 readers keep CKAN plus GET and
+  `DestatisReader` overrides with POST plus the parameter cache. `_parse`
+  gets a source-neutral provenance object instead of `ResolvedDistribution`.
+- Parameter-keyed POST cache: key over host, endpoint, canonically ordered
+  and normalized parameters (sorted region lists, integer years), credentials
+  excluded; D6 freshness rules; shares the cache directory with the GET path
+  without collisions.
+- `data/tablefile` with `format=ffcsv`, zip unpacking (characterize member
+  count and names), decompressed-size cap.
+- ffcsv parser in `destatis/core/parse.py`: import the encoding ladder,
+  dialect, decimal-comma and marker handling from `govdata/core/parse.py`;
+  add the English header contract, time column parsing (delegated to the
+  WP-E period model), quality-flag columns if present. A column that cannot be
+  typed raises with the offending cell.
+- `DestatisLocator`: table code (`12411-0015` style), optional region and
+  classifying selection, start/end year, host, language, format pin;
+  `from_string` accepts a bare table code.
+- `DestatisReader(BaseGovDataReader)` with `_fetch`, `_parse`, `suffix`, and
+  `peek`.
 
-Positioning note: do not rebuild pystatis and do not disparage it. The honest
-answer to "why not pystatis" is the layer above raw access: harmonization,
-typed output, one declarative interface across GovData, publisher APIs, and
-Destatis. Keep that answer true.
+### WP-C: Large-table detection (about 8 h)
 
-### U4: Contributor (adds the next table or recipe)
+D3: detect the too-large envelope and raise the actionable error. Full job
+path is stretch (about 20 h if pulled in).
 
-Must be able to add a Destatis table recipe by following docs, without a
-GENESIS account for the fixture-level tests, in under an hour. Exercises:
-module seams, fixture tooling, `docs/adding-a-reader.md` extension for the
-Destatis path.
+### WP-D: AGS-to-NUTS mapper (about 45 h)
 
-### U5: CI and unattended runs
+Standalone pure-Python module `mloda_plugin_govdata/harmonization/`, usable
+without mloda, wrapped by FeatureGroups in WP-E.
 
-The default test run needs no credentials and no network. Live tests are
-opt-in via env-gated markers. Fork PRs (no secrets) must pass. Recorded
-fixtures never contain credentials.
+- Loaders: Eurostat NUTS correspondence and LAU-to-NUTS (xlsx), Destatis
+  GV-ISys (xlsx and GV100 fixed-width), BBSR Umsteigeschluessel (xlsx,
+  Kreise; Gemeinden with D4 stretch). Runtime fetch through the GET cache,
+  pinned by URL plus sha256; a small redistributable extract per source ships
+  as a fixture (D9).
+- Mapping core: 5-digit AGS to NUTS-1/2/3 for a named edition pair. Keys are
+  strings with leading zeros everywhere.
+- Edition model: every call names Gebietsstand and NUTS version; default
+  "latest shipped" with a warning when data year and edition year diverge.
+  Current Eurostat tables are NUTS 2027 / LAU 2025; that is data, not a
+  constant.
+- Diagnostics as data: matched rows plus a structured unmatched-key report;
+  fail-loud default, opt-in drop or flagged pass-through.
 
-## 4. Scope: work packages
+### WP-E: Period model, re-basing, mloda integration (about 40 h)
 
-### WP-A: GENESIS client and auth (est. 55 h)
+- Period model: typed representation (period start date plus frequency tag)
+  with parsers for GENESIS time labels (years first; quarters and months as
+  found in the chosen tables) and for the M1 time columns. Join at equal
+  frequency only; mismatch raises with resampling guidance.
+- Re-basing: BBSR proportional keys onto a target Gebietsstand; explicit
+  direction and key edition, documented rounding, share-sum check with
+  tolerance (renormalize inside, raise beyond). Every re-based value carries a
+  flag column; census breaks (2011, 2022) are noted, not smoothed.
+- mloda integration: harmonization and alignment as derived FeatureGroups over
+  the reader outputs (`input_features` composition). Read mloda-registry
+  guides 02, 03, 04, 08, 11, 26, 27 first; the D1 naming scheme is applied
+  here.
 
-New `feature_groups/destatis/core/` alongside the existing govdata core,
-reusing `client.py` retry/timeout policy where possible.
+### WP-F: Recipes, six total (about 35 h)
 
-Deliverables:
+- Recipe format first: mloda's JSON `feature_config` (`load_features_from_config`
+  exists in mloda 0.10) plus a small Feature-to-JSON writer and a compliance
+  block (D10 model): license id, attribution string, dataset URI, retrieval
+  timestamp, payload sha256, modification markers, required credential env
+  names. No credentials in recipes.
+- Three new recipes (tables to be pinned in week 0/1; all sized to skip the
+  job path): (1) population by Kreis over time, GENESIS 12411 family, the U2
+  re-basing scenario; (2) a Kreis-level labor-market or income indicator, the
+  U1 rate-with-denominator scenario; (3) Destatis population by Land joined
+  with Bundestagswahl results by Land (D2), the U3 and Demo Day scenario.
+- Three M1 retrofits (population, elections, UBA) authored and tested as
+  recipe files. Not free: budgeted here.
 
-- `DestatisCredentials`: resolved from explicit option, then environment
-  (`GENESIS_TOKEN`, `GENESIS_USER`, `GENESIS_PASSWORD`; host-prefixed
-  variants for other hosts, see multi-host below). Token path for normal
-  calls, password path required for `job=true`. Never logged, never in cache
-  keys, never in recipes or snapshots, never in recorded fixtures.
-- POST request layer on the pooled client: form-encoded parameters, the
-  documented auth header/field convention (verify exact mechanism against doc
-  v5.0 in week 1; do not trust older token-as-username folklore), language
-  parameter pinned explicitly per request.
-- Error envelope handling: GENESIS is expected to return application-level
-  status codes inside HTTP 200 bodies. Characterize the real envelope in week
-  1 (fixtures for: bad credentials, unknown table, empty selection, result
-  too large, job accepted) and map to typed exceptions with actionable
-  messages. A missing-credentials error must tell the user that registration
-  is free and same-day, with the URL.
-- Multi-host by construction: the base URL is part of the locator, with
-  GENESIS-Online (www-genesis.destatis.de) implemented and Regionalstatistik
-  (www.regionalstatistik.de) and the Zensus database left as configuration
-  points, each with separate credentials. Many Kreis/Gemeinde-level tables
-  live in Regionalstatistik, so this seam matters even though implementing
-  the second host is a stretch goal (see cut lines).
-- Politeness: strictly sequential requests, no client-side parallelism,
-  jittered backoff (already in the retry layer), Retry-After honored.
+### WP-G: Docs, demo, handoff (about 20 h, woven through)
 
-### WP-B: Table retrieval and ffcsv parsing (est. 45 h)
+README Destatis section, `docs/adding-a-reader.md` extension for the
+Destatis path, credential setup doc, demo notebook chapter, `pyproject.toml`
+description fix (v3 to v5.0), planning-repo updates (milestone status, ADRs
+0002 onward, learnings as they happen). One GitHub issue per WP plus an M2
+milestone on the upstream repo, so U4 and the cut lines are visible.
 
-Deliverables:
+## 6. Rulebook (edge cases the tests are graded against)
 
-- `data/tablefile` retrieval with `format=ffcsv`, zip unpacking (verify: one
-  file per zip or several; characterize), stored through the download cache.
-- POST-aware cache extension: the M1 `DownloadCache` keys on GET URL and
-  revalidates with conditional GET; GENESIS responses are POST bodies. Extend
-  with a deterministic key over host + endpoint + canonically ordered
-  parameters, credentials stripped from the key. No conditional revalidation
-  on this path; instead an explicit `refresh` escape hatch and a documented
-  default (cache hit wins). Published statistics are revised, so `peek` docs
-  and the README must say how to force a refetch.
-- ffcsv parser in `destatis/core/parse.py`: reuse the encoding ladder,
-  semicolon dialect, decimal-comma and value-marker handling from
-  `govdata/core/parse.py` (import, do not copy); add what is new: English
-  header contract, time/period columns, value-quality flag columns if the
-  format carries them (characterize in week 1), long-format guarantees.
-  Fail-loud posture as in M1: a column that cannot be typed raises with the
-  offending cell, never silently degrades to strings.
-- `DestatisReader(BaseGovDataReader)` wired exactly like the M1 readers
-  (`_parse` override, `suffix() == (".zip",)` or the unpacked inner suffix,
-  `peek` support), so `mloda.run_all([Feature("value", options={DestatisReader:
-  locator})], ...)` works identically to the M1 call shape.
-- `DestatisLocator`: table code (EVAS-style, e.g. `12411-0015`), optional
-  region selection, start/end year, host, language, format pin. String
-  coercion like `GovDataLocator.from_string` (a bare table code is enough for
-  the default host). Parameter canonicalization gives stable cache keys, the
-  same trick as `uba_measures_url`.
+Each item is handled, detected-and-raised, or documented out of scope. Silent
+wrong output is the only forbidden outcome.
 
-### WP-C: Large tables, the job path (est. 25 h)
+Auth and credentials
 
-Oversized selections require `job=true` and password credentials.
+- No credentials: actionable error; `peek` on an already-cached table works.
+- Token present but password path needed: error explains why.
+- Wrong or expired credentials: mapped from the real envelope, no retry.
+- Special characters and whitespace in env values: normalized and tested.
+- Redaction everywhere (D8 list); one test asserts it on the fixture capture
+  tooling.
+- Host-scoped credentials: wrong host fails with a clear message.
 
-Deliverables: trigger detection (the "result too large" envelope), job
-submission, polite polling with backoff against the job list, result file
-download, and cleanup via the documented removal call so the account's result
-store does not fill up. Poll budget bounded (the API kills requests at 15
-minutes; our own polling deadline should be configurable and default to a few
-minutes with a clear timeout error). If credentials are token-only, the error
-must say exactly why the password path is needed and how to provide it.
+API behavior
 
-Scope guard: the three M2 recipes are chosen small enough not to need the job
-path (see WP-F), so WP-C is required for correctness and honesty of the
-connector, but the recipes do not depend on it. If time collapses, WP-C
-degrades to detection plus a documented "how to fetch this table manually"
-error, never a hang.
-
-### WP-D: AGS-to-NUTS mapper (est. 60 h)
-
-Net-new, and deliberately a standalone pure-Python module
-(`mloda_plugin_govdata/harmonization/`) usable without mloda, wrapped by
-FeatureGroups in WP-E. Two reasons: it is independently valuable (nothing on
-PyPI does this), and pure functions over small tables are the easiest thing
-to test exhaustively.
-
-Deliverables:
-
-- Reference-data loaders: Eurostat NUTS correspondence and LAU-to-NUTS tables
-  (xlsx), Destatis GV-ISys (xlsx and GV100 fixed-width ASCII), BBSR
-  Umsteigeschluessel (xlsx, Gemeinden and Kreise, 1990 to 2024). All fetched
-  at runtime through the existing GET download cache and pinned by URL plus
-  sha256; additionally, now that redistribution is confirmed, a small pinned
-  extract ships as a package test fixture so U4 and U5 work offline. Excel
-  parsing needs an extra dependency (openpyxl or calamine); pick one, justify
-  in the ADR, respect the uv exclude-newer supply-chain window.
-- The mapping core: AGS to NUTS-1/2/3 for a chosen edition pair, Kreis level
-  first (5-digit AGS), Gemeinde level (8-digit) second. Everything keyed as
-  strings with preserved leading zeros, everywhere, always (see edge cases).
-- Edition model: every mapping call names its Gebietsstand (reference date)
-  and NUTS version explicitly, with a documented default of "latest shipped"
-  and a loud warning when data year and edition year diverge. Version
-  selection is designed, not hardcoded; the current Eurostat tables are NUTS
-  2027 / LAU 2025 but that is a fact about today, not a constant.
-- Diagnostics as data: mapping returns matched rows plus a structured report
-  of unmatched keys (the GERDA finding: official AGS keys sometimes match no
-  crosswalk). Default behavior fail-loud with the report; opt-in modes to
-  drop or pass through unmatched rows, always flagged.
-
-### WP-E: Time-series alignment and re-basing (est. 40 h)
-
-Deliverables:
-
-- Period model: one documented, typed representation for year, quarter, and
-  month periods (period start date plus frequency tag), with parsers from the
-  GENESIS time labels (characterize the real ffcsv time column values in week
-  1: years, "1. Vierteljahr" style quarters, month names, German date forms)
-  and from the M1 sources' time columns. Join-compatibility across sources at
-  equal frequency is the acceptance test (U3's UBA join).
-- Gebietsstand re-basing: apply the BBSR proportional keys to move a series
-  onto a target Gebietsstand. Explicit direction, explicit key edition,
-  documented rounding policy, and a check that shares per source region sum
-  to 1 within tolerance (renormalize inside tolerance, raise beyond it).
-  Every re-based value is flagged in a companion column: this is the
-  dl-de/by-2-0 modification-marking requirement turned into a feature, and it
-  is exactly what U2 needs for a methods appendix.
-- mloda integration: harmonization and alignment as derived FeatureGroups
-  over the reader outputs (`input_features` composition), so the calling code
-  stays a plain feature list. Read the registry guides before this lands
-  (feature-group-patterns 02, 03, 04, 08, 11, 26, 27); the naming scheme for
-  chained features (toward the application's `destatis__bevoelkerung__kreise`
-  promise) is decided here and recorded in the ADR.
-
-### WP-F: Recipes, six total (est. 30 h)
-
-Define the recipe artifact first, then fill it:
-
-- Recipe format: a JSON document (mloda already loads feature configs; the
-  Feature-to-JSON shim is small) carrying the feature list, reader options,
-  and the mandatory compliance block: license id, attribution string, dataset
-  URI, retrieval timestamp, sha256 of the payload, and modification markers.
-  Credentials are never part of a recipe; a recipe declares which credential
-  env vars it needs.
-- Three new recipes (candidates, to be validated for size and table stability
-  in week 1; all chosen to skip the job path):
-  1. Population by Kreis over time (GENESIS 12411 family): the U2 scenario,
-     exercises re-basing across the 2021 Eisenach merger and friends.
-  2. A labor-market or income indicator by Kreis: the U1 scenario, joins with
-     recipe 1 for a rate with population as denominator.
-  3. A cross-portal recipe joining a Destatis series with an M1 source
-     (UBA air quality or the election results) on harmonized region and
-     period: the U3 scenario and the Demo Day story, because it shows the
-     layer no other tool has.
-- The three M1 pulls are retrofitted into the same recipe format (cheap once
-  the shim exists) so "6 recipes total" is literal.
-
-### WP-G: Docs, demo, and handoff (est. 20 h, woven through)
-
-README Destatis section mirroring the M1 usage style, `docs/adding-a-reader.md`
-extension for Destatis tables, credential setup doc (registration is free and
-same-day; that fact removes the biggest onboarding excuse), demo notebook
-gaining a Destatis plus harmonization chapter, and planning-repo updates
-(milestone status, an ADR for the AP2 architecture decisions, learnings as
-they happen: measured job-path behavior, real error envelopes, ffcsv quirks).
-
-Estimated total: 275 h against 290 budgeted, with the difference as explicit
-buffer. Two of nine calendar weeks are already gone; the cut lines in section
-8 say what falls off first.
-
-## 5. Architecture decisions to record (ADR at first implementation PR)
-
-1. Module layout: `feature_groups/destatis/` (reader, locator, core/auth,
-   core/api, core/parse) plus source-neutral `harmonization/` at package
-   level. Mirrors the M1 convention: source-specific parse near the source,
-   shared logic importable without a reader.
-2. Cache: extend, do not replace. GET path untouched; POST path adds
-   parameter-keyed entries with explicit refresh, no conditional
-   revalidation, credentials excluded from keys and metadata.
-3. Credentials: env-first with explicit-option override, dual-path by design,
-   host-scoped. No secrets manager dependency in AP2; document the env names
-   once and reuse everywhere.
-4. Harmonization as data-plus-flags, never in-place mutation: harmonized
-   outputs carry marker columns instead of replacing observed values
-   silently. Serves U1/U2 trust and the license's modification-marking duty
-   simultaneously.
-5. Reference data policy: runtime fetch with pinned editions and sha256, plus
-   one small redistributable fixture extract per source now that BBSR
-   licensing is confirmed. Attribution strings for BBSR ("Laufende
-   Raumbeobachtung des BBSR"), Eurostat, and Destatis ship as constants next
-   to the loaders.
-6. pystatis: considered as a dependency, rejected for AP2 (we need our own
-   caching, politeness, typed-Arrow, and mypy-strict posture, and the API
-   surface we use is small), revisit if the connector scope grows. Record the
-   reasoning so the U3 conversation stays honest.
-
-## 6. Edge-case catalog
-
-The checklist the implementation and its tests are graded against. Grouped;
-each item is either handled, detected-and-raised, or explicitly documented as
-out of scope. Silent wrong output is the only forbidden outcome.
-
-### Auth and credentials
-
-- No credentials at all: actionable error naming the env vars and the
-  same-day registration; `peek` against an already-cached table still works.
-- Token present but job path needed: error explains the password requirement
-  (verified API constraint, not our whim).
-- Wrong or expired credentials: mapped from the real error envelope, no
-  retry storm (auth failures are not retryable).
-- Special characters in passwords, whitespace around env values: normalize
-  and test.
-- Credentials must never appear in: logs, exception messages, cache keys,
-  cache metadata, recipes, snapshots, recorded fixtures, or the demo
-  notebook. One test asserts redaction on the recorded-fixture pipeline.
-- Two hosts, two accounts: credential resolution is host-scoped; using
-  GENESIS-Online credentials against Regionalstatistik fails with a clear
-  message, not a confusing 200-with-error-body.
-
-### API behavior
-
-- Application errors inside HTTP 200 bodies: every response goes through
-  envelope inspection before parsing; unknown envelope shapes raise with the
+- Envelope inspection before parsing; unknown envelope shapes raise with the
   raw status block quoted.
-- Result too large: detected, routed to the job path or a clear error, never
-  a truncated table.
-- Job lifecycle: queued, running, done, failed, result expired; polling has
-  a deadline; results are cleaned up after download; a crashed run does not
-  strand results forever (cleanup is attempted on next run, best effort).
-- The 15-minute server-side kill and the parallel-request cap: sequential
-  requests only; long pulls prefer the job path by design.
-- `pagelength` and paging on list-style endpoints (catalogue/discovery):
-  paginate lazily like the M1 `search_datasets`, stop conditions tested.
-- Maintenance windows and 5xx: existing retry policy with Retry-After cap
-  applies; a scheduled-maintenance HTML body instead of JSON must raise a
-  useful error, not a JSONDecodeError.
-- Language parameter: pinned explicitly; tests assert we never depend on
-  server-side default labels (the UBA reader's canonical-schema lesson).
-- API version drift: the client sends against one documented version; a
-  changed envelope or changed ffcsv layout fails loudly (the UBA
+- Result too large: detected, actionable error (D3), never a truncated table.
+- Maintenance HTML instead of JSON: useful error, not a JSONDecodeError.
+- Version drift: changed envelope or ffcsv layout fails loudly (the UBA
   `_check_layout` pattern, ported).
+- Sequential requests only (D7).
 
-### Payload and parsing
+Payload and parsing
 
-- Zip handling: empty zip, multiple members, unexpected member names,
-  zip-bomb guard (size cap on decompressed bytes, configurable).
-- Encodings: ladder reused; ffcsv nominally windows-1252, but test utf-8 and
-  BOM variants too.
-- Value markers: `-` is zero, `.` `...` `/` `x` `()` are null-like blocks
-  (secrecy, not-yet, undefined); ffcsv may also carry quality flags (e, p) in
-  companion columns or attached to values; week-1 characterization decides,
-  tests pin it. The zero-vs-missing distinction gets a dedicated test per
-  recipe because it is the U1 correction scenario.
-- Numbers: decimal commas, thousands dots, negative values, huge counts
-  (int64, never through float), empty cells at row ends.
-- Time labels: all frequencies present in the chosen tables, plus the
-  unexpected-label case (raise with the label, do not guess).
-- Empty result table (valid selection, no data): typed empty table with the
-  declared schema, not an exception, and `peek` still shows columns.
-- Duplicate column names, columns beyond the documented contract: detect and
-  raise (layout drift), never positional guessing beyond the pinned
-  contract.
+- Zip: empty, multiple members, unexpected names, decompressed-size cap.
+- Encodings: ladder reused; test utf-8 and BOM variants too.
+- Markers: `-` is zero; `. ... / x ()` are null-like; quality flags pinned by
+  fixture. Zero-vs-missing gets a dedicated test per recipe.
+- Numbers: decimal commas, thousands dots, negatives, int64 counts never via
+  float, empty trailing cells.
+- Time labels: every frequency present in the chosen tables; unexpected label
+  raises with the label.
+- Empty result: typed empty table with the declared schema; `peek` shows
+  columns.
+- Duplicate or extra columns: raise (layout drift).
 
-### Region keys and mapping
+Region keys and mapping
 
-- Leading zeros: AGS/ARS are strings end to end; a test feeds an
-  Excel-mangled integer key (01001 turned 1001) and asserts the loud repair
-  path (left-pad only when unambiguous by level and length, otherwise raise).
-- Key levels: 2 (Land), 5 (Kreis), 8 (Gemeinde) digit AGS, 12-digit ARS with
-  Verband part; mixing levels in one input is detected.
-- City-states: Berlin and Hamburg (and Bremen's two-city split) where Land,
-  Kreis, and Gemeinde collapse; mapping tables treat them consistently.
-- Gemeindefreie Gebiete and special areas: present in GV-ISys, often absent
-  elsewhere; unmatched-key report covers them.
-- Reforms: mergers, splits, renames, and the reuse of freed keys; the mapper
-  never assumes a key means the same thing in two Gebietsstand editions.
-  The 2021 Eisenach-into-Wartburgkreis merger is the canonical test case.
-- Unmatched keys (the GERDA 1000+ finding): structured report, fail-loud
-  default, flagged pass-through option.
-- Crosswalk quality: shares per source region must sum to 1 within
-  tolerance; duplicated (source, target) pairs; zero-share rows; the
-  direction of every key file (old-to-new vs new-to-old) asserted from the
-  file's own metadata in a fixture test, not assumed.
-- Edition mismatches: data year outside the key coverage (before 1990 or
-  after the latest edition) raises with the covered range; LAU table marked
-  "partially validated" by Eurostat is a documented caveat, not silently
-  trusted.
-- NUTS version drift: mapping output names its NUTS version; joining two
-  tables harmonized to different NUTS versions raises.
+- Leading zeros: strings end to end; Excel-mangled integer keys (01001 as
+  1001) are repaired only when unambiguous by level and length, else raise.
+- Levels: 2, 5, 8 digit AGS and 12-digit ARS detected; mixed levels in one
+  input raise.
+- City-states (Berlin, Hamburg, Bremen's two cities) treated consistently.
+- Gemeindefreie Gebiete: covered by the unmatched-key report.
+- Reforms (mergers, splits, renames, key reuse): the mapper never assumes a
+  key means the same thing in two editions. Test case: a documented 2021
+  Kreis merger, verified against GV-ISys before the test is pinned.
+- Unmatched keys: structured report, fail-loud default, flagged pass-through
+  option.
+- Crosswalk quality: share sums within tolerance; duplicated pairs; zero-share
+  rows; direction asserted from the key file's own metadata in a fixture test.
+- Edition mismatch: data year outside key coverage raises with the range; the
+  "partially validated" LAU table is a documented caveat.
+- NUTS version drift: outputs name their version; joining across versions
+  raises.
 
-### Time series
+Time series and freshness
 
-- Frequency mismatch on join (annual vs monthly): explicit error with the
-  offered resampling guidance, no implicit aggregation in AP2.
-- Census rebasing jumps (2011 and 2022 Zensus revisions of population
-  series): not smoothed, but documented in the recipe notes; the flags column
-  design leaves room for a "series break" marker.
-- Retroactive data revisions upstream: cache default serves the cached
-  payload; the recipe's sha256 plus retrieval timestamp make staleness
-  visible; `refresh` documented.
+- Frequency mismatch on join: explicit error, no implicit aggregation.
+- Census breaks: documented in recipe notes; the flag column leaves room for a
+  series-break marker.
+- Upstream revisions: D6 (cache hit wins, warning after 30 days, `refresh`).
 
-### Operational
+Operational
 
-- No network (plane, CI): default test suite fully offline; runtime cache
-  misses raise a clear network error naming the URL.
-- No credentials in CI and on fork PRs: live tests skip cleanly with a
-  visible skip reason; the suite never half-runs.
-- Cache directory shared between GET and POST paths without key collisions;
-  corrupted cache entries re-download (M1 behavior, kept).
-- Windows: paths, cp1252 consoles, no os-specific test breakage (the fixture
-  suite runs on the CI matrix as today).
-- Supply chain: new dependencies (Excel reader) respect the 7-day
-  exclude-newer window and pass pip-audit.
+- Offline by default; cache misses raise a clear network error naming the
+  URL.
+- No credentials in CI or on fork PRs: live tests skip visibly.
+- Corrupted cache entries re-download (M1 behavior).
+- New dependency (openpyxl) respects exclude-newer and passes pip-audit.
 
 ## 7. Test strategy
 
-Same three-level posture as M1, applied to the new surface:
-
-1. **Fixtures first (week 1 deliverable):** captured real payloads, committed
-   before parser code: one small ffcsv table zip per recipe candidate, the
-   error envelopes (bad auth, unknown table, empty selection, too large), a
-   job-path transcript, and one small extract per reference-data source
-   (Eurostat, GV-ISys both formats, BBSR keys). Credentials redacted at
-   capture time by tooling, not by hand.
-2. **Unit and contract:** respx-mocked client tests for auth paths, envelope
-   mapping, retry/backoff, cache keying (including credential exclusion);
-   parser tests pinned to fixtures; hypothesis properties for the mapper
-   (share sums, string-key preservation, level detection, unmatched-report
-   completeness) and for period parsing round-trips.
-3. **Integration:** `mloda.run_all` end to end against fixtures for every
-   recipe; the cross-source join scenario as the flagship test; env-gated
-   live smoke tests (one tiny table, whoami) run manually and before each
-   biweekly update, never scheduled (the M1 politeness rule stands until the
-   ToS question is formally closed, and there is no CI credential story yet).
+1. Fixtures first (week 1): one small ffcsv zip per recipe candidate, the
+   error envelopes, and one small extract per reference-data source, captured
+   by tooling that redacts credentials, committed with the D9 `NOTICE`.
+2. Unit and contract: respx-mocked client tests (auth paths, envelope
+   mapping, retry, cache keying with credential exclusion, the D7 lock);
+   parser tests pinned to fixtures; hypothesis properties for share sums,
+   string-key preservation, level detection, and period round-trips.
+3. Integration: `mloda.run_all` end to end against fixtures for every recipe;
+   the Land-level cross-portal join as the flagship test; `live`-marked smoke
+   (whoami, one tiny table) run manually per D8.
 
 ## 8. Schedule, checkpoints, cut lines
 
-Remaining calendar: 6.5 weeks (Aug 14 to Sep 30). Weeks are Mon-Sun; the
-biweekly funder updates are fixed posts.
+Weeks are Mon-Sun. Biweekly funder updates fall on Mondays; each Friday's
+state is the update material. Exact update dates are tracked in the planning
+companion.
 
-- **Week 0 remainder (Aug 14 to 16):** this plan reviewed; ADR skeleton;
-  `whoami` verified live; recipe-candidate tables checked for size and
-  availability on GENESIS-Online vs Regionalstatistik (this decides whether
-  the multi-host stretch becomes mandatory scope, the single riskiest
-  unknown in the plan).
-- **Week 1 (Aug 17 to 23):** WP-A auth layer plus envelope characterization;
-  fixture capture tooling and the committed fixture set; update #6 (Aug 17)
-  reports AP2 started with verified API contact.
-- **Week 2 (Aug 24 to 30):** WP-B: tablefile pull, POST cache, ffcsv parser,
-  `DestatisReader` end to end on fixtures; first live table pull.
-  Checkpoint C1 (Aug 30): a real GENESIS table arrives as a typed Arrow
-  table via `mloda.run_all`. If C1 fails, everything in WP-C to WP-E freezes
-  until it passes; the connector is the milestone's spine.
-- **Week 3 (Aug 31 to Sep 6):** WP-C job path; second table/recipe wired;
-  discovery helper if cheap; update #7 (Aug 31) shows the end-to-end demo.
-- **Week 4 (Sep 7 to 13):** WP-D mapper core with Eurostat plus GV-ISys
-  loaders, Kreis level, edition model, unmatched-key report.
-- **Week 5 (Sep 14 to 20):** WP-D Gemeinde level plus BBSR keys; WP-E period
-  model and re-basing; update #8 (Sep 14) shows the first harmonized series.
-  Checkpoint C2 (Sep 20): the U2 scenario runs (re-based multi-year Kreis
-  series, flagged, edition-pinned). If C2 is red, invoke cut line 2.
-- **Week 6 (Sep 21 to 27):** WP-E mloda FeatureGroups; WP-F recipes finalized
-  in the format with compliance fields; cross-source recipe; docs and demo.
-- **Week 6.5 (Sep 28 to 30):** M2 acceptance walkthrough against section 1;
-  update #9 (Sep 28) is the M2 report; planning-repo status flips.
+- **Week 0 (Aug 14 to 16):** plan reviewed; live `whoami`; recipe-candidate
+  tables checked for size and host (GENESIS-Online vs Regionalstatistik), the
+  single riskiest unknown; GitHub issues per WP opened.
+- **Week 1 (Aug 17 to 23):** WP-A auth, endpoint verification, envelope
+  characterization; fixture capture tooling and the committed fixture set,
+  including the reference-data extracts (WP-D does not wait for the
+  connector); the WP-B fetch seam.
+- **Week 2 (Aug 24 to 30):** WP-B tablefile pull, POST cache, ffcsv parser,
+  `DestatisReader` on fixtures; first live pull. **Checkpoint C1 (Aug 30):**
+  a real GENESIS table arrives as a typed Arrow table via `mloda.run_all`. If
+  C1 is red, WP-C, WP-E integration, and WP-F wait; WP-D continues (it is
+  standalone).
+- **Week 3 (Aug 31 to Sep 6):** WP-C detection; second table wired; recipe
+  format and Feature-to-JSON writer; period model parsers (pure functions).
+- **Week 4 (Sep 7 to 13):** WP-D loaders, Kreis mapping, edition model,
+  unmatched-key report.
+- **Week 5 (Sep 14 to 20):** WP-D BBSR keys; WP-E re-basing. SciCAR
+  (Dortmund, Sep 17 to 18) takes two days for interviews; the week is planned
+  at three working days. **Checkpoint C2 (Sep 20):** the U2 scenario runs
+  (re-based multi-year Kreis series, flagged, edition-pinned). If red, pull
+  cut line 3.
+- **Week 6 (Sep 21 to 27):** WP-E FeatureGroups; WP-F recipes including
+  retrofits and the Land-level cross-portal recipe; docs and demo.
+- **Sep 28 to 30:** acceptance walkthrough against section 1; planning-repo
+  status flips. Stretch items only if everything above is green.
 
 Cut lines, in the order they are pulled:
 
-1. Regionalstatistik host support drops to "designed, documented, not
-   implemented" (unless week-0 table checks force it into scope; then the
-   Zensus host takes this slot and one recipe swaps to a GENESIS-Online
-   table).
-2. Gemeinde-level mapping drops; Kreis-level mapping plus re-basing is the
-   M2 harmonization claim (it covers all three recipes and both U1/U2
-   scenarios).
-3. The job path degrades to detection with a documented manual workaround.
-4. The discovery helper (catalogue search) drops entirely; recipes name
-   table codes directly.
-5. Never cut: the compliance fields in recipes, the zero-vs-missing tests,
-   the flags-on-harmonized-values design, and tox green. These are the
-   trust surface; a smaller honest M2 beats a wider silent one.
+1. The Land-level cross-portal recipe becomes a Destatis-only two-table join
+   (recipe 3 still exists; the "cross-portal" claim moves to AP3).
+2. Quarter and month period parsing drop; annual only for M2.
+3. mloda FeatureGroup wrappers for harmonization drop to "pure module plus a
+   worked notebook example"; the M2 harmonization claim is carried by the
+   module and its tests.
+4. The three M1 retrofits shrink to one worked retrofit plus a documented
+   template for the other two.
 
-## 9. Risks and open questions
+Stretch, only after acceptance is green: full job path, Gemeinde-level
+mapping, Regionalstatistik host, discovery helper.
 
-- **Table availability split across hosts** (GENESIS-Online vs
-  Regionalstatistik) is the top schedule risk; resolved by the week-0 check,
-  hedged by cut line 1.
-- **Undocumented envelope or ffcsv surprises:** budgeted via the
-  characterization-first week 1; every surprise becomes a fixture and a
-  planning-repo learning the day it appears.
-- **Capacity:** 275 h of plan against 6.5 remaining weeks is tight but real
-  only if the weeks are actually full; the cut lines are ordered so slipping
-  degrades breadth, not correctness.
-- **Second Stage jury timing** (around September) may demand demo attention
-  mid-AP2; the walking-skeleton ordering means there is always a current
-  demo, which is also the FOSSGIS abstract hedge (draft due late October,
-  from exactly the material weeks 2 to 5 produce).
-- Open: which NUTS version the Sep 2026 Destatis regional series effectively
-  align to (decided by data inspection in week 4, exposed as the edition
-  parameter either way); whether ffcsv carries quality flags as columns
-  (week 1); UBA and Bundeswahlleiterin ToS follow-ups inherited from M1 (not
-  AP2-blocking).
+Never cut: compliance fields in recipes, zero-vs-missing tests, flags on
+harmonized values, `tox` green. A smaller honest M2 beats a wider silent one.
 
-## 10. Explicitly out of scope for AP2
+## 9. Open questions (owner: this plan, resolve in the week named)
 
-- New data sources beyond Destatis (application commitment: only after
-  validated demand).
-- Resampling/aggregation across frequencies, seasonal adjustment, any
-  statistics beyond faithful re-keying and re-basing.
-- A no-code or web interface; AP2 users are Python users.
-- Scheduled live CI against any portal.
-- Premium GENESIS features and bulk mirroring of whole statistics; we pull
-  what a recipe names, politely.
-- pystatis interop shims.
+- Week 0: which host serves the recipe tables; exact table codes for recipes
+  1 and 2.
+- Week 1: exact auth mechanism, envelope shapes, ffcsv quality-flag layout,
+  zip member layout, whether `regionalkey` selection works on `data/tablefile`
+  for the chosen tables.
+- Week 4: which NUTS version the current Destatis regional series align to
+  (exposed as the edition parameter either way).
+- Week 5: whether the first user interviews (5 to 8, planning repo) run at
+  SciCAR or move to AP3.
+
+## 10. Out of scope for AP2
+
+New data sources beyond Destatis; resampling or aggregation across
+frequencies; seasonal adjustment; a no-code or web interface; scheduled live
+CI against any portal; bulk mirroring of whole statistics; pystatis interop
+shims; Kreis-level cross-portal joins (no AGS in M1 sources); UBA
+station-to-region mapping.
 
 ## References
 
 - M1 chassis: `mloda_plugin_govdata/feature_groups/govdata/` and
-  `docs/adding-a-reader.md` in this repo.
-- mloda composition patterns: mloda-registry `docs/guides/`
-  feature-group-patterns 02, 03, 04, 08, 11, 26, 27 (read before WP-E).
-- GENESIS-Online RESTful/JSON API, Anwenderdokumentation v5.0 (06.05.2025):
-  the binding contract for WP-A to WP-C.
-- Eurostat NUTS/LAU correspondence tables (CC-BY-4.0); Destatis GV-ISys;
-  BBSR Umsteigeschluessel (dl-de/by-2-0, attribution "Laufende
-  Raumbeobachtung des BBSR", confirmed 2026-06-17).
-- Private planning companion repo: research parts A to D, strategies, ADRs,
-  learnings log (update as AP2 progresses).
+  `docs/adding-a-reader.md`.
+- mloda: `load_features_from_config` (JSON), `ParallelizationMode` default
+  SYNC; registry guides feature-group-patterns 02, 03, 04, 08, 11, 26, 27.
+- GENESIS-Online RESTful/JSON API, Anwenderdokumentation v5.0 (06.05.2025).
+- Eurostat NUTS/LAU correspondence tables (CC-BY-4.0); Destatis GV-ISys; BBSR
+  Umsteigeschluessel (dl-de/by-2-0, attribution "Laufende Raumbeobachtung des
+  BBSR").
+- Private planning companion: `planning/ap2-execution-notes.md`,
+  `planning/research/`, `decisions/`, `learnings/`.
