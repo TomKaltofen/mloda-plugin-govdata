@@ -5,7 +5,7 @@ Companion to [ap2-destatis-harmonization.md](ap2-destatis-harmonization.md)
 Tick items in the PR that lands them. If a slice moves, a checkpoint slips, or
 a cut line is pulled, edit both files in the same PR.
 
-Status: draft v2.2, 2026-08-16. v1 was reviewed by three independent advisors
+Status: draft v2.3, 2026-08-16 (slice 2 ticked, D7 wording corrected in the plan). v1 was reviewed by three independent advisors
 (two Claude models, one Codex run) against the M1 code and mloda 0.10.0; the
 findings are folded in below. Slice 0 step 0 (OpenAPI assessment) was done
 2026-08-16, reviewed by one Claude Sonnet run and one Codex run against the
@@ -300,125 +300,127 @@ CI green on 3.10 to 3.14, tox green).
 Package `mloda_plugin_govdata/feature_groups/destatis/` with `core/` and
 `tests/`. WP-A total 45 h = slice 0 (8 h) + this slice.
 
-- [ ] Verify against Anwenderdokumentation v5.1 (01.06.2026), the pinned
-      OpenAPI spec, and the week-0 observation: endpoint names, POST form
-      parameters, and the auth mechanism (credentials as `username` /
-      `password` HTTP headers, token in `username` with empty `password`;
-      body credentials are ignored and run as `GAST`). Record in ADR 0004.
-      The contract test below is the executable form of the name check.
-- [ ] Contract test against the pinned spec (about 2 h, inside this
-      slice's budget): commit the full spec as
-      `tests/fixtures/openapi/GOJsonApi-2026-08-16.json` (about 170 KB)
-      with a `NOTICE` (URL, date, sha256). For every operation
-      `GenesisClient` implements, iterate `(path, method)` pairs (not
-      paths: `qualitysigns` has two operations) and assert exact path and
-      method (`profile/removeResult` casing), the header credential
-      declaration (present, or absent for `whoami` and `qualitysigns`),
-      that every form field the client can send is declared on that
-      operation's request body (never read from a response `*Parameter`
-      schema: `JobCatalogueParameter` lists `area`, the `catalogue/jobs`
-      body does not), and the defaults the client relies on (`format`
-      `datencsv`, so `ffcsv` is always explicit; `quality` `off`; `job`
-      `false`; `language` `de`; `area` `free`). Out of scope by design:
-      response shapes and HTTP status codes (the spec has neither).
-      Re-pinning is manual: download, sha256, replace, run, record the
-      diff as a learning.
-- [ ] Second host, Regionalstatistik (week 0): commit its spec as a second
-      fixture `tests/fixtures/openapi/GOJsonApi-regionalstatistik-2026-08-16.json`
-      (about 230 KB, sha256 `a9ce7944...`, `NOTICE`); the contract test runs
-      once per pinned spec and compares request sides only (its response
-      schemas are generated differently). Known request-side differences to
-      assert are outside the client's surface: `data/chart2table` (extra
-      `contents`), `data/table` (no `structureinformation`), and GET still
-      declared on `profile/password` and `profile/removeResult`. Base URL
-      `https://www.regionalstatistik.de/genesisws/rest/2020/` (lower-case
-      `genesisws`, per its `servers`); host table in `core/api.py` with the
-      two known hosts and their env prefixes; unknown hosts allowed with an
-      explicit base URL and prefix.
-- [ ] `core/auth.py`: `DestatisCredentials` (token, or user plus password;
-      host-scoped). Resolution order: explicit option, then env
-      (`GENESIS_TOKEN`, `GENESIS_USER`, `GENESIS_PASSWORD`, host-prefixed
-      variants such as `REGIONALSTATISTIK_TOKEN`, chosen by the locator's
-      host). Whitespace normalized. `__repr__` and `__str__` redact.
-      `MissingCredentialsError` names the env vars for that host, says
-      registration is free and same-day, and gives the host's registration
-      URL (the two registrations are separate; a GENESIS-Online token on the
-      Regionalstatistik host is a wrong-host failure, rulebook).
-- [ ] Env-var names live in a tuple or frozenset, not in `*_TOKEN` or
-      `*_PASSWORD` named constants and not as dict keys with string-literal
-      values (verified: bandit B105 flags all three forms and `tox` runs
-      bandit on the package); otherwise a scoped `# nosec B105` with a
-      one-line reason.
-- [ ] Credentials passed explicitly go to `Options.context`, never `group`
-      (verified: `group` feeds `Options.__hash__` and any options dump);
-      `DestatisLocator` carries no credential field. Test asserts no secret
-      in `repr(credentials)`, `str(credentials)`, or `repr(options)`.
-- [ ] `core/api.py`: `GenesisClient` over `govdata/core/client.build_client`.
-      `post(endpoint, params)` form-encoded, `language` pinned per request.
-      Auth failures are never retried (bypass `request_with_retry` on those).
-- [ ] D7 lock, stated honestly: a `threading.Lock` serializes calls within
-      one process only. First characterize how mloda's `THREADING` and
-      `MULTIPROCESSING` modes reach `load_data` (which process, how many
-      client instances). Then `GenesisClient` either refuses to run under
-      `ParallelizationMode.MULTIPROCESSING` (raise with the reason) or takes
-      an inter-process file lock; pick one, test both halves (two threads
-      serialize; two processes never overlap or the second refuses), and
-      correct the D7 wording in the plan in the same PR.
-- [ ] `core/envelope.py`: pydantic models for the reply shapes (D10), one
-      per shape, from the spec where it types them: `GenesisStatus(code:
-      int, content, type)` (spec `Status`; `type` compared
-      case-insensitively, `ERROR` observed vs `Error` documented, no enum),
-      `GenesisIdent(service, method)` (checked against the endpoint
-      called), the JSON envelope (`ident`, `status`, `parameter` as a
-      string map with `username` and `password` stripped at parse time,
-      `copyright`, `object` or `list` or neither, as on `RemoveResult`),
-      `LoginCheckReply(status: str, username: str)` flat (its `Status` is
-      a string; never merge it into the generic model), the flat tablefile
-      error body (HTTP 404 observed, not in the spec) as a bare
-      `GenesisStatus` detected by keys, with the HTTP status kept next to
-      it. Inspect HTTP status and content type before parsing: zip, JSON,
-      or HTML. Map to typed exceptions: `GenesisAuthError`,
-      `GenesisUnknownTable`, `GenesisEmptySelection`,
-      `GenesisResultTooLarge`, `GenesisJobAccepted`, `GenesisMaintenance`
-      (HTML body), `GenesisUnknownEnvelope` (raw status block quoted).
-- [ ] Fixture capture tooling at `scripts/capture_genesis_fixtures.py` (repo
-      root, not shipped): records real responses, redacts credentials from
-      request and response (the echoed `Username` field of `logincheck` and
-      the `Parameter.username` / `Parameter.password` fields that every
-      JSON envelope declares; the PDF examples mask them, assume real),
-      writes the `NOTICE`. One test asserts redaction on a synthetic payload
-      containing the token in original, upper-, and lower-cased form, the
-      password URL-encoded (week 0 leaked a case-flipped echo this way), and
-      both credentials inside a `Parameter` block.
-- [ ] Fixtures under `feature_groups/destatis/tests/fixtures/`: `whoami`,
-      `logincheck` ok and bad, one envelope per mapped error (bad
-      credentials, unknown table, empty selection, too large, job accepted),
-      a maintenance HTML page, the three redacted week-0 tablefile payloads,
-      one `metadata/table` reply per pinned table, one `qualitysigns` reply
-      (about 0.5 h on top of the capture run; step-0 decision (d)), and the
-      pinned OpenAPI spec under `fixtures/openapi/`. `NOTICE` present.
-      `tests/conftest.py` with `fixtures_dir`.
-- [ ] Live-test gating scoped to Destatis: a second marker `genesis_live`
-      registered in `pyproject.toml` next to `live` (and added to `addopts`
-      deselection); Destatis live tests carry both. Repo-root `conftest.py`
-      skips `genesis_live` tests when `GENESIS_TOKEN` (or user plus password)
-      is absent, reason in the skip message. The plain `live` marker keeps
-      covering the M1 GovData, election, and UBA live tests, which need no
-      credentials and must not be skipped by this hook (verified: no root
-      conftest exists today; the only one is
-      `feature_groups/govdata/tests/conftest.py`).
-- [ ] `docs/credentials.md` created here (env names per host, both
-      registration URLs, dual-path explanation); slice 5 adds the too-large
-      paragraph, slice 12 polishes.
-- [ ] Tests (respx): each auth path, each envelope mapping, no retry on auth
-      failure, the lock serializes concurrent threads, `language` present in
-      every request body, credentials absent from any logged or raised text,
-      host selection picks the matching env prefix and never sends one host's
-      credentials to the other.
-- [ ] Live smoke (`live` and `genesis_live`): `whoami` plus `logincheck`, on
-      each host whose token is present (skip per host with a visible reason).
-- [ ] Commit series `feat(destatis): credentials and client`,
-      `feat(destatis): status envelope mapping`, `test(destatis): fixtures`.
+Landed in fork PR #14
+(https://github.com/TomKaltofen/mloda-plugin-govdata/pull/14, 2026-08-16,
+tox green). Items that need working credentials stay open below; the
+GENESIS-Online webservice backend was still degraded that evening (every
+`logincheck` answers the generic system error, guest and authenticated
+alike) and no Regionalstatistik account exists yet, so the unauthenticated
+and wrong-credential shapes were characterized on Regionalstatistik (healthy)
+with made-up credentials. Learning:
+`learnings/2026-08-16-genesis-envelope-shapes-on-healthy-host-and-guest-success-text.md`.
+
+- [x] 2026-08-16, PR #14. Verified against v5.1, the pinned spec, and the
+      observations: header credentials, token in `username` with empty
+      `password`, body credentials ignored (guest `GAST`). New observation:
+      a guest `logincheck` on a healthy host answers the *success text* next
+      to `Username: GAST`, so success is "success text plus a real
+      username", never the text alone. Recorded in ADR 0004 (planning repo,
+      status proposed, committed locally).
+- [x] 2026-08-16, PR #14. Contract test
+      (`destatis/tests/test_contract.py`) over both pinned specs
+      (`fixtures/openapi/`, `NOTICE` with URL, date, sha256): exact path
+      and method per `(path, method)`, header credential declaration,
+      every sendable field declared on the request body, the five relied-on
+      defaults, and a NOTICE hash walk over every fixture file. Re-pinning
+      is manual as described.
+- [x] 2026-08-16, PR #14. Regionalstatistik as a second host: spec fixture
+      committed; the contract test runs once per spec, request sides only,
+      and asserts the known differences exactly (`data/chart2table`,
+      `data/table`, GET on `profile/password` and `profile/removeResult`).
+      Host table lives in `core/hosts.py` (`GenesisHost`: name, base URL,
+      env prefix, registration page; `GENESIS_ONLINE`, `REGIONALSTATISTIK`,
+      unknown hosts by explicit instance), re-exported from `core/api.py`.
+- [x] 2026-08-16, PR #14. `core/auth.py` as specified; whitespace
+      normalized; header-unsafe characters (control, non-latin-1) refused
+      by field name (an httpx header error would print the value);
+      `MissingCredentialsError` names the env vars, the free same-day
+      registration and the host's start page; a token scoped to the other
+      host raises `WrongHostCredentialsError`; env resolution never falls
+      back across hosts.
+- [x] 2026-08-16, PR #14. Env suffixes in a tuple (`ENV_SUFFIXES`); one
+      scoped `# nosec B105` on the empty `password` header of the token path
+      (verified live: bandit fires without it; it also prints a spurious
+      "nosec encountered but no failed test" warning, harmless).
+- [x] 2026-08-16, PR #14. `Options.context` key `genesis_credentials`,
+      refused in `group`; only a `DestatisCredentials` instance is accepted
+      (a plain mapping would sit unredacted in the context, which
+      `str(options)` prints verbatim, review finding). Test asserts no
+      secret in `repr(credentials)`, `str(credentials)`, `str(options)`.
+      `DestatisLocator` is slice 4 and gets no credential field.
+- [x] 2026-08-16, PR #14. `core/api.py`: `GenesisClient` over
+      `build_client(follow_redirects=False)` (also per request, so an
+      injected client cannot re-enable redirects); an explicit `Operation`
+      registry (`whoami` GET, `logincheck`, `qualitysigns` GET,
+      `metadata/table`, `data/tablefile` with its 25 fields);
+      `request(endpoint, params)` refuses unregistered endpoints,
+      undeclared fields, and non-string values before the wire, always
+      sends `language`, resolves credentials lazily; `call()` inspects and
+      raises typed errors with any quoted server text redacted. Auth
+      failures are not retried (401, 404, and the `GAST` reply return on
+      the first attempt; the M1 policy only retries transport errors and
+      429/5xx; exhaustion becomes `GenesisBackendError`).
+- [x] 2026-08-16, PR #14. D7 characterized: `THREADING` runs steps in
+      threads of one process; `MULTIPROCESSING` spawns one fresh
+      interpreter per compute framework instance (spawn context), and
+      `load_data` receives no mode signal, so a refusal is not possible.
+      Picked: per-host `threading.Lock` plus `filelock.FileLock` in the
+      cache directory (`lock_dir`, default the M1 cache dir), taken per
+      attempt so backoff runs unlocked, keyed by host name and base URL, a
+      stuck holder fails loud after `LOCK_TIMEOUT_SECONDS`. Tests: two
+      threads serialize under the in-process lock, a child process is
+      blocked and later succeeds, the lock is free between attempts, a
+      held lock file raises. D7 wording corrected in the plan (same
+      commit). New dependency `filelock` (already in the lock file).
+- [x] 2026-08-16, PR #14. `core/envelope.py` as specified: `GenesisStatus`
+      (Type case-insensitive, `Error`/`Fehler`, `Warning`/`Warnung`),
+      `GenesisIdent`, `GenesisEnvelope` (`Parameter` credentials stripped
+      at parse time; `Object` -> `data`, `List` -> `entries`),
+      `LoginCheckReply` flat with a redacting repr, `HelloWorldReply`, the
+      flat body as a bare `GenesisStatus` (observed with HTTP 401 Code 15
+      and HTTP 404 Code 2, not only 404). `inspect_response`: zip (refused
+      on an HTTP error status), HTML -> `GenesisMaintenance`, JSON, else
+      unknown; a recognized shape that fails validation raises
+      `GenesisUnknownEnvelope` naming the fields only. Mapping: backend
+      error text, then auth (Code 15 or the observed texts), job accepted
+      (text), too large (Code 98), unknown table (Code 90), empty selection
+      (Code 104), pass on 0 and 22, then the too-large text heuristic, else
+      unknown with the status block quoted. Codes 90 and 98 and the
+      job-accepted text come from pystatis, not from a capture yet
+      (labeled in code, tests, and NOTICE).
+- [x] 2026-08-16, PR #14. `scripts/capture_genesis_fixtures.py` with
+      `core/redact.py` (case variants, URL-encoded forms, structural
+      replacement of `username`/`password`/`Username`, guest marker and
+      server masking kept, post-write check that no secret survived,
+      redirects not captured); the synthetic-payload redaction test as
+      specified. Used for every captured fixture in this PR.
+- [ ] Fixtures: captured `whoami` (both hosts), guest `logincheck` (both
+      hosts), `qualitysigns` (both hosts), 401 Code 15 (`metadata/table`
+      guest), bad-credentials `logincheck` and `tablefile` 404 Code 2;
+      documented `logincheck` ok and Code 104; synthetic maintenance HTML;
+      both specs; `NOTICE` and `conftest.py` present. Still open (need
+      working credentials): unknown-table, too-large, job-accepted
+      envelopes; `metadata/table` per pinned table; the three week-0
+      tablefile payloads (slice 0 live checks). Capture them with the
+      script when GENESIS-Online's backend recovers or the Regionalstatistik
+      account exists; then re-pin the code table.
+- [x] 2026-08-16, PR #14. `genesis_live` marker registered and deselected
+      by `addopts`; repo-root `conftest.py` skips `genesis_live` items with
+      a reason naming all four env vars; `live` untouched.
+- [x] 2026-08-16, PR #14. `docs/credentials.md` created.
+- [x] 2026-08-16, PR #14. Tests as listed, plus: redirect refusal (own and
+      injected client), warning-log redaction, validation-error redaction,
+      empty-username logincheck, zip on HTTP error, non-string values, the
+      NOTICE hash walk.
+- [x] 2026-08-16, PR #14. Live smoke per host with per-host skip. Run that
+      evening with the local token: GENESIS-Online raised
+      `GenesisBackendError` (degraded backend, redacted text),
+      Regionalstatistik skipped (no account). Owner: rerun when the backend
+      answers; the "successful logincheck" item of slice 0 stays open.
+- [x] 2026-08-16. Commit series landed as `feat(destatis): credentials,
+      client, and status envelope mapping`, `test(destatis): fixtures,
+      contract test, and client tests`, `chore: trim prose`,
+      `fix(destatis): harden ...` (review round) in PR #14.
 
 ## Slice 3: parameter-keyed POST cache (WP-B, week 2, about 8 h)
 

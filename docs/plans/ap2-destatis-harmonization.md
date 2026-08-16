@@ -1,6 +1,6 @@
 # AP2 implementation plan: Destatis connector and harmonization
 
-Status: draft v2.2, 2026-08-16 (v2 plus the slice-0 OpenAPI assessment in
+Status: draft v2.3, 2026-08-16 (D7 wording corrected after slice 2; v2 plus the slice-0 OpenAPI assessment in
 section 5 WP-A, plus the slice-0 paper work: recipe tables and hosts pinned,
 Regionalstatistik in scope, U2 change named, C2 on paper, cut line 2
 pre-pulled; details in the checklist and the planning repo `learnings/`).
@@ -169,9 +169,14 @@ planning repo (`decisions/`) at the first implementation PR.
   `refresh` escape hatch, no TTL refetch. A warning is logged when a cached
   payload is older than 30 days. Recipes carry retrieval timestamp and sha256
   so staleness is visible.
-- **D7 Politeness.** The Destatis client serializes GENESIS calls behind a
-  process-level lock, so mloda's threading or multiprocessing modes cannot
-  fan out requests. No client-side parallelism, ever.
+- **D7 Politeness.** The Destatis client serializes GENESIS calls: one
+  attempt at a time per host behind a thread lock inside the process plus a
+  file lock in the cache directory across processes that share it (mloda's
+  threading mode runs in one process, its multiprocessing mode spawns one
+  interpreter per compute framework instance and hands the reader no mode
+  signal, so a refusal was not possible; slice 2). Processes with different
+  cache directories are not serialized against each other. No client-side
+  parallelism, ever.
 - **D8 Live tests.** Marker `live` stays; live tests additionally skip with a
   visible reason when `GENESIS_TOKEN` (or user plus password) is absent. Run
   manually before each biweekly funder update, never scheduled: the
