@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import re
+import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -15,6 +16,9 @@ from typing import Any
 import httpx
 
 from .client import build_client, request_with_retry
+
+# Persistent cache location shared by the readers and the Destatis client's lock file.
+DEFAULT_CACHE_DIR = Path(tempfile.gettempdir()) / "mloda-govdata-cache"
 
 
 class CacheMissError(RuntimeError):

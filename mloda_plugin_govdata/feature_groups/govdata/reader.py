@@ -10,7 +10,6 @@ German-CSV reader.
 from __future__ import annotations
 
 import difflib
-import tempfile
 from pathlib import Path
 from typing import Any, ClassVar, Generic, TypeVar, cast
 
@@ -24,7 +23,7 @@ from mloda.provider import FeatureSet
 from mloda.user import Options, PyArrowTable  # noqa: F401
 from mloda_plugins.feature_group.input_data.read_file import ReadFile
 
-from .core.cache import DownloadCache
+from .core.cache import DEFAULT_CACHE_DIR, DownloadCache
 from .core.client import build_client
 from .core.discovery import resolve_distribution
 from .core.locator import GovDataLocator, Locator
@@ -56,7 +55,7 @@ class BaseGovDataReader(ReadFile, Generic[LocatorT]):
     """
 
     # Persistent, content-addressed cache location (override per environment).
-    cache_dir: ClassVar[str] = str(Path(tempfile.gettempdir()) / "mloda-govdata-cache")
+    cache_dir: ClassVar[str] = str(DEFAULT_CACHE_DIR)
 
     @classmethod
     def suffix(cls) -> tuple[str, ...]:
