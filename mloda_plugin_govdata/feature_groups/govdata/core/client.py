@@ -25,9 +25,13 @@ def _user_agent() -> str:
     return f"mloda-plugin-govdata/{version} (+https://github.com/mloda-ai/mloda-plugin-govdata)"
 
 
-def build_client(*, timeout: httpx.Timeout = DEFAULT_TIMEOUT) -> httpx.Client:
-    """A pooled httpx client with the polite User-Agent and timeout budget."""
-    return httpx.Client(timeout=timeout, headers={"User-Agent": _user_agent()}, follow_redirects=True)
+def build_client(*, timeout: httpx.Timeout = DEFAULT_TIMEOUT, follow_redirects: bool = True) -> httpx.Client:
+    """A pooled httpx client with the polite User-Agent and timeout budget.
+
+    ``follow_redirects=False`` for clients that send credentials in headers, so a redirect
+    can never carry them to another host.
+    """
+    return httpx.Client(timeout=timeout, headers={"User-Agent": _user_agent()}, follow_redirects=follow_redirects)
 
 
 class RetryableStatusError(Exception):

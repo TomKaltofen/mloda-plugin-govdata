@@ -1,0 +1,259 @@
+"""GENESIS client: header credentials, form-encoded POST, pinned language, one request at a time.
+
+Politeness (plan D7): a per-host ``threading.Lock`` serializes calls inside one process, and a
+``filelock.FileLock`` in the cache directory serializes across processes that share it. mloda's
+``THREADING`` mode runs feature groups in threads of one process; ``MULTIPROCESSING`` spawns one
+fresh interpreter per compute framework instance, so only the file lock reaches those.
+"""
+
+from __future__ import annotations
+
+import logging
+import os
+import threading
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
+from dataclasses import dataclass
+from pathlib import Path
+from types import TracebackType
+from typing import Any
+
+import httpx
+from filelock import FileLock
+
+from ...govdata.core.cache import DEFAULT_CACHE_DIR
+from ...govdata.core.client import RetryableStatusError, build_client, request_with_retry
+from .auth import DestatisCredentials, resolve_credentials
+from .envelope import (
+    GenesisEnvelope,
+    HelloWorldReply,
+    InspectedReply,
+    LoginCheckReply,
+    inspect_response,
+)
+from .errors import GenesisBackendError, GenesisError, GenesisUnknownEnvelope
+from .hosts import GENESIS_ONLINE, KNOWN_HOSTS, REGIONALSTATISTIK, GenesisHost, resolve_host
+from .redact import redact_text
+
+__all__ = [
+    "GENESIS_ONLINE",
+    "KNOWN_HOSTS",
+    "OPERATIONS",
+    "REGIONALSTATISTIK",
+    "GenesisClient",
+    "GenesisHost",
+    "Operation",
+    "resolve_host",
+]
+
+logger = logging.getLogger(__name__)
+
+DEFAULT_LANGUAGE = "de"
+LOCK_FILE_NAME = "genesis-{host}.lock"
+
+
+@dataclass(frozen=True)
+class Operation:
+    """One webservice operation as the client may call it; the contract test checks it against the spec."""
+
+    path: str  # relative to the host base URL, e.g. "data/tablefile"
+    method: str  # "GET" or "POST"
+    credentials: bool  # username / password headers declared (and required)
+    fields: frozenset[str]  # form fields (POST) or query parameters (GET) the client may send
+
+
+TABLEFILE_FIELDS: frozenset[str] = frozenset(
+    {
+        "name",
+        "area",
+        "compress",
+        "transpose",
+        "contents",
+        "startyear",
+        "endyear",
+        "timeslices",
+        "regionalvariable",
+        "regionalkey",
+        *(f"classifyingvariable{i}" for i in range(1, 6)),
+        *(f"classifyingkey{i}" for i in range(1, 6)),
+        "format",
+        "quality",
+        "job",
+        "stand",
+        "language",
+    }
+)
+
+OPERATIONS: dict[str, Operation] = {
+    "helloworld/whoami": Operation("helloworld/whoami", "GET", credentials=False, fields=frozenset()),
+    "helloworld/logincheck": Operation(
+        "helloworld/logincheck", "POST", credentials=True, fields=frozenset({"language"})
+    ),
+    "catalogue/qualitysigns": Operation(
+        "catalogue/qualitysigns", "GET", credentials=False, fields=frozenset({"language"})
+    ),
+    "metadata/table": Operation(
+        "metadata/table", "POST", credentials=True, fields=frozenset({"name", "area", "language"})
+    ),
+    "data/tablefile": Operation("data/tablefile", "POST", credentials=True, fields=TABLEFILE_FIELDS),
+}
+
+_process_locks: dict[str, threading.Lock] = {}
+_process_locks_guard = threading.Lock()
+
+
+def _process_lock(host: GenesisHost) -> threading.Lock:
+    with _process_locks_guard:
+        return _process_locks.setdefault(host.name, threading.Lock())
+
+
+class GenesisClient:
+    """Calls one GENESIS host. Credentials resolve lazily (explicit, then env) on the first call that needs them."""
+
+    def __init__(
+        self,
+        host: GenesisHost | str = GENESIS_ONLINE,
+        credentials: DestatisCredentials | None = None,
+        *,
+        client: httpx.Client | None = None,
+        language: str = DEFAULT_LANGUAGE,
+        lock_dir: str | os.PathLike[str] | None = None,
+        environ: Mapping[str, str] | None = None,
+        allow_guest: bool = False,
+    ) -> None:
+        self.host = resolve_host(host)
+        self.language = language
+        self._explicit = credentials
+        self._credentials: DestatisCredentials | None = None
+        self._environ = environ
+        # Guest calls send no credential headers; only for characterizing replies (the capture script).
+        self.allow_guest = allow_guest
+        self._owns_client = client is None
+        # No redirects: the credential headers must never follow a Location to another host.
+        self._client = client if client is not None else build_client(follow_redirects=False)
+        lock_root = Path(lock_dir) if lock_dir is not None else DEFAULT_CACHE_DIR
+        lock_root.mkdir(parents=True, exist_ok=True)
+        self.lock_path = lock_root / LOCK_FILE_NAME.format(host=self.host.name)
+
+    def __enter__(self) -> GenesisClient:  # noqa: PYI034  (3.10 floor, class not subclassed)
+        return self
+
+    def __exit__(
+        self, exc_type: type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None
+    ) -> None:
+        self.close()
+
+    def close(self) -> None:
+        if self._owns_client:
+            self._client.close()
+
+    @property
+    def credentials(self) -> DestatisCredentials:
+        """Resolved credentials for this host; raises MissingCredentialsError when none are configured."""
+        if self._credentials is None:
+            self._credentials = resolve_credentials(self.host, self._explicit, self._environ)
+        return self._credentials
+
+    def _auth_headers(self) -> dict[str, str]:
+        if (
+            self.allow_guest
+            and self._explicit is None
+            and DestatisCredentials.from_env(self.host, self._environ) is None
+        ):
+            return {}
+        return self.credentials.headers()
+
+    @contextmanager
+    def _serialized(self) -> Iterator[None]:
+        with _process_lock(self.host), FileLock(str(self.lock_path)):
+            yield
+
+    def request(self, endpoint: str, params: Mapping[str, str] | None = None) -> httpx.Response:
+        """One request under the lock; ``language`` is always sent, unknown fields are refused before the wire."""
+        try:
+            operation = OPERATIONS[endpoint]
+        except KeyError:
+            raise ValueError(
+                f"Unknown GENESIS operation {endpoint!r}; known: {', '.join(sorted(OPERATIONS))}"
+            ) from None
+        sent: dict[str, str] = {str(k): str(v) for k, v in (params or {}).items()}
+        if "language" in operation.fields:
+            sent.setdefault("language", self.language)
+        unknown = sorted(set(sent) - operation.fields)
+        if unknown:
+            raise ValueError(f"{endpoint} does not declare {unknown}; allowed: {sorted(operation.fields)}")
+        headers = self._auth_headers() if operation.credentials else {}
+        url = self.host.url(operation.path)
+        kwargs: dict[str, Any] = {"headers": headers}
+        if operation.method == "GET":
+            kwargs["params"] = sent
+        else:
+            kwargs["data"] = sent
+        try:
+            with self._serialized():
+                return request_with_retry(self._client, operation.method, url, **kwargs)
+        except RetryableStatusError as exc:
+            raise GenesisBackendError(
+                f"GENESIS kept answering HTTP {exc.response.status_code} on {endpoint}; retry later.",
+                endpoint=endpoint,
+                http_status=exc.response.status_code,
+            ) from None
+
+    def call(self, endpoint: str, params: Mapping[str, str] | None = None) -> InspectedReply:
+        """Request plus envelope inspection; JSON replies come back parsed, error statuses raise (redacted)."""
+        response = self.request(endpoint, params)
+        try:
+            if response.is_redirect:
+                raise GenesisUnknownEnvelope(
+                    f"GENESIS redirected {endpoint} to {response.headers.get('location', '?')}; the base URL is stale. "
+                    "Credentials are not sent across redirects.",
+                    endpoint=endpoint,
+                    http_status=response.status_code,
+                )
+            inspected = inspect_response(response, endpoint)
+        except GenesisError as exc:
+            self._redact(exc)
+            raise
+        if isinstance(inspected.reply, GenesisEnvelope) and inspected.reply.status.is_warning:
+            logger.warning("GENESIS %s: %s", endpoint, inspected.reply.status.content)
+        return inspected
+
+    def _redact(self, exc: GenesisError) -> None:
+        """Server text quoted in an exception may echo a credential; scrub it with the resolved secrets."""
+        secrets = self._credentials.secrets() if self._credentials is not None else ()
+        if not secrets:
+            return
+        exc.args = tuple(redact_text(arg, secrets) if isinstance(arg, str) else arg for arg in exc.args)
+        if exc.status_block is not None:
+            exc.status_block = {
+                k: redact_text(v, secrets) if isinstance(v, str) else v for k, v in exc.status_block.items()
+            }
+
+    def whoami(self) -> HelloWorldReply:
+        reply = self.call("helloworld/whoami").reply
+        if not isinstance(reply, HelloWorldReply):
+            raise GenesisUnknownEnvelope("whoami did not answer with a User-Agent object", endpoint="helloworld/whoami")
+        return reply
+
+    def logincheck(self) -> LoginCheckReply:
+        """Proves the credentials: raises GenesisAuthError on guest or rejected, GenesisBackendError on the outage text."""
+        reply = self.call("helloworld/logincheck").reply
+        if not isinstance(reply, LoginCheckReply):
+            raise GenesisUnknownEnvelope(
+                "logincheck did not answer with the flat Status/Username reply", endpoint="helloworld/logincheck"
+            )
+        return reply
+
+    def qualitysigns(self) -> GenesisEnvelope:
+        """The value-marker legend (``List`` of ``Code``/``Content``); no credentials needed."""
+        return self._envelope("catalogue/qualitysigns", None)
+
+    def metadata_table(self, name: str) -> GenesisEnvelope:
+        """``metadata/table`` for one table code; ``area`` stays at the server default."""
+        return self._envelope("metadata/table", {"name": name})
+
+    def _envelope(self, endpoint: str, params: Mapping[str, str] | None) -> GenesisEnvelope:
+        reply = self.call(endpoint, params).reply
+        if not isinstance(reply, GenesisEnvelope):
+            raise GenesisUnknownEnvelope(f"{endpoint} did not answer with the nested envelope", endpoint=endpoint)
+        return reply

@@ -1,0 +1,147 @@
+"""Host-scoped GENESIS credentials: explicit option first, then env; redacted in every text form."""
+
+from __future__ import annotations
+
+import os
+from collections.abc import Mapping
+from dataclasses import dataclass
+from typing import Any
+
+from mloda.user import Options
+
+from .errors import MissingCredentialsError, WrongHostCredentialsError
+from .hosts import GenesisHost
+
+# Suffixes joined with the host prefix: GENESIS_TOKEN, REGIONALSTATISTIK_USER, ... (a tuple, so
+# no *_PASSWORD named constant exists for bandit B105 to flag).
+ENV_SUFFIXES: tuple[str, str, str] = ("TOKEN", "USER", "PASSWORD")
+
+# Options.context key for explicit credentials; never a group key (group is hashed and printed).
+OPTION_GENESIS_CREDENTIALS = "genesis_credentials"
+
+_REDACTED = "<redacted>"
+
+
+def _clean(value: object) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+@dataclass(frozen=True, repr=False)
+class DestatisCredentials:
+    """A token, or user plus password, scoped to one host by name.
+
+    The token is the default path; ``job=true`` and ``profile/*`` calls need user plus password.
+    """
+
+    host: str = "genesis"
+    token: str | None = None
+    user: str | None = None
+    password: str | None = None
+
+    def __post_init__(self) -> None:
+        for name in ("host", "token", "user", "password"):
+            object.__setattr__(self, name, _clean(getattr(self, name)))
+        if not self.host:
+            raise ValueError("DestatisCredentials needs a host name.")
+        if (self.user is None) != (self.password is None):
+            raise ValueError("DestatisCredentials needs user and password together.")
+        if self.token is None and self.user is None:
+            raise ValueError("DestatisCredentials needs a token or user plus password.")
+
+    @property
+    def has_password_path(self) -> bool:
+        return self.user is not None
+
+    def headers(self) -> dict[str, str]:
+        """The two credential headers; the token travels in ``username`` with an empty ``password``."""
+        if self.token is not None:
+            # The token path sends an empty password header by protocol; B105 sees a hardcoded secret.
+            return {"username": self.token, "password": ""}  # nosec B105
+        return {"username": self.user or "", "password": self.password or ""}
+
+    def secrets(self) -> tuple[str, ...]:
+        """Every value that must never appear in output (for redaction)."""
+        return tuple(value for value in (self.token, self.user, self.password) if value)
+
+    def __repr__(self) -> str:
+        shown = ", ".join(
+            f"{name}={_REDACTED if getattr(self, name) is not None else None}" for name in ("token", "user", "password")
+        )
+        return f"DestatisCredentials(host={self.host!r}, {shown})"
+
+    __str__ = __repr__
+
+    @classmethod
+    def from_env(cls, host: GenesisHost, environ: Mapping[str, str] | None = None) -> DestatisCredentials | None:
+        """Read the host's env vars; ``None`` when none is set, an error when the set is incomplete."""
+        env = os.environ if environ is None else environ
+        token, user, password = (_clean(env.get(host.env_var(suffix))) for suffix in ENV_SUFFIXES)
+        if token is None and user is None and password is None:
+            return None
+        if token is None and (user is None) != (password is None):
+            missing = host.env_var("PASSWORD" if password is None else "USER")
+            raise MissingCredentialsError(f"{missing} is not set; the password path needs both user and password.")
+        return cls(host=host.name, token=token, user=user, password=password)
+
+
+def missing_credentials_message(host: GenesisHost) -> str:
+    token_var, user_var, password_var = (host.env_var(suffix) for suffix in ENV_SUFFIXES)
+    return (
+        f"No credentials for {host.label}. Set {token_var} (personal API token), or {user_var} and "
+        f"{password_var}, or pass DestatisCredentials in Options(context={{{OPTION_GENESIS_CREDENTIALS!r}: ...}}). "
+        f"Registration is free and same-day: {host.registration_url}. Registrations are per host, so a token "
+        "from another GENESIS installation is not valid here."
+    )
+
+
+def resolve_credentials(
+    host: GenesisHost,
+    explicit: DestatisCredentials | None = None,
+    environ: Mapping[str, str] | None = None,
+) -> DestatisCredentials:
+    """Explicit credentials (host must match), else the host's env vars, else a MissingCredentialsError."""
+    if explicit is not None:
+        if explicit.host != host.name:
+            raise WrongHostCredentialsError(
+                f"Credentials are scoped to host {explicit.host!r} but the request targets {host.name!r} "
+                f"({host.label}); registrations and tokens are separate per host."
+            )
+        return explicit
+    from_env = DestatisCredentials.from_env(host, environ)
+    if from_env is None:
+        raise MissingCredentialsError(missing_credentials_message(host))
+    return from_env
+
+
+def _coerce_explicit(value: object, host: GenesisHost) -> DestatisCredentials:
+    if isinstance(value, DestatisCredentials):
+        return value
+    if isinstance(value, Mapping):
+        fields: dict[str, Any] = {str(key): item for key, item in value.items()}
+        fields.setdefault("host", host.name)
+        return DestatisCredentials(**fields)
+    raise TypeError(
+        f"{OPTION_GENESIS_CREDENTIALS!r} must be DestatisCredentials or a mapping, got {type(value).__name__}"
+    )
+
+
+def credentials_from_options(
+    options: Options | None,
+    host: GenesisHost,
+    environ: Mapping[str, str] | None = None,
+) -> DestatisCredentials:
+    """Credentials for ``host`` from ``Options.context`` (explicit) or env; the key is refused in ``group``."""
+    explicit: DestatisCredentials | None = None
+    if options is not None:
+        if OPTION_GENESIS_CREDENTIALS in options.group:
+            raise ValueError(
+                f"{OPTION_GENESIS_CREDENTIALS!r} must be passed in Options.context, not group: "
+                "group options are hashed and printed with the feature."
+            )
+        raw = options.context.get(OPTION_GENESIS_CREDENTIALS)
+        if raw is not None:
+            explicit = _coerce_explicit(raw, host)
+    return resolve_credentials(host, explicit, environ)
