@@ -734,31 +734,47 @@ hand-verified mapping, and the packaging decision. Week 4 (about 35 h):
 loaders, key model, edition model, mapping.
 
 - [x] 2026-08-17. Week 1: captured one small redistributable extract per
-      reference source, exact cell values from the live download, not
-      hand-typed: BBSR `ref-kreise-1990-2024.xlsx` (sha256 `68c4d001...`,
-      matches the week-0 pin; extracted sheets `2013-2014`, `2015-2016`,
-      `2020-2021`, header row plus the Göttingen, Osterode, Eisenach,
-      Wartburgkreis, Cochem-Zell, Mayen-Koblenz and Rhein-Hunsrück rows),
-      GV-ISys `2016.xlsx` (sha256 `301a0b72...`, matches the week-0 pin;
-      extracted change `03/2016/0006-R`, the two Kreis rows plus the Harz
+      reference source, same rows and columns as the live download, not
+      hand-typed (xlsx round-tripping through openpyxl can shift a numeric
+      cell's trailing significant digits; noted in `NOTICE`, not a data
+      error): BBSR `ref-kreise-1990-2024.xlsx` (sha256 `68c4d001...`, matches
+      the week-0 pin; extracted sheets `2013-2014`, `2015-2016`, `2020-2021`,
+      header row plus the Göttingen, Osterode, Eisenach, Wartburgkreis,
+      Cochem-Zell, Mayen-Koblenz and Rhein-Hunsrück rows; the known upstream
+      defect on the 2015-2016 Cochem-Zell/Mayen-Koblenz rows is reproduced
+      faithfully and called out in `NOTICE`), GV-ISys `2016.xlsx` (sha256
+      `301a0b72...`, matches the week-0 pin; extracted change
+      `03/2016/0006-R`, the two Kreis rows plus the Harz
       Gemeindefreies-Gebiet row), the Eurostat NUTS-to-national-units
-      correspondence table (header plus the DE row: 401 Kreise, 10,957
-      Gemeinden, edition "NUTS 2027 and LAU 2025"), and the Eurostat
-      LAU-to-NUTS correspondence, Germany sheet (header plus Berlin and one
-      representative Gemeinde per Kreis for the five hand-mapped keys below).
-      `mloda_plugin_govdata/harmonization/reference/fixtures/`, `NOTICE` with
-      the Destatis, Eurostat, and BBSR long-form attributions.
+      correspondence table (header plus the DE row only: 401 Kreise, 10,957
+      Gemeinden as printed there, sha256 `01ef6cd3...`; that table's own
+      edition label is "NUTS 2027 and LAU 2025", a different, not yet
+      current, edition from the LAU-to-NUTS crosswalk below), and the
+      Eurostat LAU-to-NUTS correspondence, Germany sheet (NUTS 2024 edition,
+      sha256 `983e75ed...`; header plus Berlin and one representative
+      Gemeinde per Kreis for the five hand-mapped keys below).
+      `mloda_plugin_govdata/harmonization/reference/tests/fixtures/`,
+      `NOTICE` with the Destatis, Eurostat, and BBSR attributions and both
+      original and extract sha256 per file.
 - [x] 2026-08-17. Week 1: mapped five hand-picked AGS keys (Berlin `11000`
       city-state to `DE300`; `03159` Göttingen merged Kreis to `DE91C`; the
       Gemeindefreies Gebiet `03159501` Harz (Ldkr. Göttingen), formerly
       `03156501`, to `DE91C`; two ordinary Kreise, Cochem-Zell `07135` to
       `DEB1C` and Rhein-Hunsrück-Kreis `07140` to `DEB1D`, chosen to reuse the
-      pair already characterized for the BBSR fractional-share case) to
-      NUTS-3 by hand from the captured extracts; table in ADR 0006 (planning
-      repo). No direct 5-digit Kreis-to-NUTS-3 table exists in the sources
+      pair already characterized for the BBSR fractional-share case, which
+      also carries the sheet's own known defect) to NUTS-3 by hand from the
+      captured extracts; table in ADR 0006 (planning repo). No direct
+      5-digit Kreis-to-NUTS-3 table was found among the sources checked
       (Eurostat's correspondence is LAU/Gemeinde-level); the derivation
-      designed here: Germany's 401 NUTS-3 regions are its Kreise one-to-one,
-      so a Kreis's NUTS-3 code is read off any Gemeinde inside it.
+      designed here: in the NUTS 2024 / LAU 2025 edition actually queried,
+      Germany's 400 Kreise and 400 NUTS-3 regions are in exact bijection
+      (verified over the full DE sheet, 11,268 rows), so a Kreis's NUTS-3
+      code can be read off any Gemeinde inside it. That bijection is
+      edition-scoped, not permanent (a Kreis reform can outrun the next NUTS
+      revision, as Eisenach/Wartburgkreis did between 2021 and NUTS 2024);
+      the week-4 loader must group by (Kreis, edition) and raise on a
+      multi-valued group rather than pick "any" Gemeinde blind. Full
+      reasoning and the Eisenach lag-window case in ADR 0006.
 - [x] 2026-08-17. Week 1: packaged data vs runtime fetch decided: runtime
       fetch, not packaged (ADR 0006). The full reference tables (up to 19.8 MB
       for the Eurostat LAU-to-NUTS file) load through the GET `DownloadCache`
