@@ -5,7 +5,7 @@ Companion to [ap2-destatis-harmonization.md](ap2-destatis-harmonization.md)
 Tick items in the PR that lands them. If a slice moves, a checkpoint slips, or
 a cut line is pulled, edit both files in the same PR.
 
-Status: draft v2.4, 2026-08-16 (slice 3 ticked, pulled forward from week 2; slice 2 ticked, D7 wording corrected in the plan). v1 was reviewed by three independent advisors
+Status: draft v2.5, 2026-08-17 (slice 8 week-1 part ticked: reference extracts, ADR 0006, packaging decision, openpyxl dependency). v1 was reviewed by three independent advisors
 (two Claude models, one Codex run) against the M1 code and mloda 0.10.0; the
 findings are folded in below. Slice 0 step 0 (OpenAPI assessment) was done
 2026-08-16, reviewed by one Claude Sonnet run and one Codex run against the
@@ -733,34 +733,48 @@ Standalone module, usable without mloda. Week 1 (about 10 h): extracts,
 hand-verified mapping, and the packaging decision. Week 4 (about 35 h):
 loaders, key model, edition model, mapping.
 
-- [ ] Week 1: capture one small redistributable extract per reference source
-      (Eurostat NUTS correspondence, LAU-to-NUTS, GV-ISys, BBSR
-      Umsteigeschluessel Kreise) with URL and sha256 pinned; `NOTICE` with the
-      Destatis, Eurostat, and BBSR long-form attributions. Already pinned in
-      week 0 (URLs and hashes in the plan references): BBSR
-      `ref-kreise-1990-2024.xlsx` (sha256 `68c4d001...`; extract the sheets
-      `2013-2014`, `2015-2016`, `2020-2021`, header row plus the Göttingen,
-      Osterode, Eisenach, Wartburgkreis, Cochem-Zell, Mayen-Koblenz and
-      Rhein-Hunsrück rows) and GV-ISys `2016.xlsx` (sha256 `301a0b72...`;
-      extract change `03/2016/0006-R`).
-- [ ] Week 1: map five hand-picked AGS keys (Berlin `11000` as the
-      city-state, `03159` Göttingen as the merged Kreis from slice 0, the
+- [x] 2026-08-17. Week 1: captured one small redistributable extract per
+      reference source, exact cell values from the live download, not
+      hand-typed: BBSR `ref-kreise-1990-2024.xlsx` (sha256 `68c4d001...`,
+      matches the week-0 pin; extracted sheets `2013-2014`, `2015-2016`,
+      `2020-2021`, header row plus the Göttingen, Osterode, Eisenach,
+      Wartburgkreis, Cochem-Zell, Mayen-Koblenz and Rhein-Hunsrück rows),
+      GV-ISys `2016.xlsx` (sha256 `301a0b72...`, matches the week-0 pin;
+      extracted change `03/2016/0006-R`, the two Kreis rows plus the Harz
+      Gemeindefreies-Gebiet row), the Eurostat NUTS-to-national-units
+      correspondence table (header plus the DE row: 401 Kreise, 10,957
+      Gemeinden, edition "NUTS 2027 and LAU 2025"), and the Eurostat
+      LAU-to-NUTS correspondence, Germany sheet (header plus Berlin and one
+      representative Gemeinde per Kreis for the five hand-mapped keys below).
+      `mloda_plugin_govdata/harmonization/reference/fixtures/`, `NOTICE` with
+      the Destatis, Eurostat, and BBSR long-form attributions.
+- [x] 2026-08-17. Week 1: mapped five hand-picked AGS keys (Berlin `11000`
+      city-state to `DE300`; `03159` Göttingen merged Kreis to `DE91C`; the
       Gemeindefreies Gebiet `03159501` Harz (Ldkr. Göttingen), formerly
-      `03156501`, from the same GV-ISys change, and two ordinary Kreise) to
-      NUTS-3 by hand from the captured extracts and paste the table into ADR
-      0006. If no direct 5-digit correspondence exists in the sources (LAU is
-      Gemeinde-level), the derivation is designed here, not in week 4.
-- [ ] Week 1: packaged data vs runtime fetch decided (shared with slice 6).
-      If packaged: `[tool.setuptools.package-data]` (and MANIFEST.in) plus a
-      wheel-content test. If runtime fetch: the default edition is called
-      "latest cached", and an offline call with an empty cache raises with
-      the fetch instruction instead of silently using a fixture edition.
-- [ ] Add `openpyxl` to dependencies (D11): edit `pyproject.toml`, refresh
-      `uv.lock` (`uv sync --all-extras`), commit both; respects
-      `exclude-newer`; `tox` green and `tox -e security` (pip-audit) clean as
-      an additional check. Raise `timeout-minutes` in
-      `.github/workflows/test.yml` in the same PR (verified: 2 minutes today
-      for the whole tox run on a five-version matrix).
+      `03156501`, to `DE91C`; two ordinary Kreise, Cochem-Zell `07135` to
+      `DEB1C` and Rhein-Hunsrück-Kreis `07140` to `DEB1D`, chosen to reuse the
+      pair already characterized for the BBSR fractional-share case) to
+      NUTS-3 by hand from the captured extracts; table in ADR 0006 (planning
+      repo). No direct 5-digit Kreis-to-NUTS-3 table exists in the sources
+      (Eurostat's correspondence is LAU/Gemeinde-level); the derivation
+      designed here: Germany's 401 NUTS-3 regions are its Kreise one-to-one,
+      so a Kreis's NUTS-3 code is read off any Gemeinde inside it.
+- [x] 2026-08-17. Week 1: packaged data vs runtime fetch decided: runtime
+      fetch, not packaged (ADR 0006). The full reference tables (up to 19.8 MB
+      for the Eurostat LAU-to-NUTS file) load through the GET `DownloadCache`
+      per WP-D, not the wheel; `pyproject.toml` still has no
+      `package-data`/`MANIFEST.in` entry, so the new fixtures stay out of the
+      wheel the same way `destatis/tests/fixtures/` already does. The default
+      edition ("latest cached") raises with the fetch instruction on an empty
+      cache instead of silently using a fixture edition; slice 6 decides the
+      recipe-file location separately (first-party and small, not
+      third-party-licensed and large).
+- [x] 2026-08-17. Added `openpyxl` to dependencies (D11): `pyproject.toml`,
+      `uv sync --all-extras` refreshed `uv.lock` (openpyxl 3.1.5,
+      et-xmlfile); `tox` green (180 passed, ruff format/check, mypy --strict,
+      bandit) and `tox -e security` (pip-audit) clean. Raised
+      `timeout-minutes` from 2 to 5 in `.github/workflows/test.yml` in the
+      same PR.
 - [ ] `harmonization/keys.py`: AGS 2, 5, 8 digit and 12-digit ARS detection;
       keys are strings with leading zeros end to end; Excel-mangled integer
       keys repaired only when unambiguous by level and length, else raise
@@ -804,8 +818,8 @@ loaders, key model, edition model, mapping.
 - [ ] Commit series `feat(harmonization): key model`,
       `feat(harmonization): reference loaders`, `feat(harmonization): AGS to
       NUTS mapping`.
-- [ ] Planning repo: ADR 0006 (reference data policy, closes the BBSR license
-      ADR action), status proposed.
+- [x] 2026-08-17. Planning repo: ADR 0006 (reference data policy, closes the
+      BBSR license ADR action), status proposed.
 
 ## Slice 9: re-basing across Gebietsstand (WP-E part 2, week 5, about 15 h)
 
