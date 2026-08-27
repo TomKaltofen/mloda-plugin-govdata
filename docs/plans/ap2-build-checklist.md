@@ -5,7 +5,7 @@ Companion to [ap2-destatis-harmonization.md](ap2-destatis-harmonization.md)
 Tick items in the PR that lands them. If a slice moves, a checkpoint slips, or
 a cut line is pulled, edit both files in the same PR.
 
-Status: draft v2.5, 2026-08-17 (slice 8 week-1 part ticked: reference extracts, ADR 0006, packaging decision, openpyxl dependency). v1 was reviewed by three independent advisors
+Status: draft v2.6, 2026-08-27 (slice 8 week-4 ticked: key model, reference loaders, edition and NUTS mapper, tests). v1 was reviewed by three independent advisors
 (two Claude models, one Codex run) against the M1 code and mloda 0.10.0; the
 findings are folded in below. Slice 0 step 0 (OpenAPI assessment) was done
 2026-08-16, reviewed by one Claude Sonnet run and one Codex run against the
@@ -791,49 +791,83 @@ loaders, key model, edition model, mapping.
       bandit) and `tox -e security` (pip-audit) clean. Raised
       `timeout-minutes` from 2 to 5 in `.github/workflows/test.yml` in the
       same PR.
-- [ ] `harmonization/keys.py`: AGS 2, 5, 8 digit and 12-digit ARS detection;
-      keys are strings with leading zeros end to end; Excel-mangled integer
-      keys repaired only when unambiguous by level and length, else raise
-      (the BBSR Kreis file is the first real case: 8-digit `1001000` numbers
-      whose first five digits are the Kreis and whose last three are always
-      `000`, verified in week 0; repair `str(int(v)).zfill(8)[:5]` only
-      when the `000` suffix holds); mixed levels in one input raise.
-- [ ] `harmonization/reference/`: one loader per source (xlsx via openpyxl,
-      GV100 fixed-width ASCII), each reading through the GET `DownloadCache`
-      with `revalidate=False` by default (offline first, explicit refresh),
-      pinned by URL plus sha256, with the fixture extract for tests. BBSR
-      Kreis loader, from the week-0 characterization: one sheet per
-      consecutive year pair named `<y>-<y+1>` (34 sheets, 1990 to 2024),
-      header row 0, columns source key, source name, area share, population
-      share, employee share, area, population and SvB weights, target key,
-      target name; direction is old to new (forward) and is read from the
-      sheet name; trailing all-empty rows end the data; a split source has
-      several rows. Validity windows for keys come from GV-ISys change files
-      and these sheets, never from labels (Regionalstatistik has no `(bis
-      ...)` suffix).
-- [ ] `harmonization/edition.py`: `Edition(gebietsstand, nuts_version)` plus
-      the reference-data identity it was built from (source, URL, sha256,
-      covered year range); default per the week-1 decision (read from the
-      shipped or cached tables, not a constant).
-- [ ] `harmonization/nuts.py`: exact API written down before coding:
-      `map_ags_to_nuts(keys, *, edition, data_year=None,
-      on_unmatched="raise" | "drop" | "flag") -> MappingResult` with
-      `matched` (key, nuts1, nuts2, nuts3, nuts_version), `unmatched`
-      (structured report), `edition`. `data_year` drives the warning when it
-      diverges from the edition year and the error (with the covered range)
-      when it falls outside key coverage; without it neither check runs and
-      the result says so. Joining results across NUTS versions raises.
-- [ ] Tests: hypothesis on string-key preservation and level detection;
-      city-states (Berlin, Hamburg, Bremen and Bremerhaven) consistent;
-      Gemeindefreie Gebiete appear in the unmatched report; the slice-0
-      Kreis merger mapped in both editions; edition mismatch raises; the
-      "partially validated" LAU table caveat documented in the loader
-      docstring; the five hand-mapped keys from ADR 0006 pinned as a test.
-- [ ] `[-]` Gemeinde (8-digit) and ARS mapping: stretch (D4); string keys keep
-      the door open.
-- [ ] Commit series `feat(harmonization): key model`,
+- [x] 2026-08-27. `harmonization/keys.py`: `AgsLevel` (Land 2, Kreis 5,
+      Gemeinde 8) and `ARS_LENGTH` (12); `detect_level`/`normalize_key` work
+      on already-string, leading-zero-preserved keys; `repair_bbsr_kreis_key`
+      is the one explicit, source-specific Excel-mangled-integer repair
+      (`str(int(v)).zfill(8)[:5]` only when the `000` suffix holds, else
+      raise), not a generic guess; `normalize_keys` raises on an empty batch
+      or mixed levels. Hypothesis-tested (string-key round trip).
+- [x] 2026-08-27. `harmonization/reference/`: one loader per xlsx source
+      (BBSR Kreise, GV-ISys per year, both Eurostat tables) via openpyxl,
+      each split into a pure `parse_*_workbook(path)` function plus a
+      `load_*(cache, ...)` wrapper that fetches through the GET
+      `DownloadCache` (`revalidate=False` default) and verifies the
+      downloaded body against the source's pinned sha256
+      (`reference/download.py:fetch_pinned`, raises `SourceIntegrityError`
+      on drift); tests read the fixture extracts directly through the pure
+      parse functions (the pin check would reject an extract, by design).
+      BBSR Kreis loader matches the week-0 characterization exactly (sheet
+      name `<y>-<y+1>` gives direction and year pair, trailing all-empty
+      rows end a sheet, a split source yields several rows); does not
+      itself assert per-key share sums (that stays slice 9's job). GV-ISys
+      loader finds data rows by their own Kennziffer shape
+      (`\d{2}/\d{4}/\d+-[A-Z]`) rather than a fixed header row offset, since
+      one sample year cannot pin that layout across 1990-2024. GV100
+      fixed-width ASCII was not built: no fixture or spec for that format is
+      in the planning repo, only the xlsx "Namens-Grenz-Aenderung" ADR 0006
+      already covers; left for a future slice if a real need appears.
+- [x] 2026-08-27. `harmonization/edition.py`: `Edition(gebietsstand,
+      nuts_version, source, url, sha256, year_range, lau_rows,
+      gv_isys_changes)`; `load_edition(cache, *, gv_isys_changes=(), ...)`
+      builds it from the pinned Eurostat LAU-to-NUTS crosswalk (raises on an
+      empty or multi-PERIOD load); `default_edition()` reads offline-cache-
+      only and raises with the fetch instruction on a cold cache, per the
+      week-1 packaging decision (no bundled fallback).
+- [x] 2026-08-27. `harmonization/nuts.py`: `map_ags_to_nuts(keys, *,
+      edition, data_year=None, on_unmatched="raise"|"drop"|"flag") ->
+      MappingResult` as specified. Kreis (5-digit) keys resolve by grouping
+      every Gemeinde LAU row under that Kreis prefix and requiring one
+      shared NUTS-3 (raises on a multi-valued group, the Eisenach-style lag
+      window); a Kreis absent from the crosswalk gets one redirect attempt
+      through `edition.gv_isys_changes` (its historical successor key; a
+      Kreis renamed twice needs two hops and is not chased, so it comes back
+      unmatched rather than silently wrong). Gemeinde (8-digit) keys resolve
+      by direct lookup; Land and ARS keys always come back unmatched, never
+      raised. `data_year` warns on divergence from the edition's own
+      Gebietsstand year and raises outside the covered range; omitted, the
+      result's `data_year_checked` says so. `combine_mapping_results` raises
+      on a NUTS-version mismatch.
+- [x] 2026-08-27. Tests (48, all new): hypothesis string-key/level-detection
+      round trip; city-states Berlin/Hamburg/Bremen/Bremerhaven consistent
+      (synthetic rows, none are in the small ADR 0006 extract); a
+      Gemeindefreies Gebiet outside that extract comes back unmatched, the
+      one inside it (Harz) matches; the slice-0 Göttingen/Osterode merger:
+      both the retired Kreis codes (via GV-ISys redirect) and the merged
+      code land on the same NUTS-3 in the current edition ("both editions"
+      read as pre- and post-merger Gebietsstand of the Kreis code, not two
+      NUTS editions, since only NUTS 2024 reference data exists to test
+      against); `combine_mapping_results` raises on an edition/NUTS-version
+      mismatch; `parse_lau_nuts_de_workbook`'s docstring documents the
+      Cyprus partial-validation caveat, pinned by a docstring-content test;
+      the five ADR 0006 hand-mapped keys pinned as a test, all five correct.
+- [x] 2026-08-27. `[-]` Gemeinde (8-digit) and ARS mapping stayed stretch
+      (D4): direct exact-key lookup against whatever the loaded edition
+      contains works for both (cheap, no extra code), but no derived/
+      historical Gemeinde-level resolution was built; ARS keys always come
+      back unmatched. String keys keep the door open, as specified.
+- [x] 2026-08-27. Commit series `feat(harmonization): key model`,
       `feat(harmonization): reference loaders`, `feat(harmonization): AGS to
-      NUTS mapping`.
+      NUTS mapping`, plus one review-fix commit `fix(harmonization): close
+      review findings in the NUTS mapper` (a codex review, independent of
+      the plan-branch and fixture commits, found a real bug this build's
+      own check had also flagged: an ambiguous historical Kreis redirect
+      could silently pick the wrong successor; also found the 2016 GV-ISys
+      sha256 pin was skippable by omission and an invalid `on_unmatched`
+      value silently behaved like `"flag"`; all three fixed). PR
+      https://github.com/TomKaltofen/mloda-plugin-govdata/pull/17, all CI
+      green (Python 3.10 through 3.14, each running tox: pytest, ruff
+      format/check, mypy --strict, bandit).
 - [x] 2026-08-17. Planning repo: ADR 0006 (reference data policy, closes the
       BBSR license ADR action), status proposed.
 
