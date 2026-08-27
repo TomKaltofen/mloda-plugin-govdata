@@ -70,11 +70,8 @@ def _kreis_index(lau_rows: Sequence[LauNutsRow]) -> dict[str, str]:
     return index
 
 
-def _kreis_redirect(key: str, changes: Sequence[GvIsysChange]) -> str | None:
-    for change in changes:
-        if change.level == "Kreis" and change.from_ags == key:
-            return change.to_ags
-    return None
+def _kreis_redirect_candidates(key: str, changes: Sequence[GvIsysChange]) -> set[str]:
+    return {change.to_ags for change in changes if change.level == "Kreis" and change.from_ags == key}
 
 
 def _resolve_one(
@@ -89,9 +86,14 @@ def _resolve_one(
     if level == AgsLevel.KREIS:
         nuts3 = kreis_index.get(key)
         if nuts3 is None:
-            redirected = _kreis_redirect(key, edition.gv_isys_changes)
-            if redirected is not None:
-                nuts3 = kreis_index.get(redirected)
+            candidates = _kreis_redirect_candidates(key, edition.gv_isys_changes)
+            if len(candidates) > 1:
+                return None, (
+                    f"Kreis {key} has {len(candidates)} ambiguous GV-ISys successors "
+                    f"{sorted(candidates)} (e.g. a split); not resolved to a single redirect"
+                )
+            if len(candidates) == 1:
+                nuts3 = kreis_index.get(next(iter(candidates)))
         if nuts3 is not None:
             return nuts3, None
         return None, f"Kreis {key} not found in this edition's LAU-to-NUTS crosswalk (no GV-ISys redirect resolved it)"
@@ -129,8 +131,12 @@ def map_ags_to_nuts(
 
     ``on_unmatched``: ``"raise"`` (default) raises :class:`UnmatchedKeysError` if anything
     is unmatched; ``"flag"`` returns matched and unmatched together; ``"drop"`` returns
-    matched only.
+    matched only. Any other value raises immediately: the type hint is not runtime-enforced,
+    so a typo would otherwise silently fall through to ``"flag"`` behavior.
     """
+    if on_unmatched not in ("raise", "drop", "flag"):
+        raise ValueError(f"on_unmatched must be 'raise', 'drop', or 'flag', got {on_unmatched!r}")
+
     data_year_checked = data_year is not None
     if data_year is not None:
         low, high = edition.year_range

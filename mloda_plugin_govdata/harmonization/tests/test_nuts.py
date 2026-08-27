@@ -1,4 +1,5 @@
 import warnings
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -10,7 +11,23 @@ from mloda_plugin_govdata.harmonization.nuts import (
     map_ags_to_nuts,
 )
 from mloda_plugin_govdata.harmonization.reference.eurostat import LauNutsRow, parse_lau_nuts_de_workbook
-from mloda_plugin_govdata.harmonization.reference.gv_isys import parse_gv_isys_workbook
+from mloda_plugin_govdata.harmonization.reference.gv_isys import GvIsysChange, parse_gv_isys_workbook
+
+
+def _kreis_change(from_ags: str, to_ags: str) -> GvIsysChange:
+    return GvIsysChange(
+        change_id="x",
+        level="Kreis",
+        from_rs=from_ags,
+        from_ags=from_ags,
+        from_name="x",
+        change_type="x",
+        to_rs=to_ags,
+        to_ags=to_ags,
+        to_name="x",
+        effective_date_legal=date(2016, 11, 1),
+        effective_date_statistical=date(2016, 11, 1),
+    )
 
 
 def _row(lau_code: str, nuts3: str) -> LauNutsRow:
@@ -79,6 +96,26 @@ def test_kreis_redirect_requires_gv_isys_history(real_edition: Edition) -> None:
     result = map_ags_to_nuts(["03152"], edition=bare_edition, on_unmatched="flag")
     assert result.matched == ()
     assert result.unmatched[0].key == "03152"
+
+
+def test_ambiguous_kreis_redirect_is_unmatched_not_picked_arbitrarily() -> None:
+    # A split: the same retired Kreis code has two GV-ISys successors with different NUTS-3
+    # codes. Picking either silently (e.g. "first match") could assign the wrong region.
+    lau_rows = (_row("01002001", "DE111"), _row("01003001", "DE112"))
+    changes = (_kreis_change("01001", "01002"), _kreis_change("01001", "01003"))
+    edition = Edition(
+        gebietsstand="2024",
+        nuts_version="2024",
+        source="t",
+        url="t",
+        sha256=None,
+        year_range=(2024, 2024),
+        lau_rows=lau_rows,
+        gv_isys_changes=changes,
+    )
+    result = map_ags_to_nuts(["01001"], edition=edition, on_unmatched="flag")
+    assert result.matched == ()
+    assert "ambiguous" in result.unmatched[0].reason
 
 
 # --- city-states -------------------------------------------------------------------------
@@ -188,6 +225,12 @@ def test_on_unmatched_flag_returns_both(real_edition: Edition) -> None:
     result = map_ags_to_nuts(["11000", "99999"], edition=real_edition, on_unmatched="flag")
     assert {m.key for m in result.matched} == {"11000"}
     assert {u.key for u in result.unmatched} == {"99999"}
+
+
+def test_on_unmatched_rejects_an_invalid_value(real_edition: Edition) -> None:
+    # The Literal type hint is not runtime-enforced; a typo must not silently behave like "flag".
+    with pytest.raises(ValueError, match="on_unmatched must be"):
+        map_ags_to_nuts(["11000"], edition=real_edition, on_unmatched="flga")  # type: ignore[arg-type]
 
 
 # --- data_year checks -----------------------------------------------------------------------
