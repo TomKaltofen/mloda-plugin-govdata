@@ -20,7 +20,9 @@ import openpyxl
 from mloda_plugin_govdata.feature_groups.govdata.core.cache import DownloadCache
 
 from .download import fetch_pinned
-from .sources import gv_isys_source
+from .sources import GV_ISYS_2016_SHA256, gv_isys_source
+
+_KNOWN_SHA256: dict[int, str] = {2016: GV_ISYS_2016_SHA256}
 
 _CHANGE_ID = re.compile(r"^\d{2}/\d{4}/\d+-[A-Z]$")
 
@@ -100,9 +102,11 @@ def load_gv_isys_changes(
 ) -> list[GvIsysChange]:
     """Fetches (offline-cache-first) and parses one year's GV-ISys change rows.
 
-    ``sha256`` pins the download when known (2016 is pinned via ``sources.GV_ISYS_2016_SHA256``);
-    other years fetch unpinned.
+    ``sha256`` overrides the pin; when omitted, the known hash is applied automatically for
+    a year that has one on record (2016 today, ``sources.GV_ISYS_2016_SHA256``), so the pin
+    check is never silently skipped just because the caller forgot to pass it. Other years
+    fetch unpinned.
     """
-    source = gv_isys_source(year, sha256=sha256)
+    source = gv_isys_source(year, sha256=sha256 or _KNOWN_SHA256.get(year))
     path = fetch_pinned(cache, source, revalidate=revalidate)
     return parse_gv_isys_workbook(path)
