@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 import os
 import threading
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -43,7 +43,9 @@ __all__ = [
     "GenesisClient",
     "GenesisHost",
     "Operation",
+    "fetch_tablefile",
     "resolve_host",
+    "tablefile_parameters",
 ]
 
 logger = logging.getLogger(__name__)
@@ -281,3 +283,79 @@ class GenesisClient:
         if not isinstance(reply, GenesisEnvelope):
             raise GenesisUnknownEnvelope(f"{endpoint} did not answer with the nested envelope", endpoint=endpoint)
         return reply
+
+
+def tablefile_parameters(
+    name: str,
+    *,
+    regionalvariable: str | None = None,
+    regionalkey: Sequence[str] | str | None = None,
+    classifyingvariable1: str | None = None,
+    classifyingkey1: Sequence[str] | str | None = None,
+    classifyingvariable2: str | None = None,
+    classifyingkey2: Sequence[str] | str | None = None,
+    classifyingvariable3: str | None = None,
+    classifyingkey3: Sequence[str] | str | None = None,
+    classifyingvariable4: str | None = None,
+    classifyingkey4: Sequence[str] | str | None = None,
+    classifyingvariable5: str | None = None,
+    classifyingkey5: Sequence[str] | str | None = None,
+    contents: Sequence[str] | str | None = None,
+    startyear: int | str | None = None,
+    endyear: int | str | None = None,
+    quality: bool = False,
+    language: str = DEFAULT_LANGUAGE,
+) -> dict[str, object]:
+    """``data/tablefile`` fields for one selection, M2 wire policy applied.
+
+    Pass the result as the ``fields`` argument of ``ParameterCache.get_or_fetch``, which
+    canonicalizes it (sorts selection lists, stringifies ints) before keying and calling ``fetch``.
+    ``format``, ``job``, ``compress``, and ``transpose`` are pinned; ``quality`` is sent as
+    ``on``/``off``. ``area``, ``stand``, and ``timeslices`` are not M2 locator fields (server
+    defaults apply; see ``docs/destatis-options.md``) and never appear in the result.
+    """
+    selection: dict[str, object | None] = {
+        "name": name,
+        "regionalvariable": regionalvariable,
+        "regionalkey": regionalkey,
+        "classifyingvariable1": classifyingvariable1,
+        "classifyingkey1": classifyingkey1,
+        "classifyingvariable2": classifyingvariable2,
+        "classifyingkey2": classifyingkey2,
+        "classifyingvariable3": classifyingvariable3,
+        "classifyingkey3": classifyingkey3,
+        "classifyingvariable4": classifyingvariable4,
+        "classifyingkey4": classifyingkey4,
+        "classifyingvariable5": classifyingvariable5,
+        "classifyingkey5": classifyingkey5,
+        "contents": contents,
+        "startyear": startyear,
+        "endyear": endyear,
+    }
+    fields: dict[str, object] = {k: v for k, v in selection.items() if v is not None}
+    fields.update(
+        language=language,
+        format="ffcsv",
+        job="false",
+        compress="false",
+        transpose="false",
+        quality="on" if quality else "off",
+    )
+    return fields
+
+
+def fetch_tablefile(client: GenesisClient, parameters: Mapping[str, str]) -> bytes:
+    """POSTs ``data/tablefile`` with already-canonical ``parameters`` and returns the zip body.
+
+    Meant as the ``fetch`` callback for ``ParameterCache.get_or_fetch``. The envelope and HTTP
+    status are inspected by ``GenesisClient.call`` before this looks at the reply kind; raises if
+    GENESIS answers with anything other than a zip payload.
+    """
+    inspected = client.call("data/tablefile", parameters)
+    if inspected.kind != "zip":
+        raise GenesisUnknownEnvelope(
+            "data/tablefile did not answer with a zip payload",
+            endpoint="data/tablefile",
+            http_status=inspected.http_status,
+        )
+    return inspected.body
