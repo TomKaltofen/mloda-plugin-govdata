@@ -26,6 +26,7 @@ from .errors import (
     GenesisUnknownEnvelope,
     GenesisUnknownTable,
 )
+from .hosts import GenesisHost
 from .redact import CREDENTIAL_KEYS, REDACTED
 
 # Status codes. "documented": Anwenderdokumentation v5.1 examples; "observed": confirmed against the
@@ -186,8 +187,24 @@ def parse_json_reply(payload: Any) -> JsonReply:
         raise GenesisUnknownEnvelope(f"GENESIS reply does not fit {model.__name__}: invalid fields {fields}") from None
 
 
+def _too_large_message(content: str, host: GenesisHost | None) -> str:
+    """Actionable text for GenesisResultTooLarge, not a bare server string."""
+    server_text = content.strip().rstrip(".")
+    prefix = f"GENESIS result too large: {server_text}." if server_text else "GENESIS result too large."
+    shrink = (
+        " Shrink the selection (regions, classifying keys, years); job=true needs user plus password, but this "
+        "client does not fetch job results yet."
+    )
+    manual = f" Manual fetch: {host.registration_url}" if host is not None else ""
+    return prefix + shrink + manual
+
+
 def raise_for_status_block(
-    status: GenesisStatus, *, http_status: int | None = None, endpoint: str | None = None
+    status: GenesisStatus,
+    *,
+    http_status: int | None = None,
+    endpoint: str | None = None,
+    host: GenesisHost | None = None,
 ) -> None:
     """Map a status block to a typed exception; code 0 and the parameter-adjusted warning pass."""
     text = status.content.lower()
@@ -207,7 +224,7 @@ def raise_for_status_block(
     if TEXT_JOB_ACCEPTED in text:
         raise GenesisJobAccepted(f"GENESIS queued a background job instead of a table: {status.content}", **details)
     if status.code == CODE_RESULT_TOO_LARGE:
-        raise GenesisResultTooLarge(f"GENESIS result too large for a direct download: {status.content}", **details)
+        raise GenesisResultTooLarge(_too_large_message(status.content, host), **details)
     if status.code == CODE_TABLE_NOT_FOUND:
         raise GenesisUnknownTable(f"GENESIS does not know the table: {status.content}", **details)
     if status.code == CODE_NO_OBJECTS:
@@ -216,7 +233,7 @@ def raise_for_status_block(
         return
     # Text-only heuristics come after the pass, so a benign warning mentioning the phrase is not an error.
     if TEXT_TOO_LARGE in text:
-        raise GenesisResultTooLarge(f"GENESIS result too large for a direct download: {status.content}", **details)
+        raise GenesisResultTooLarge(_too_large_message(status.content, host), **details)
     raise GenesisUnknownEnvelope(f"Unknown GENESIS status block {status.as_dict()!r} (HTTP {http_status})", **details)
 
 
@@ -272,8 +289,10 @@ def _looks_like_html(content_type: str, body: bytes) -> bool:
     return "html" in content_type or body.lstrip()[:1] == b"<"
 
 
-def inspect_response(response: httpx.Response, endpoint: str | None = None) -> InspectedReply:
-    """Classify by content type and body, parse JSON into its model, and raise the mapped exception."""
+def inspect_response(
+    response: httpx.Response, endpoint: str | None = None, host: GenesisHost | None = None
+) -> InspectedReply:
+    """Classify by content type and body, parse and raise the mapped exception (``host`` names a too-large URL)."""
     content_type = response.headers.get("content-type", "").lower()
     body = response.content
     http_status = response.status_code
@@ -303,9 +322,9 @@ def inspect_response(response: httpx.Response, endpoint: str | None = None) -> I
         ) from None
     reply = parse_json_reply(payload)
     if isinstance(reply, GenesisEnvelope):
-        raise_for_status_block(reply.status, http_status=http_status, endpoint=endpoint)
+        raise_for_status_block(reply.status, http_status=http_status, endpoint=endpoint, host=host)
     elif isinstance(reply, GenesisStatus):
-        raise_for_status_block(reply, http_status=http_status, endpoint=endpoint)
+        raise_for_status_block(reply, http_status=http_status, endpoint=endpoint, host=host)
     elif isinstance(reply, LoginCheckReply):
         raise_for_logincheck(reply, http_status=http_status, endpoint=endpoint)
     if http_status >= 400:

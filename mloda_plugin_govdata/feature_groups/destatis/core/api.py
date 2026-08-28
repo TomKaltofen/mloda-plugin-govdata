@@ -230,7 +230,7 @@ class GenesisClient:
                     endpoint=endpoint,
                     http_status=response.status_code,
                 )
-            inspected = inspect_response(response, endpoint)
+            inspected = inspect_response(response, endpoint, host=self.host)
         except GenesisError as exc:
             self._redact(exc)
             raise

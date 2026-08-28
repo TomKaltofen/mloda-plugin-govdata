@@ -31,6 +31,10 @@ with GenesisClient("genesis") as client:  # credentials from GENESIS_TOKEN
     client.logincheck()  # raises GenesisAuthError if rejected or run as guest
 ```
 
+## Result too large
+
+A table over the size limit raises `GenesisResultTooLarge` (GENESIS status code 98) with an actionable message: shrink the selection, or fetch the table manually through the host's web portal above. `job=true` needs the user-plus-password path, but this connector does not fetch job results yet.
+
 ## Redaction
 
 `repr` and `str` of `DestatisCredentials` and of the `logincheck` reply are redacted, and every `GenesisError` raised by `GenesisClient.call` (and the methods built on it) has the known secrets scrubbed from its text. The `Parameter` block that GENESIS echoes in each JSON reply loses `username` and `password` at parse time. Errors raised below that layer (transport errors, a `ValueError` from your own code) are not scrubbed. The fixture capture script (`scripts/capture_genesis_fixtures.py`) redacts secret values in any case or URL-encoding before writing and refuses to keep a file in which a secret survived.
