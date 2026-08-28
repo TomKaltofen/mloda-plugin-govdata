@@ -255,6 +255,26 @@ def test_a_cell_that_cannot_be_typed_names_the_offending_row() -> None:
         parse_ffcsv_bytes((header + row).encode("utf-8-sig"))
 
 
+def test_a_blank_value_cell_raises_instead_of_reading_as_a_plain_number() -> None:
+    # "" is a govdata NULL_MARKERS member but not a documented GENESIS sign; treating it as a
+    # marker-less null would be indistinguishable from a real number in value_marker.
+    header = ";".join(ONE_BLOCK_HEADER) + "\n"
+    row = "12411;Bevoelkerung;JAHR;Jahr;2015;DINSG;Deutschland insgesamt;DG;Deutschland;;Anzahl;X;Y\n"
+    with pytest.raises(ValueError, match="column 'value', row 0"):
+        parse_ffcsv_bytes((header + row).encode("utf-8-sig"))
+
+
+def test_empty_csv_bytes_raise_a_ffcsv_value_error() -> None:
+    with pytest.raises(ValueError, match="ffcsv: empty CSV"):
+        parse_ffcsv_bytes(b"")
+
+
+def test_value_q_column_survives_when_the_table_declares_it(fixtures_dir: Path) -> None:
+    data = _new_format_csv(fixtures_dir, "21611-0002_de_flat.zip")
+    table = parse_ffcsv_bytes(data)
+    assert table.column("value_q").to_pylist()[0] == "e"
+
+
 def test_qualitysigns_legend_is_covered_by_zero_null_or_a_flag(fixtures_dir: Path) -> None:
     # D9/checklist pin: every code in the captured legend is either a value marker this parser
     # recognizes, or a value_q flag (p/r/s) that never appears in the value cell itself.

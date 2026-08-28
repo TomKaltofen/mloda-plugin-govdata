@@ -313,7 +313,14 @@ def tablefile_parameters(
     ``format``, ``job``, ``compress``, and ``transpose`` are pinned; ``quality`` is sent as
     ``on``/``off``. ``area``, ``stand``, and ``timeslices`` are not M2 locator fields (server
     defaults apply; see ``docs/destatis-options.md``) and never appear in the result.
+
+    ``language`` is pinned to ``"de"``: ``parse_ffcsv_bytes`` assumes German decimal-comma
+    formatting, and an ``en`` reply (dot decimals, same column names) would parse without error
+    but silently corrupt every value. Raises ``ValueError`` for anything else until the parser
+    also handles English replies.
     """
+    if language != DEFAULT_LANGUAGE:
+        raise ValueError(f"tablefile_parameters: language must be {DEFAULT_LANGUAGE!r} in M2, got {language!r}")
     selection: dict[str, object | None] = {
         "name": name,
         "regionalvariable": regionalvariable,

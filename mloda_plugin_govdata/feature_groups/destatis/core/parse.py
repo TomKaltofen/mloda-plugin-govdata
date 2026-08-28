@@ -26,10 +26,11 @@ __all__ = [
     "ffcsv_schema",
     "guard_ffcsv_layout",
     "parse_ffcsv_bytes",
+    "parse_ffcsv_zip",
 ]
 
 # GENESIS tables in AP2 scope are small; this is a zip-bomb guard, not a real ceiling.
-MAX_DECOMPRESSED_BYTES = 200 * 1024 * 1024
+MAX_DECOMPRESSED_BYTES = 32 * 1024 * 1024
 
 FFCSV_PREFIX: tuple[str, ...] = ("statistics_code", "statistics_label", "time_code", "time_label", "time")
 _BLOCK_SUFFIXES: tuple[str, ...] = (
@@ -45,9 +46,9 @@ VALUE_QUALITY_COLUMN = "value_q"
 def extract_ffcsv_csv(zip_bytes: bytes, *, max_decompressed_bytes: int = MAX_DECOMPRESSED_BYTES) -> bytes:
     """The one CSV member of a ``data/tablefile`` zip reply.
 
-    Rejects an empty archive, an archive that does not hold exactly one CSV member, and a member
-    over ``max_decompressed_bytes`` (checked against the declared size and the actual bytes read,
-    since a crafted archive can misstate the former).
+    Rejects an empty archive, an archive that does not hold exactly one CSV member, a member whose
+    declared size is over ``max_decompressed_bytes``, and any read failure (corrupt CRC, an
+    encrypted member, an unsupported compression method) once opened; all surface as ``ValueError``.
     """
     try:
         archive = zipfile.ZipFile(io.BytesIO(zip_bytes))
@@ -65,8 +66,11 @@ def extract_ffcsv_csv(zip_bytes: bytes, *, max_decompressed_bytes: int = MAX_DEC
             f"ffcsv zip: member {member.filename!r} declares {member.file_size} bytes, "
             f"over the {max_decompressed_bytes} cap"
         )
-    with archive.open(member) as handle:
-        data = handle.read(max_decompressed_bytes + 1)
+    try:
+        with archive.open(member) as handle:
+            data = handle.read(max_decompressed_bytes + 1)
+    except (zipfile.BadZipFile, RuntimeError, NotImplementedError, EOFError) as exc:
+        raise ValueError(f"ffcsv zip: member {member.filename!r} could not be read ({exc})") from exc
     if len(data) > max_decompressed_bytes:
         raise ValueError(f"ffcsv zip: member {member.filename!r} decompressed over the {max_decompressed_bytes} cap")
     return data
@@ -142,9 +146,15 @@ def _parse_time_column(raw: list[str]) -> pa.Array:
     return pa.array(years, type=pa.int64())
 
 
-def _value_marker(raw: str) -> str:
-    """The raw sign of a ``value`` cell (``-``, ``.``, ``...``, ``/``, ``x``, ``()``), or ``""`` for a number."""
+def _value_marker(raw: str, row: int) -> str:
+    """The raw sign of a ``value`` cell (``-``, ``.``, ``...``, ``/``, ``x``, ``()``), or ``""`` for a number.
+
+    A blank cell is neither: unlike the other reused markers, ``""`` is not a documented GENESIS
+    sign, so treating it as a marker-less null would be indistinguishable from a plain number here.
+    """
     text = raw.strip()
+    if text == "":
+        raise ValueError(f"column 'value', row {row}: blank cell is not a recognized sign or number")
     return text if text in ZERO_MARKERS or text in NULL_MARKERS else ""
 
 
@@ -154,11 +164,17 @@ def parse_ffcsv_bytes(data: bytes) -> pa.Table:
     Reuses the encoding ladder, German number cleanup, and value markers from
     ``govdata/core/parse.py``. ``time`` is parsed through the period model into an annual int64
     year (both JAHR and STAG labels); ``value_marker`` carries the raw sign of the ``value`` cell,
-    empty for a plain number, next to whatever ``value_q`` the table declares. A cell that cannot
-    be typed raises naming the offending column and row.
+    empty for a plain number, next to whatever ``value_q`` the table declares. A blank ``time`` or
+    ``value`` cell raises naming the row; any other cell that cannot be typed raises the underlying
+    conversion error.
     """
     encoding = detect_encoding(data)
-    frame = pd.read_csv(io.BytesIO(data), sep=";", dtype=str, keep_default_na=False, na_values=[], encoding=encoding)
+    try:
+        frame = pd.read_csv(
+            io.BytesIO(data), sep=";", dtype=str, keep_default_na=False, na_values=[], encoding=encoding
+        )
+    except pd.errors.EmptyDataError as exc:
+        raise ValueError(f"ffcsv: empty CSV ({exc})") from exc
     frame.columns = pd.Index([str(name).strip() for name in frame.columns])
     header = list(frame.columns)
     n_blocks = guard_ffcsv_layout(header)
@@ -173,7 +189,7 @@ def parse_ffcsv_bytes(data: bytes) -> pa.Table:
 
     table = _typed_table(filtered, schema)
     table = table.append_column("time", _parse_time_column(filtered["time"]))
-    markers = pa.array([_value_marker(v) for v in filtered["value"]], type=pa.string())
+    markers = pa.array([_value_marker(v, i) for i, v in enumerate(filtered["value"])], type=pa.string())
     return table.append_column("value_marker", markers)
 
 
