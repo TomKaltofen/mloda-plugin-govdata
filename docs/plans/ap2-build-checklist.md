@@ -5,7 +5,7 @@ Companion to [ap2-destatis-harmonization.md](ap2-destatis-harmonization.md)
 Tick items in the PR that lands them. If a slice moves, a checkpoint slips, or
 a cut line is pulled, edit both files in the same PR.
 
-Status: draft v2.6, 2026-08-27 (slice 8 week-4 ticked: key model, reference loaders, edition and NUTS mapper, tests). v1 was reviewed by three independent advisors
+Status: draft v2.7, 2026-08-28 (slice 5 ticked: actionable result-too-large error). v1 was reviewed by three independent advisors
 (two Claude models, one Codex run) against the M1 code and mloda 0.10.0; the
 findings are folded in below. Slice 0 step 0 (OpenAPI assessment) was done
 2026-08-16, reviewed by one Claude Sonnet run and one Codex run against the
@@ -614,19 +614,39 @@ payloads, not a guess.
 
 ## Slice 5: result-too-large detection (WP-C, week 3, about 8 h)
 
-- [ ] The envelope-to-`GenesisResultTooLarge` mapping already exists from
-      slice 2; this slice owns the actionable message: why the password path
-      is needed, how to shrink the selection (years, regions, classifying
-      keys), and how to fetch manually (URL and steps). Never a truncated
-      table.
-- [ ] Test with the recorded envelope fixture; message content asserted.
-- [ ] Docs: the too-large paragraph in `docs/credentials.md` (created in
-      slice 2).
-- [ ] `[-]` Full job path (`catalogue/jobs`, `data/resultfile`,
-      `profile/removeResult`; camelCase per spec and PDF 2.7.2 URL, and
-      its `name` field has no spec default, so the client validates it
-      before sending): stretch, only after acceptance is green.
-- [ ] Commit `feat(destatis): actionable error for oversized results`.
+Landed in fork PR #18 (https://github.com/TomKaltofen/mloda-plugin-govdata/pull/18,
+2026-08-28, CI green on 3.10 to 3.14, tox green).
+
+- [x] 2026-08-28, PR #18. The envelope-to-`GenesisResultTooLarge` mapping
+      already existed from slice 2; this slice built the actionable message
+      (`_too_large_message` in `core/envelope.py`): shrinking the selection
+      (`regionalvariable`/`regionalkey`, `classifyingvariable1..5`/
+      `classifyingkey1..5`, `startyear`/`endyear`), the user-plus-password
+      requirement for `job=true`, and, when the caller's host is known, that
+      host's web portal URL for a manual fetch. An independent review caught
+      the first draft's `job=true` sentence leading nowhere (this connector
+      cannot collect a job's result yet), so the message says so explicitly
+      instead of implying the job path is usable end to end.
+- [x] 2026-08-28, PR #18. Fixture `synthetic-tablefile-too-large.json`: no
+      real capture or documented server text exists for status code 98
+      (pystatis detects it numerically and never reads `Content` either), so
+      the fixture is honestly labeled synthetic in `fixtures/NOTICE`, not
+      documented or captured. Message content asserted for both the
+      numeric-code and text-heuristic raise paths, with and without a known
+      host. Review follow-up (not fixed here, pre-existing and unrelated to
+      this slice): `scripts/capture_genesis_fixtures.py`'s `_notice_line`
+      writes the sha256 inline in the `Source:` sentence, not as its own
+      `sha256:` line, so a real capture replacing this fixture would fail
+      the NOTICE hash-walk contract test as written; fix before running the
+      capture script for this or any other fixture.
+- [x] 2026-08-28, PR #18. Docs: the too-large paragraph in
+      `docs/credentials.md`.
+- [-] Full job path (`catalogue/jobs`, `data/resultfile`,
+      `profile/removeResult`): stayed stretch, not built. The message and
+      docs tell the caller to use the host's web portal instead, since this
+      connector cannot collect a job's result.
+- [x] 2026-08-28, PR #18. Commit `feat(destatis): actionable error for
+      oversized results`.
 
 ## Slice 6: recipe format and writer (WP-F part 1, week 3, about 12 h)
 
