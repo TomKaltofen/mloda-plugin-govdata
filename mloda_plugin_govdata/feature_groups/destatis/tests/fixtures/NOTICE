@@ -77,3 +77,8 @@ sha256: ab13f39b6dcfc15c272b573ebdee820aabc03307c7c4773074c6c93087c9ec09
 synthetic-maintenance.html
 Synthetic HTML page standing in for a maintenance or error page served instead of JSON. No external source.
 sha256: 35606a1b8a99841cd21f568e38928833dc3e45182b0e7d36f590b60718f1ab93
+
+synthetic-tablefile-too-large.json
+Status code 98; Content from pystatis's log wording for this code (src/pystatis/http_helper.py, start_job), which is
+the closest thing to a real server text anywhere found. No external capture exists.
+sha256: cd0481b26d1f5cddbdb108f128a56829071eef6dcad1981869095d0d9f1d4e0a

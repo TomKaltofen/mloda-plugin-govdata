@@ -29,6 +29,7 @@ from mloda_plugin_govdata.feature_groups.destatis.core.errors import (
     GenesisUnknownEnvelope,
     GenesisUnknownTable,
 )
+from mloda_plugin_govdata.feature_groups.destatis.core.hosts import GENESIS_ONLINE
 
 
 def _json(fixtures_dir: Path, name: str) -> Any:
@@ -147,6 +148,31 @@ def test_documented_no_objects_maps_to_empty_selection(fixtures_dir: Path) -> No
         raise_for_status_block(reply.status, http_status=200, endpoint="data/tablefile")
     assert info.value.status_block == {"Code": 104, "Content": reply.status.content, "Type": "Information"}
     assert info.value.endpoint == "data/tablefile" and info.value.http_status == 200
+
+
+def _assert_too_large_guidance(message: str) -> None:
+    assert "Shrink the selection" in message
+    assert "job=true" in message and "user plus password" in message
+
+
+def test_too_large_message_is_actionable(fixtures_dir: Path) -> None:
+    reply = parse_json_reply(_json(fixtures_dir, "synthetic-tablefile-too-large.json"))
+    assert isinstance(reply, GenesisEnvelope) and reply.status.code == CODE_RESULT_TOO_LARGE
+    with pytest.raises(GenesisResultTooLarge) as info:
+        raise_for_status_block(reply.status, http_status=200, endpoint="data/tablefile", host=GENESIS_ONLINE)
+    message = str(info.value)
+    _assert_too_large_guidance(message)
+    assert GENESIS_ONLINE.registration_url in message
+    # Guidance other than the manual-portal sentence still shows without a host.
+    with pytest.raises(GenesisResultTooLarge) as no_host:
+        raise_for_status_block(reply.status, http_status=200, endpoint="data/tablefile")
+    _assert_too_large_guidance(str(no_host.value))
+    assert GENESIS_ONLINE.registration_url not in str(no_host.value)
+    # The text-only heuristic fallback (no code 98, just "zu groß" in the text) is just as actionable.
+    with pytest.raises(GenesisResultTooLarge) as heuristic:
+        raise_for_status_block(_status(1, "Die Tabelle ist zu groß"), host=GENESIS_ONLINE)
+    _assert_too_large_guidance(str(heuristic.value))
+    assert GENESIS_ONLINE.registration_url in str(heuristic.value)
 
 
 def _status(code: int, content: str, type_: str = "Information") -> GenesisStatus:
