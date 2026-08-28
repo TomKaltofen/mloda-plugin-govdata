@@ -614,39 +614,13 @@ payloads, not a guess.
 
 ## Slice 5: result-too-large detection (WP-C, week 3, about 8 h)
 
-Landed in fork PR #18 (https://github.com/TomKaltofen/mloda-plugin-govdata/pull/18,
-2026-08-28, CI green on 3.10 to 3.14, tox green).
+Landed in fork PR #18 (https://github.com/TomKaltofen/mloda-plugin-govdata/pull/18, 2026-08-28, tox green).
 
-- [x] 2026-08-28, PR #18. The envelope-to-`GenesisResultTooLarge` mapping
-      already existed from slice 2; this slice built the actionable message
-      (`_too_large_message` in `core/envelope.py`): shrinking the selection
-      (`regionalvariable`/`regionalkey`, `classifyingvariable1..5`/
-      `classifyingkey1..5`, `startyear`/`endyear`), the user-plus-password
-      requirement for `job=true`, and, when the caller's host is known, that
-      host's web portal URL for a manual fetch. An independent review caught
-      the first draft's `job=true` sentence leading nowhere (this connector
-      cannot collect a job's result yet), so the message says so explicitly
-      instead of implying the job path is usable end to end.
-- [x] 2026-08-28, PR #18. Fixture `synthetic-tablefile-too-large.json`: no
-      real capture or documented server text exists for status code 98
-      (pystatis detects it numerically and never reads `Content` either), so
-      the fixture is honestly labeled synthetic in `fixtures/NOTICE`, not
-      documented or captured. Message content asserted for both the
-      numeric-code and text-heuristic raise paths, with and without a known
-      host. Review follow-up (not fixed here, pre-existing and unrelated to
-      this slice): `scripts/capture_genesis_fixtures.py`'s `_notice_line`
-      writes the sha256 inline in the `Source:` sentence, not as its own
-      `sha256:` line, so a real capture replacing this fixture would fail
-      the NOTICE hash-walk contract test as written; fix before running the
-      capture script for this or any other fixture.
-- [x] 2026-08-28, PR #18. Docs: the too-large paragraph in
-      `docs/credentials.md`.
-- [-] Full job path (`catalogue/jobs`, `data/resultfile`,
-      `profile/removeResult`): stayed stretch, not built. The message and
-      docs tell the caller to use the host's web portal instead, since this
-      connector cannot collect a job's result.
-- [x] 2026-08-28, PR #18. Commit `feat(destatis): actionable error for
-      oversized results`.
+- [x] 2026-08-28, PR #18. Actionable `GenesisResultTooLarge` message (`_too_large_message`, `core/envelope.py`).
+- [x] 2026-08-28, PR #18. Fixture `synthetic-tablefile-too-large.json`, labeled synthetic in `NOTICE` (no real capture exists). Follow-up, not fixed here: `scripts/capture_genesis_fixtures.py`'s NOTICE line format won't pass the hash-walk contract test; fix before next capture run.
+- [x] 2026-08-28, PR #18. `docs/credentials.md` note.
+- [-] Full job path: stayed stretch, not built.
+- [x] 2026-08-28, PR #18. Commit `feat(destatis): actionable error for oversized results`.
 
 ## Slice 6: recipe format and writer (WP-F part 1, week 3, about 12 h)
 
