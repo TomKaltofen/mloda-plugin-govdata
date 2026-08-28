@@ -477,7 +477,7 @@ tox green). Pulled forward from week 2 (owner call, no credentials needed).
 Checkpoint C1 target (Aug 30). Designed against the three real week-0
 payloads, not a guess.
 
-- [ ] `core/api.py`: `tablefile(...)` over the 25 spec fields: `name`,
+- [x] `core/api.py`: `tablefile(...)` over the 25 spec fields: `name`,
       `area`, `compress` (empty rows and columns suppression, not zip),
       `transpose`, `contents`, `startyear`, `endyear`, `timeslices`,
       `regionalvariable`, `regionalkey`, `classifyingvariable1..5`,
@@ -493,10 +493,10 @@ payloads, not a guess.
       `tablefile` body (`regionalkeycode`, `classifyingkeycode1..3` exist
       only on the timeseries endpoints). Envelope and HTTP status inspected
       before any parsing.
-- [ ] Zip handling from the week-0 characterization: reject empty archives
+- [x] Zip handling from the week-0 characterization: reject empty archives
       and unexpected member sets; enforce a decompressed-size cap; the CSV
       member is written into the cache entry.
-- [ ] ffcsv shape contract, written down in week 0 from Destatis' own example
+- [x] ffcsv shape contract, written down in week 0 from Destatis' own example
       zip (`Aenderung_Struktur_Flatfile-CSV.zip`, sha256 `46c5bb2f...`) and
       confirmed against the three live payloads: fixed prefix
       `statistics_code; statistics_label; time_code; time_label; time`, N
@@ -514,7 +514,7 @@ payloads, not a guess.
       copy with a dropped block, and raises on the old-format example
       (`Statistik_Code; ...; <CODE>__<Label>__<Unit>`, German wide headers,
       shipped in the same zip) as the layout-drift case.
-- [ ] Declared column schema per fixture, recorded before the parser is
+- [x] Declared column schema per fixture, recorded before the parser is
       written: required columns and optional columns (quality flags) with
       their Arrow types, following the M1 rule that parsing needs explicit
       types (`parse.py` `_typed_table`, verified). Policy: optional columns
@@ -523,14 +523,14 @@ payloads, not a guess.
       coexist). Live check inside this slice: whether `value_q` is present
       and empty or absent under `quality=off` (the examples were made with
       the flags on).
-- [ ] `destatis/core/parse.py`: `parse_ffcsv_bytes(data, schema)` and path
+- [x] `destatis/core/parse.py`: `parse_ffcsv_bytes(data, schema)` and path
       wrapper. Reuse `govdata/core/parse.detect_encoding`, `_clean_number`,
       `ZERO_MARKERS`, `NULL_MARKERS` (import, do not copy). `time` column
       parsed through the period model (until slice 7 lands, annual only as
       `int64` year with a TODO to the period model; the `time` format of
       `STAG` tables, `2015-12-31` or `31.12.2015`, is a live finding). A cell
       that cannot be typed raises with the offending cell and column.
-- [ ] `value_marker` column (week 0 decision, plan D1 and section 6): the
+- [x] `value_marker` column (week 0 decision, plan D1 and section 6): the
       parser always emits the raw sign of the `value` cell (`-`, `.`, `...`,
       `/`, `x`, `()`, empty for numeric cells) as a string column next to the
       delivered `value_q`; `-` still types to 0, the null-like signs to null.
@@ -539,6 +539,21 @@ payloads, not a guess.
       hosts), and a silent 0 there is the U1/U2 hazard. Test: a `-` cell and
       a numeric `0` cell are distinguishable through `value_marker`, and the
       column is present on every Destatis table regardless of `quality`.
+- First sub-scope done (PR #20): `tablefile_parameters`, `fetch_tablefile`,
+      `extract_ffcsv_csv`, `guard_ffcsv_layout`, `ffcsv_schema`,
+      `parse_ffcsv_bytes`/`parse_ffcsv_zip`, `value_marker`. `time` wired to
+      the period model directly (slice 7 had already landed), not the TODO
+      the plan text above still describes. `language` pinned to `de` in
+      `tablefile_parameters` for now (the parser only handles German decimal
+      formatting; an `en` reply would parse without error and silently
+      corrupt every value). Still blocked on GENESIS-Online (degraded since
+      2026-08-16): the three live-payload confirmations named above (shape
+      against real payloads, `quality=on` characterization, `value_q`
+      presence under `quality=off`) and the fixture capture from slice 2's
+      still-open owner actions. Locator, reader, `peek`, the root
+      FeatureGroup decision, the `feature_groups/destatis/__init__.py`
+      export, live smoke, README, and `docs/destatis-options.md` are the
+      second sub-scope (not started); C1 is not yet met.
 - [ ] `destatis/locator.py`: `DestatisLocator` (D10 validation): table code
       (`12411-0015` style and the Regionalstatistik `13211-02-05-4` style,
       both validated), optional region and classifying selection, optional
