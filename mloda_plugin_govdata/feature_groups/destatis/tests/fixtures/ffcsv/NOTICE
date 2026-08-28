@@ -1,0 +1,36 @@
+The six official example files Destatis ships to document the ffcsv format change, used unchanged as
+parser fixtures. All six extracted from one source archive:
+
+Source: Destatis, "Darstellung der Aenderung der Struktur des Flatfile-CSV-Formats" (Sept 2024).
+URL: https://genesis.destatis.de/datenbank/online/docs/Aenderung_Struktur_Flatfile-CSV.zip
+sha256 of the archive: 46c5bb2fd5ad3836a01d57efbd7b755d3d1670b1a42b167b47830c643fda1dc8
+Retrieved: 2026-08-28, without authentication (linked from the GENESIS-Online and Regionalstatistik web UIs).
+Terms: "Vervielfaeltigungen und Verbreitung, auch auszugsweise, mit Quellenangabe gestattet." (c) Statistisches
+Bundesamt (Destatis), 2024.
+
+New format (November 2024 onward, current), one CSV member per zip:
+
+21611-0002_de_flat.zip
+sha256: b82b9cecc6abbe9f650aacdf88ea5a011551fd3f12290763cd19579642439536
+Kulturstatistik, one variable block, no dash/dot value markers.
+
+61111-0001_de_flat.zip
+sha256: 976a2c5b3d2efcaa157673402332847aa13a9797f3081c77fade8931b5dde78e
+Verbraucherpreisindex, one variable block; the same value_variable_code (PREIS1) appears with two
+different value_unit values ("%" and "2020=100"), and one row's value is the "." (unknown/secret) marker.
+
+61111-0003_de_flat.zip
+sha256: 6ee98b44a395cf0aa5171277a99ef2430fff1e955d69873e4b89291a999cede7
+Verbraucherpreisindex, two variable blocks; carries 5 "-" (nichts vorhanden) and 8 "." value markers.
+
+Old format (until November 2024), German wide headers with a unit-suffixed column per content; the
+layout-drift negative fixture:
+
+21611-0002_de_flat.csv
+sha256: c4ed3ce78e9299fa4426efb28f09fcd89956f324b34389a67c72abe2420f548f
+
+61111-0001_de_flat.csv
+sha256: 457233ffc8fc3c52e93fa33ca07ba580c94c520cea4016871784cbee4d1a7476
+
+61111-0003_de_flat.csv
+sha256: e32568782cf1be5bb3f9cb16c76bc0cc2d939c6df89c5a6e77c9db407119af2b
