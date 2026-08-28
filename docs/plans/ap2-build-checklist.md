@@ -684,22 +684,24 @@ tested here, three weeks before it is needed.
       recipe, not the file; UBA `date_start` is an ISO string per hour. Write
       the Arrow representation down: `period_start` (date32) plus
       `frequency` (string) columns.
-- [ ] `mloda_plugin_govdata/harmonization/__init__.py` (pure Python, no mloda
-      import) and `harmonization/period.py`: `Period(start: date, freq)` with
-      `freq` in `{year, quarter, month}` (the enum keeps the three values,
-      only the annual parser ships in M2); `parse_genesis_time(label)` for
-      the annual labels present in the chosen tables (`JAHR` `2015`, `STAG`
-      `2015-12-31` or `31.12.2015`, whichever the live payload shows);
-      `from_snapshot(date, freq)` for the election date; parser for UBA
-      `date_start`.
+- [x] 2026-08-28, PR https://github.com/TomKaltofen/mloda-plugin-govdata/pull/19.
+      `harmonization/period.py`: `Period(start, freq)`, `parse_genesis_time(label)`
+      (JAHR `2015`, STAG `2015-12-31` or `31.12.2015`), `from_snapshot(date, freq)`
+      for the election date. `Frequency` keeps `{year, quarter, month}`; quarter and
+      month raise `NotImplementedError` rather than silently mis-parsing. Deliberately
+      out of scope: a UBA `date_start` parser (no consumer yet, no source characterized
+      for it); flagged here rather than silently dropped.
 - [ ] Snapshot-to-annual join policy, decided and documented: which Destatis
       reference year an election on date D joins to (for example the year
       containing D, or the last 31 Dec before D). One policy, stated in the
       recipe notes and the README, tested end to end on fixtures. No silent
       default.
-- [ ] `assert_same_frequency(a, b)` raises with resampling guidance on
-      mismatch; no implicit aggregation.
-- [ ] Hypothesis: period round-trip, unknown label raises with the label.
+- [x] 2026-08-28, PR https://github.com/TomKaltofen/mloda-plugin-govdata/pull/19.
+      `assert_same_frequency(left, right)` raises naming both frequencies with
+      resampling guidance; no implicit aggregation.
+- [x] 2026-08-28, PR https://github.com/TomKaltofen/mloda-plugin-govdata/pull/19.
+      Hypothesis round trip (JAHR/STAG agree, year 1/9999/0000 boundaries) and
+      unknown-label rejection (naming the label) for `parse_genesis_time`.
 - [ ] Wire the ffcsv `time` column to the period model (replaces the slice 4
       TODO).
 - [-] Quarter and month parsing: dropped, cut line 2 was pre-pulled in slice
