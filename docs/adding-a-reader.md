@@ -4,6 +4,8 @@
 
 `BaseGovDataReader` is generic over its locator type: any class with `coerce(value) -> locator | None` (option value to locator, `None` when the value isn't usable) and `describe() -> str` (a label for error messages), with `GovDataLocator` as the built-in one. The fetch seam is `_fetch(locator, client) -> FetchedPayload`, implemented in the base as CKAN discovery plus a cached GET; parsing then runs as `_parse(path, locator, provenance, options)`. A reader for another source subclasses `BaseGovDataReader[ItsLocator]`, overrides `locator_type()`, and overrides `_fetch`. For offline reruns, `DownloadCache.get_or_download(url, revalidate=False)` reads the cached body without issuing a request and raises `CacheMissError` on a miss.
 
+`_fetch(locator, client)` never receives `Options`, so a source that needs credentials from `Options.context` (see `DestatisReader`) overrides `_read_table(locator, options)` instead, building its own client and calling `_parse` directly.
+
 To connect a new dataset:
 
 1. Check whether `GovDataReader` already handles it. A GovData slug or a direct CSV URL with a regular single-row header needs no code; every column is read as a string. For typed columns, subclass `GovDataReader` in a new module and set `schema` (see `population.py`).

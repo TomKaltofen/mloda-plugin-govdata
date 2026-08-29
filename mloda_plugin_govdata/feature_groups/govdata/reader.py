@@ -4,7 +4,9 @@
 it coerces a locator, fetches the payload through the cache (``_fetch``), and lets
 the subclass parse it into a typed Arrow table (``_parse``). One module per data
 source implements ``_parse``; ``GovDataReader`` is the generic single-header
-German-CSV reader.
+German-CSV reader. ``_fetch(locator, client)`` never receives ``Options``: a
+credentialed source (see ``DestatisReader``) overrides ``_read_table`` instead so
+it can read ``Options.context``.
 """
 
 from __future__ import annotations
