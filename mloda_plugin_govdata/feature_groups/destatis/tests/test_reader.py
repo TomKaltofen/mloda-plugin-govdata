@@ -1,5 +1,8 @@
 """DestatisReader: locator dispatch, peek without credentials, end-to-end via mloda.run_all."""
 
+import subprocess
+import sys
+import textwrap
 from pathlib import Path
 from typing import Any, cast
 
@@ -187,3 +190,53 @@ def test_unknown_feature_names_available_columns(
     message = str(excinfo.value)
     assert "Unknown feature(s) 'not_a_column'" in message
     assert "value" in message
+
+
+_SUBPROCESS_SCRIPT = textwrap.dedent(
+    """
+    import sys
+    import httpx
+    import respx
+    from mloda.user import Feature, mloda
+
+    fixture_zip, cache_dir = sys.argv[1], sys.argv[2]
+
+    # Only the documented Destatis surface; registration must not depend on also
+    # importing mloda_plugin_govdata.feature_groups.govdata directly.
+    from mloda_plugin_govdata.feature_groups.destatis import DestatisReader
+    from mloda_plugin_govdata.feature_groups.destatis.core.hosts import GENESIS_ONLINE
+
+    DestatisReader.cache_dir = cache_dir
+    with open(fixture_zip, "rb") as handle:
+        zip_bytes = handle.read()
+
+    with respx.mock:
+        respx.post(GENESIS_ONLINE.base_url + "data/tablefile").mock(
+            return_value=httpx.Response(200, content=zip_bytes, headers={"content-type": "application/octet-stream"})
+        )
+        result = mloda.run_all(
+            [Feature("value", options={DestatisReader.__name__: "21611-0002"})],
+            compute_frameworks=["PyArrowTable"],
+        )
+    table = result[0]
+    assert table.num_rows == 207, table.num_rows
+    compute_steps = [step for step in result.plan if step.step_kind == "compute"]
+    assert [step.feature_group_name for step in compute_steps] == ["GovDataFeature"], compute_steps
+    print("OK")
+    """
+)
+
+
+def test_registration_in_a_fresh_subprocess_with_only_destatis_imported(
+    fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("GENESIS_TOKEN", TOKEN)
+    zip_path = fixtures_dir / "ffcsv" / FFCSV_FIXTURE
+    completed = subprocess.run(
+        [sys.executable, "-c", _SUBPROCESS_SCRIPT, str(zip_path), str(tmp_path)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert completed.stdout.strip() == "OK"
