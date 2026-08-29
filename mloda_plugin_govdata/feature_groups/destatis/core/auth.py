@@ -130,29 +130,36 @@ def resolve_credentials(
     return from_env
 
 
+def explicit_credentials_from_options(options: Options | None) -> DestatisCredentials | None:
+    """The explicit ``DestatisCredentials`` from ``Options.context``, or ``None``; never touches env or a host.
+
+    Split out from ``credentials_from_options`` so a reader can build a ``GenesisClient`` before
+    knowing whether a request will actually happen (a cache hit needs no credentials at all).
+    Only a ``DestatisCredentials`` instance is accepted: a plain mapping would sit unredacted in the
+    context, which ``str(options)`` prints verbatim.
+    """
+    if options is None:
+        return None
+    if OPTION_GENESIS_CREDENTIALS in options.group:
+        raise ValueError(
+            f"{OPTION_GENESIS_CREDENTIALS!r} must be passed in Options.context, not group: "
+            "group options are hashed and printed with the feature."
+        )
+    raw = options.context.get(OPTION_GENESIS_CREDENTIALS)
+    if raw is None:
+        return None
+    if not isinstance(raw, DestatisCredentials):
+        raise TypeError(
+            f"{OPTION_GENESIS_CREDENTIALS!r} must be a DestatisCredentials instance (its repr is redacted), "
+            f"got {type(raw).__name__}"
+        )
+    return raw
+
+
 def credentials_from_options(
     options: Options | None,
     host: GenesisHost,
     environ: Mapping[str, str] | None = None,
 ) -> DestatisCredentials:
-    """Credentials for ``host`` from ``Options.context`` (explicit) or env; the key is refused in ``group``.
-
-    Only a ``DestatisCredentials`` instance is accepted: a plain mapping would sit unredacted in the
-    context, which ``str(options)`` prints verbatim.
-    """
-    explicit: DestatisCredentials | None = None
-    if options is not None:
-        if OPTION_GENESIS_CREDENTIALS in options.group:
-            raise ValueError(
-                f"{OPTION_GENESIS_CREDENTIALS!r} must be passed in Options.context, not group: "
-                "group options are hashed and printed with the feature."
-            )
-        raw = options.context.get(OPTION_GENESIS_CREDENTIALS)
-        if raw is not None:
-            if not isinstance(raw, DestatisCredentials):
-                raise TypeError(
-                    f"{OPTION_GENESIS_CREDENTIALS!r} must be a DestatisCredentials instance (its repr is redacted), "
-                    f"got {type(raw).__name__}"
-                )
-            explicit = raw
-    return resolve_credentials(host, explicit, environ)
+    """Credentials for ``host`` from ``Options.context`` (explicit) or env; the key is refused in ``group``."""
+    return resolve_credentials(host, explicit_credentials_from_options(options), environ)
