@@ -8,6 +8,7 @@ from mloda_plugin_govdata.feature_groups.destatis.core.auth import (
     OPTION_GENESIS_CREDENTIALS,
     DestatisCredentials,
     credentials_from_options,
+    explicit_credentials_from_options,
     resolve_credentials,
 )
 from mloda_plugin_govdata.feature_groups.destatis.core.errors import MissingCredentialsError, WrongHostCredentialsError
@@ -114,6 +115,19 @@ def test_explicit_credentials_win_over_env_and_must_match_the_host() -> None:
 def test_env_whitespace_is_normalized() -> None:
     credentials = resolve_credentials(GENESIS_ONLINE, environ={"GENESIS_TOKEN": f" {TOKEN} \t"})
     assert credentials.headers()["username"] == TOKEN
+
+
+def test_explicit_credentials_from_options_is_none_without_a_context_entry() -> None:
+    assert explicit_credentials_from_options(None) is None
+    assert explicit_credentials_from_options(Options({"DestatisReader": "12411-0015"})) is None
+
+
+def test_explicit_credentials_from_options_never_touches_env_or_a_host() -> None:
+    # A cache-hit caller (peek) must be able to build this before deciding whether a request
+    # happens at all, so this never resolves from the environment and takes no host argument.
+    credentials = DestatisCredentials(token=TOKEN)
+    options = Options(context={OPTION_GENESIS_CREDENTIALS: credentials})
+    assert explicit_credentials_from_options(options) is credentials
 
 
 def test_unknown_host_with_explicit_prefix() -> None:

@@ -14,6 +14,7 @@ from .core.auth import (
     OPTION_GENESIS_CREDENTIALS,
     DestatisCredentials,
     credentials_from_options,
+    explicit_credentials_from_options,
 )
 from .core.cache import SELECTION_FIELDS, STALE_AFTER, CachedPayload, ParameterCache, canonical_parameters
 from .core.envelope import (
@@ -40,7 +41,10 @@ from .core.errors import (
     MissingCredentialsError,
     WrongHostCredentialsError,
 )
+from .core.parse import parse_ffcsv_bytes, parse_ffcsv_zip
 from .core.redact import redact_json, redact_text, secret_variants
+from .locator import DestatisLocator
+from .reader import DestatisReader
 
 __all__ = [
     "GENESIS_ONLINE",
@@ -52,6 +56,8 @@ __all__ = [
     "STALE_AFTER",
     "CachedPayload",
     "DestatisCredentials",
+    "DestatisLocator",
+    "DestatisReader",
     "GenesisAuthError",
     "GenesisBackendError",
     "GenesisClient",
@@ -74,7 +80,10 @@ __all__ = [
     "WrongHostCredentialsError",
     "canonical_parameters",
     "credentials_from_options",
+    "explicit_credentials_from_options",
     "inspect_response",
+    "parse_ffcsv_bytes",
+    "parse_ffcsv_zip",
     "parse_json_reply",
     "raise_for_logincheck",
     "raise_for_status_block",

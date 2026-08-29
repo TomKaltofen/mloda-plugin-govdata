@@ -85,6 +85,36 @@ result = mloda.run_all(
 
 Columns are `station_id`, `date_start`, `component_id`, `scope_id`, `value`, `date_end`, and `index` (the air-quality index). Component and scope ids come from the UBA `components` and `scopes` endpoints.
 
+The Destatis connector reads a GENESIS table (Statistisches Bundesamt or a Regionalstatistik
+installation) by table code, needs a free registration (`GENESIS_TOKEN` or `GENESIS_USER` /
+`GENESIS_PASSWORD`; see [docs/credentials.md](docs/credentials.md)), and parses the ffcsv reply:
+
+```python
+from mloda_plugin_govdata.feature_groups.destatis import DestatisReader
+
+result = mloda.run_all(
+    [
+        Feature(
+            "value",
+            options={
+                DestatisReader.__name__: {
+                    "name": "12411-0015",
+                    "regionalvariable": "KREISE",
+                    "regionalkey": ["03159"],
+                    "startyear": 2016,
+                    "endyear": 2016,
+                }
+            },
+        )
+    ],
+    compute_frameworks=["PyArrowTable"],
+)
+```
+
+The option value is a bare table code, a `DestatisLocator`, or the dict form above (JSON-native, so
+it round-trips through a recipe file); see [docs/destatis-options.md](docs/destatis-options.md) for
+the full parameter table. `peek` lists the ffcsv columns the same way as the other readers.
+
 ## Demo
 
 An interactive [marimo](https://marimo.io) notebook walks through dataset discovery and all three example datasets. The notebook lives in the repository (not in the published package), so run it from a source checkout:
