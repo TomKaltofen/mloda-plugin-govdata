@@ -9,24 +9,55 @@ from dataclasses import dataclass, field, fields
 from typing import Any
 
 from .core.api import DEFAULT_LANGUAGE
-from .core.hosts import resolve_host
+from .core.hosts import GENESIS_ONLINE, resolve_host
 
 # Both pinned M2 shapes: GENESIS-Online "12411-0015" (5 digits, one 1-4 digit segment) and
-# Regionalstatistik "13211-02-05-4" (5 digits, up to three further 1-4 digit segments).
+# Regionalstatistik "13211-02-05-4" (5 digits, up to three further 1-4 digit segments);
+# docs/destatis-options.md documents the 15-char spec limit.
 _TABLE_CODE = re.compile(r"^\d{5}(-\d{1,4}){1,3}$")
+_MAX_NAME_LENGTH = 15
+_YEAR_RANGE = range(1900, 2101)
 
 
 def _as_tuple(value: object, field_name: str) -> tuple[str, ...] | None:
-    """A selection field as a tuple of strings; a bare string is one element, not split."""
+    """A selection field as a tuple of stripped strings; blank elements and an empty result are ``None``.
+
+    ``bytes``/``bytearray`` are rejected even though they are a ``Sequence``: iterating one yields
+    integers, not the per-key strings a caller means.
+    """
     if value is None:
         return None
+    if isinstance(value, (bytes, bytearray)):
+        raise TypeError(f"DestatisLocator.{field_name} must be a str, a sequence of str, or None, not bytes")
     if isinstance(value, str):
-        return (value,)
-    if isinstance(value, Sequence):
-        return tuple(str(item) for item in value)
-    raise TypeError(
-        f"DestatisLocator.{field_name} must be a str, a sequence of str, or None, got {type(value).__name__}"
-    )
+        items: Sequence[object] = (value,)
+    elif isinstance(value, Sequence):
+        items = value
+    else:
+        raise TypeError(
+            f"DestatisLocator.{field_name} must be a str, a sequence of str, or None, got {type(value).__name__}"
+        )
+    cleaned = tuple(str(item).strip() for item in items if str(item).strip())
+    return cleaned or None
+
+
+def _clean_scalar(value: str | None, field_name: str) -> str | None:
+    """A scalar selection field, stripped; blank becomes ``None`` (the same "not sent" meaning)."""
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise TypeError(f"DestatisLocator.{field_name} must be a str or None, got {type(value).__name__}")
+    return value.strip() or None
+
+
+def _clean_year(value: int | None, field_name: str) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise TypeError(f"DestatisLocator.{field_name} must be an int, got {type(value).__name__}")
+    if value not in _YEAR_RANGE:
+        raise ValueError(f"DestatisLocator.{field_name}: {value} is outside {_YEAR_RANGE.start}-{_YEAR_RANGE.stop - 1}")
+    return value
 
 
 @dataclass(frozen=True)
@@ -56,15 +87,26 @@ class DestatisLocator:
     startyear: int | None = None
     endyear: int | None = None
     quality: bool = False
-    host: str = "genesis"
+    host: str = GENESIS_ONLINE.name
     language: str = DEFAULT_LANGUAGE
 
     def __post_init__(self) -> None:
+        if not isinstance(self.name, str):
+            raise TypeError(f"DestatisLocator: name must be a str, got {type(self.name).__name__}")
         name = self.name.strip()
-        if not _TABLE_CODE.fullmatch(name):
+        if len(name) > _MAX_NAME_LENGTH or not _TABLE_CODE.fullmatch(name):
             raise ValueError(f"DestatisLocator: {self.name!r} is not a recognized GENESIS table code")
         object.__setattr__(self, "name", name)
-        for name_field in (
+        for scalar_field in (
+            "regionalvariable",
+            "classifyingvariable1",
+            "classifyingvariable2",
+            "classifyingvariable3",
+            "classifyingvariable4",
+            "classifyingvariable5",
+        ):
+            object.__setattr__(self, scalar_field, _clean_scalar(getattr(self, scalar_field), scalar_field))
+        for tuple_field in (
             "regionalkey",
             "classifyingkey1",
             "classifyingkey2",
@@ -73,8 +115,14 @@ class DestatisLocator:
             "classifyingkey5",
             "contents",
         ):
-            object.__setattr__(self, name_field, _as_tuple(getattr(self, name_field), name_field))
-        resolve_host(self.host)  # raises ValueError for an unknown host name
+            object.__setattr__(self, tuple_field, _as_tuple(getattr(self, tuple_field), tuple_field))
+        object.__setattr__(self, "startyear", _clean_year(self.startyear, "startyear"))
+        object.__setattr__(self, "endyear", _clean_year(self.endyear, "endyear"))
+        if self.startyear is not None and self.endyear is not None and self.startyear > self.endyear:
+            raise ValueError(f"DestatisLocator: startyear {self.startyear} is after endyear {self.endyear}")
+        if not isinstance(self.quality, bool):
+            raise TypeError(f"DestatisLocator: quality must be a bool, got {type(self.quality).__name__}")
+        object.__setattr__(self, "host", resolve_host(self.host).name)
         if self.language != DEFAULT_LANGUAGE:
             raise ValueError(f"DestatisLocator: language must be {DEFAULT_LANGUAGE!r} in M2, got {self.language!r}")
 
@@ -90,6 +138,8 @@ class DestatisLocator:
         unknown = sorted(set(data) - known)
         if unknown:
             raise ValueError(f"DestatisLocator.from_dict: unknown field(s) {unknown}; known: {sorted(known)}")
+        if "name" not in data:
+            raise ValueError("DestatisLocator.from_dict: missing required field 'name'")
         return cls(**data)
 
     @classmethod
@@ -110,4 +160,4 @@ class DestatisLocator:
 
     def describe(self) -> str:
         """Label for messages: the table code, qualified by host when it is not the default."""
-        return self.name if self.host == "genesis" else f"{self.name}@{self.host}"
+        return self.name if self.host == GENESIS_ONLINE.name else f"{self.name}@{self.host}"

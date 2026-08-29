@@ -1,5 +1,7 @@
 """Live smoke against the GENESIS hosts (deselected by default; needs credentials per host)."""
 
+from pathlib import Path
+
 import pyarrow as pa
 import pytest
 from mloda.user import Feature, mloda
@@ -29,10 +31,11 @@ def test_whoami_and_logincheck(host_name: str) -> None:
 
 @pytest.mark.live
 @pytest.mark.genesis_live
-def test_tablefile_end_to_end() -> None:
+def test_tablefile_end_to_end(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """A real GENESIS table arrives as a typed Arrow table via mloda.run_all from a clean cache."""
     if DestatisCredentials.from_env(GENESIS_ONLINE) is None:
         pytest.skip(f"no credentials for {GENESIS_ONLINE.label}: set {GENESIS_ONLINE.env_var('TOKEN')}")
+    monkeypatch.setattr(DestatisReader, "cache_dir", str(tmp_path))
     result = mloda.run_all(
         [
             Feature(
