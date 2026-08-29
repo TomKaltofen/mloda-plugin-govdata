@@ -39,6 +39,10 @@ against the installed code or the real data, not assumed.
 - External items (GitHub issues, ADRs, planning-repo updates, funder
   updates) are ticked with a URL or commit id next to the box, so the tick
   is evidence, not a memory.
+- When drafting a new reader's checklist bullets: a non-file/HTTP reader
+  built by overriding `match_subclass_data_access`/`load_data` wholesale
+  does not need a `suffix()` bullet, `suffix()` is never consulted on that
+  path (mloda-registry guide 27, feature-group-patterns/27-input-data-readers.md).
 
 ## Capacity assumption and weekly load
 
