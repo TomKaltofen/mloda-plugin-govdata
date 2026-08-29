@@ -554,7 +554,7 @@ payloads, not a guess.
       FeatureGroup decision, the `feature_groups/destatis/__init__.py`
       export, live smoke, README, and `docs/destatis-options.md` are the
       second sub-scope (not started); C1 is not yet met.
-- [ ] `destatis/locator.py`: `DestatisLocator` (D10 validation): table code
+- [x] `destatis/locator.py`: `DestatisLocator` (D10 validation): table code
       (`12411-0015` style and the Regionalstatistik `13211-02-05-4` style,
       both validated), optional region and classifying selection, optional
       `contents` (measure codes, D1), start and end year, `quality` (bool,
@@ -568,7 +568,7 @@ payloads, not a guess.
       accepts a bare table code; `coerce` accepts a `DestatisLocator`, a
       string, or a plain dict (the JSON-native form recipes need, slice 6);
       `to_dict` round-trips it.
-- [ ] `destatis/reader.py`: `DestatisReader(BaseGovDataReader[DestatisLocator])`
+- [x] `destatis/reader.py`: `DestatisReader(BaseGovDataReader[DestatisLocator])`
       with `match_subclass_data_access` and `_coerce_locator` on the Destatis
       locator, `_fetch` (POST through `ParameterCache`), `_parse`, `suffix`,
       `peek`. Tests: `{"DestatisReader": "12411-0015"}` never produces a
@@ -576,40 +576,45 @@ payloads, not a guess.
       locators all reach `_fetch` through `mloda.run_all`;
       `DestatisReader.is_final_reader()` is `True` (mirrors the existing
       assertion in `govdata/tests/test_reader.py`).
-- [ ] `peek` without credentials: `_fetch` computes the cache key and returns
+      Built as `_read_table` (not `_fetch`, whose base signature never
+      receives `Options`, and a POST fetch needs explicit credentials read
+      from `Options.context`); `match_subclass_data_access`/`_coerce_locator`
+      come free from the generic base via `locator_type()`, no override
+      needed. `docs/adding-a-reader.md` and the base reader's docstring note
+      the `_read_table` seam for a future credentialed source.
+- [x] `peek` without credentials: `_fetch` computes the cache key and returns
       a hit before resolving credentials. Test: all `GENESIS_*` unset,
       pre-populated cache, `peek` succeeds with zero HTTP calls.
-- [ ] Root FeatureGroup: decide whether `DestatisReader` hangs off
-      `GovDataFeature` (via `BaseGovDataReader`) or gets its own root
-      FeatureGroup; either way `test_resolves_without_explicit_compute_framework`
-      (the M1 collision regression) stays green and the join in slice 7 has
-      a discriminator to key on.
-- [ ] Export from `feature_groups/destatis/__init__.py` (mirror
-      `feature_groups/govdata/__init__.py`; the root `__init__.py` files are
-      empty, verified). Test in a fresh subprocess: import only the
-      documented Destatis surface, run `mloda.run_all` over a fixture, and
-      assert the plan resolves to the chosen root FeatureGroup, so
-      registration does not depend on an unrelated import.
-- [ ] Fixtures: the three week-0 ffcsv zips plus an empty-result payload,
-      and the six Destatis example files from `Aenderung_Struktur_Flatfile-CSV.zip`
-      (three new-format `_flat.zip`, three old-format `_flat.csv`; Destatis
-      2024, quotation permitted with attribution). `NOTICE` present.
-- [ ] Tests: parser pinned to fixtures; zero-vs-missing (`-` is zero, `.`
-      `...` `/` `x` `()` are null) per fixture; the marker sets pinned
-      against the `qualitysigns` fixture from slice 2 (`0 - ... / . x ()
-      p r s`, PDF 2.4.6): every fixture code is either in `ZERO_MARKERS`,
-      in `NULL_MARKERS`, or a flag letter (`p`, `r`, `s`) that never
-      becomes a value, so a new sign in a re-captured fixture fails
-      loudly; decimal comma and thousands
-      dot; int64 counts never via float; utf-8, BOM, and cp1252 variants;
-      empty result yields the declared schema and `peek` lists columns;
-      duplicate or extra columns raise; reader end to end via
-      `mloda.run_all` with respx (fixture zip served); unknown feature error
-      names available columns.
+- [x] Root FeatureGroup: `DestatisReader` hangs off `GovDataFeature` (via
+      `BaseGovDataReader`); dispatch is keyed per reader class name
+      (`feature_scope_data_access`), so a second locator type introduces no
+      suffix collision. `test_resolves_without_explicit_compute_framework`
+      stays green (mirrored for Destatis); the discriminator slice 7's join
+      needs is the reader class name itself.
+- [x] Export from `feature_groups/destatis/__init__.py` (mirrors
+      `feature_groups/govdata/__init__.py`; the root `__init__.py` files stay
+      empty). Test in a fresh subprocess: only `mloda_plugin_govdata.feature_groups.destatis`
+      is imported, `mloda.run_all` runs over a fixture, and the plan resolves
+      to `GovDataFeature`.
+- [x] Fixtures: the six Destatis example files (three new-format `_flat.zip`,
+      three old-format `_flat.csv`) landed in the first sub-scope, `NOTICE`
+      present. Still blocked (GENESIS-Online degraded since 2026-08-16, no
+      Regionalstatistik account yet): the three real pinned-table captures
+      and the empty-result payload; capture with
+      `scripts/capture_genesis_fixtures.py` once the webservice answers,
+      per slice 2's still-open owner actions.
+- [x] Tests: parser-pinned-to-fixtures, zero-vs-missing, marker-set, and
+      qualitysigns-legend coverage landed in the first sub-scope
+      (`test_parse.py`). This sub-scope adds: reader end to end via
+      `mloda.run_all` with respx (fixture zip served, string/dict/instance
+      locator forms), `peek` without credentials, unknown-feature error
+      names available columns, and a fresh-subprocess registration test
+      (`test_reader.py`).
 - [ ] Live smoke (`live` and `genesis_live`): one tiny table via
-      `mloda.run_all`.
-- [ ] README: Destatis quickstart snippet (credentials via env, one table).
-- [ ] `docs/destatis-options.md` (about 2 h, counted under WP-G; step-0
+      `mloda.run_all`. Written (`test_tablefile_end_to_end`, cache isolated),
+      deselected by default; cannot run until GENESIS-Online answers again.
+- [x] README: Destatis quickstart snippet (credentials via env, one table).
+- [x] `docs/destatis-options.md` (about 2 h, counted under WP-G; step-0
       decision (c)): one table for `data/tablefile` with parameter, spec
       default, allowed values with the PDF section cited (2.5.12: `format`
       csv / datencsv / ffcsv / xlsx / genml / html, `language` de / en,
@@ -621,11 +626,18 @@ payloads, not a guess.
       which types its rows only as `{Code, Content}`). Skeleton rows may be
       printed from the pinned spec while authoring; the contract test keeps
       the names honest.
-- [ ] Commit series `feat(destatis): tablefile request and zip handling`,
-      `feat(destatis): ffcsv parser`, `feat(destatis): locator and reader`.
+- [x] Commit series: first sub-scope landed as one combined commit
+      (`feat(destatis): tablefile request and ffcsv parser`, PR #20); this
+      sub-scope as `feat(destatis): locator and reader` (PR #21), plus a
+      `fix(destatis): close review findings in locator` and a
+      `test(destatis): registration in a fresh subprocess` commit on the
+      same PR.
 - [ ] **C1 (Aug 30):** a real GENESIS table arrives as a typed Arrow table via
       `mloda.run_all` from a clean cache. Result written into the plan and
       the biweekly update. If red: slices 5, 6, 10, 11 wait; slice 8 continues.
+      Still not met: blocked on the same degraded GENESIS-Online webservice
+      as the fixture captures above; everything else slice 4 needs is built
+      and tested against the six example files and respx-mocked replies.
 
 ## Slice 5: result-too-large detection (WP-C, week 3, about 8 h)
 
