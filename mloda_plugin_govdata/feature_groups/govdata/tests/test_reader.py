@@ -56,10 +56,10 @@ def _mock_population_endpoints(fixtures_dir: Path) -> None:
 
 
 class _FakeFeatureSet:
-    """Just enough FeatureSet surface for load_data; mirrors the sorted-tuple contract."""
+    """Just enough FeatureSet surface for load_data: sorted tuple of FeatureName, like the real one."""
 
     def __init__(self, names: set[str], options: Options | None = None) -> None:
-        self._names = tuple(sorted(names))
+        self._names = tuple(sorted(FeatureName(name) for name in names))
         self.options = options  # FeatureSet leaves this None until a feature is added
 
     def get_all_names(self) -> tuple[str, ...]:
@@ -363,10 +363,10 @@ def test_unknown_feature_names_available_columns(
 def test_unknown_feature_message_prints_plain_names(
     fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    # Engine-injected link keys arrive as FeatureName; the message must not leak the wrapper repr.
+    # FeatureSet names are FeatureName; the message must not leak the wrapper repr.
     monkeypatch.setattr(GovDataReader, "cache_dir", str(tmp_path))
     _mock_population_endpoints(fixtures_dir)
-    features = cast(FeatureSet, _FakeFeatureSet({FeatureName("Nr"), "Stadtbezirk"}))
+    features = cast(FeatureSet, _FakeFeatureSet({"Nr", "Stadtbezirk"}))
     with pytest.raises(ValueError) as excinfo:
         GovDataReader.load_data(SLUG, features)
     message = str(excinfo.value)

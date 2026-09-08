@@ -41,9 +41,9 @@ Land-level join tests:
 12411-0010_2024_de_flat.zip
 sha256: aba0f99e3b8eef1f4d975c0e2ed3d7323024dd8a798dbd875e35ae34447f3916
 Source: Statistisches Bundesamt (Destatis), GENESIS-Online table 12411-0010 (Fortschreibung des
-Bevölkerungsstandes: Bundesländer, Stichtag), https://www-genesis.destatis.de/datenbank/online/statistic/12411/table/12411-0010
+Bevölkerungsstandes: Bundesländer, Stichtag), https://genesis.destatis.de/datenbank/online/statistic/12411/table/12411-0010
 Request: data/tablefile with name=12411-0010, startyear=2024, endyear=2024, language=de, format=ffcsv,
 quality=off, compress=false, transpose=false, job=false; 16 rows (DLAND 01 to 16, STAG 2024-12-31, BEVSTD).
 Retrieved: 2026-09-08 with a registered account; the zip member name carries the server's job id.
 License: Datenlizenz Deutschland Namensnennung 2.0 (dl-de/by-2-0), https://www.govdata.de/dl-de/by-2-0,
-the GENESIS-Online data license. Attribution: Statistisches Bundesamt (Destatis), 2026.
+the GENESIS-Online data license. Attribution: (c) Statistisches Bundesamt (Destatis), 2026.

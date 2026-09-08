@@ -1,4 +1,4 @@
-"""ffcsv: zip handling, the layout guard, and the typed parser, pinned to the six Destatis example files."""
+"""ffcsv: zip handling, the layout guard, and the typed parser, pinned to the Destatis example files and one live reply."""
 
 import io
 import json
@@ -241,6 +241,11 @@ def test_parse_captured_land_table(fixtures_dir: Path) -> None:
     assert set(table.column("1_variable_attribute_code").to_pylist()) == {f"{n:02d}" for n in range(1, 17)}
     assert table.column("value_marker").to_pylist() == [""] * 16
     assert "value_q" not in table.schema.names
+    saarland = next(row for row in table.to_pylist() if row["1_variable_attribute_code"] == "10")
+    assert saarland["1_variable_attribute_label"] == "Saarland"
+    assert saarland["value"] == 1012141.0
+    assert saarland["value_unit"] == "Anzahl"
+    assert saarland["value_variable_code"] == "BEVSTD"
 
 
 def test_parse_ffcsv_zip_rejects_over_the_size_cap(fixtures_dir: Path) -> None:

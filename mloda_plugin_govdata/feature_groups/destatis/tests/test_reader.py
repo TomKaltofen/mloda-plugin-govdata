@@ -10,7 +10,7 @@ import httpx
 import pytest
 import respx
 from mloda.provider import FeatureSet
-from mloda.user import Feature, Options, mloda
+from mloda.user import Feature, FeatureName, Options, mloda
 from mloda_plugins.feature_group.input_data.read_file import ReadFile
 
 from mloda_plugin_govdata.feature_groups.destatis.core.cache import ParameterCache
@@ -30,7 +30,7 @@ class _FakeFeatureSet:
     """Just enough FeatureSet surface for load_data; mirrors govdata/tests/test_reader.py."""
 
     def __init__(self, names: set[str], options: Options | None = None) -> None:
-        self._names = tuple(sorted(names))
+        self._names = tuple(sorted(FeatureName(name) for name in names))
         self.options = options
 
     def get_all_names(self) -> tuple[str, ...]:

@@ -118,9 +118,11 @@ def _request_side(spec: dict[str, Any]) -> dict[tuple[str, str], Any]:
     return side
 
 
-def test_notice_hashes_match_the_fixture_files(fixtures_dir: Path) -> None:
+@pytest.mark.parametrize("subdir", ["", "ffcsv"])
+def test_notice_hashes_match_the_fixture_files(fixtures_dir: Path, subdir: str) -> None:
     # Every "<file>" entry followed by a "sha256: <hex>" line must match the bytes on disk, so an edited
     # fixture cannot drift from its recorded provenance.
+    fixtures_dir = fixtures_dir / subdir
     entries: dict[str, str] = {}
     current: str | None = None
     for line in (fixtures_dir / "NOTICE").read_text(encoding="utf-8").splitlines():
