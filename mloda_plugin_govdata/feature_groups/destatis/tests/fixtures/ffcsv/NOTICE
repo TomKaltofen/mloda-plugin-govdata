@@ -34,3 +34,16 @@ sha256: 457233ffc8fc3c52e93fa33ca07ba580c94c520cea4016871784cbee4d1a7476
 
 61111-0003_de_flat.csv
 sha256: e32568782cf1be5bb3f9cb16c76bc0cc2d939c6df89c5a6e77c9db407119af2b
+
+Live capture from GENESIS-Online (data/tablefile reply, one CSV member, unchanged), used for the
+Land-level join tests:
+
+12411-0010_2024_de_flat.zip
+sha256: aba0f99e3b8eef1f4d975c0e2ed3d7323024dd8a798dbd875e35ae34447f3916
+Source: Statistisches Bundesamt (Destatis), GENESIS-Online table 12411-0010 (Fortschreibung des
+Bevölkerungsstandes: Bundesländer, Stichtag), https://www-genesis.destatis.de/datenbank/online/statistic/12411/table/12411-0010
+Request: data/tablefile with name=12411-0010, startyear=2024, endyear=2024, language=de, format=ffcsv,
+quality=off, compress=false, transpose=false, job=false; 16 rows (DLAND 01 to 16, STAG 2024-12-31, BEVSTD).
+Retrieved: 2026-09-08 with a registered account; the zip member name carries the server's job id.
+License: Datenlizenz Deutschland Namensnennung 2.0 (dl-de/by-2-0), https://www.govdata.de/dl-de/by-2-0,
+the GENESIS-Online data license. Attribution: Statistisches Bundesamt (Destatis), 2026.

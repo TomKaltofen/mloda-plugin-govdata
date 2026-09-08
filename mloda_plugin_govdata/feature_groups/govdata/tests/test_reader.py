@@ -12,7 +12,7 @@ import pyarrow as pa
 import pytest
 import respx
 from mloda.provider import FeatureSet
-from mloda.user import Feature, Options, mloda
+from mloda.user import Feature, FeatureName, Options, mloda
 from mloda_plugins.feature_group.input_data.read_file import ReadFile
 
 from mloda_plugin_govdata.feature_groups.govdata.bundeswahlleiterin import (
@@ -189,7 +189,7 @@ def test_elections_reader_level2(fixtures_dir: Path, tmp_path: Path, monkeypatch
     )
     table = result[0]
     assert set(table.schema.names) == {"Gebiet", KERG_MEASURE}
-    assert table.num_rows == 16
+    assert table.num_rows == 31  # 15 Wahlkreis rows plus all 16 Land rows
     assert table.column("Gebiet").to_pylist()[0] == "Flensburg – Schleswig"
     assert table.schema.field(KERG_MEASURE).type == pa.int64()
 
@@ -357,6 +357,21 @@ def test_unknown_feature_names_available_columns(
     assert "Unknown feature(s) 'Einwohner_'" in message
     assert "Available: Alter in 10 Gruppen, Einwohner, Stadtbezirk, Stichtag." in message
     assert "Did you mean 'Einwohner' instead of 'Einwohner_'?" in message
+
+
+@respx.mock
+def test_unknown_feature_message_prints_plain_names(
+    fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Engine-injected link keys arrive as FeatureName; the message must not leak the wrapper repr.
+    monkeypatch.setattr(GovDataReader, "cache_dir", str(tmp_path))
+    _mock_population_endpoints(fixtures_dir)
+    features = cast(FeatureSet, _FakeFeatureSet({FeatureName("Nr"), "Stadtbezirk"}))
+    with pytest.raises(ValueError) as excinfo:
+        GovDataReader.load_data(SLUG, features)
+    message = str(excinfo.value)
+    assert "Unknown feature(s) 'Nr'" in message
+    assert "FeatureName" not in message
 
 
 @respx.mock
