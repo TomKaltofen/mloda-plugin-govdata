@@ -614,9 +614,10 @@ payloads, not a guess.
       locator forms), `peek` without credentials, unknown-feature error
       names available columns, and a fresh-subprocess registration test
       (`test_reader.py`).
-- [ ] Live smoke (`live` and `genesis_live`): one tiny table via
-      `mloda.run_all`. Written (`test_tablefile_end_to_end`, cache isolated),
-      deselected by default; cannot run until GENESIS-Online answers again.
+- [x] 2026-09-08. Live smoke (`live` and `genesis_live`): one tiny table via
+      `mloda.run_all`. `test_tablefile_end_to_end` (cache isolated) and
+      `test_whoami_and_logincheck[genesis]` green against GENESIS-Online with the
+      registered token; the Regionalstatistik case skips (no account yet).
 - [x] README: Destatis quickstart snippet (credentials via env, one table).
 - [x] `docs/destatis-options.md` (about 2 h, counted under WP-G; step-0
       decision (c)): one table for `data/tablefile` with parameter, spec
@@ -636,12 +637,12 @@ payloads, not a guess.
       `fix(destatis): close review findings in locator` and a
       `test(destatis): registration in a fresh subprocess` commit on the
       same PR.
-- [ ] **C1 (Aug 30):** a real GENESIS table arrives as a typed Arrow table via
-      `mloda.run_all` from a clean cache. Result written into the plan and
-      the biweekly update. If red: slices 5, 6, 10, 11 wait; slice 8 continues.
-      Still not met: blocked on the same degraded GENESIS-Online webservice
-      as the fixture captures above; everything else slice 4 needs is built
-      and tested against the six example files and respx-mocked replies.
+- [x] **C1 (Aug 30, met 2026-09-08):** a real GENESIS table arrives as a typed
+      Arrow table via `mloda.run_all` from a clean cache (`12411-0015`, Kreis
+      03159, 2016, `value` float64). A second real reply, `12411-0010` for 2024
+      (all 16 Länder, STAG), is committed as an ffcsv fixture in
+      https://github.com/TomKaltofen/mloda-plugin-govdata/pull/22. To be
+      stated in the next biweekly update.
 
 ## Slice 5: result-too-large detection (WP-C, week 3, about 8 h)
 
@@ -733,8 +734,10 @@ tested here, three weeks before it is needed.
 - [x] 2026-08-28, PR https://github.com/TomKaltofen/mloda-plugin-govdata/pull/19.
       Hypothesis round trip (JAHR/STAG agree, year 1/9999/0000 boundaries) and
       unknown-label rejection (naming the label) for `parse_genesis_time`.
-- [ ] Wire the ffcsv `time` column to the period model (replaces the slice 4
-      TODO).
+- [x] 2026-08-28, PR https://github.com/TomKaltofen/mloda-plugin-govdata/pull/20.
+      Wire the ffcsv `time` column to the period model (replaces the slice 4
+      TODO): the parser's `time` column is the annual year via
+      `parse_genesis_time`; this bullet was stale.
 - [-] Quarter and month parsing: dropped, cut line 2 was pre-pulled in slice
       0 (2026-08-16); the freed hours are banked buffer. Comes back only if
       a live payload forces it (decided at C1).
@@ -751,6 +754,26 @@ tested here, three weeks before it is needed.
       with 16 Land rows (Destatis fixture on the left, a kerg fixture with
       all 16 Land rows on the right; the committed sample has one Land row,
       `01;Schleswig-Holstein;99`, so the fixture is extended, not created).
+      2026-09-08, https://github.com/TomKaltofen/mloda-plugin-govdata/pull/22:
+      blocked in mloda core, not in this plugin. mloda 0.10 (unchanged on main,
+      0.11.3) injects the key columns of both link sides into every feature set
+      of the same class (`Engine._add_index_feature_from_links` and
+      `_process_index_feature` never consult the discriminators), so the kerg
+      key `Nr` reaches `DestatisReader` and fails there before any join. Two
+      more findings: mloda executes a link only for a consumer FeatureGroup that
+      needs one column from each side (two root requests come back as two
+      tables), and with discriminator-aware injection plus such a consumer,
+      exactly this link returns 16 Land rows through one inner join step
+      (verified by a monkeypatched experiment). Landed: the kerg fixture with all
+      16 Land rows, the real `12411-0010` fixture, a test proving `Nr` and the
+      DLAND attribute code line up with no name mapping, and the join test as a
+      strict xfail that flips the day mloda changes. `index_columns()` on
+      `GovDataFeature` is deliberately not added: with one root class for both
+      readers it can only carry both key names, which triggers the same double
+      injection. Owner decision: (a) fix mloda core (recommended, small, filed
+      on the engineering board), (b) one root FeatureGroup subclass per reader
+      with its own `index_columns()`, reversing the slice 4 root decision, or
+      (c) a shared key column name produced by both readers.
 - [ ] Commit series `feat(harmonization): period model`,
       `feat(govdata): Land-level join plumbing`.
 
