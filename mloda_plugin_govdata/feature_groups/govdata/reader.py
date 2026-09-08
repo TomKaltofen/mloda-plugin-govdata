@@ -83,7 +83,8 @@ class BaseGovDataReader(ReadFile, Generic[LocatorT]):
     def load_data(cls, data_access: Any, features: FeatureSet) -> Any:
         # Overriding load_data wholesale classifies this as a final reader (mloda >=0.10.0
         # is_final_reader, structural, no runtime probe).
-        requested = list(features.get_all_names())  # sorted tuple since mloda 0.10.0; deterministic column order
+        # Sorted tuple since mloda 0.10.0; engine-injected link keys arrive as FeatureName, so normalize to str.
+        requested = [str(name) for name in features.get_all_names()]
         locator = cls._coerce_locator(data_access)
         table = cls._read_table(locator, features.options)
         available = set(table.column_names)
