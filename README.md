@@ -115,6 +115,10 @@ The option value is a bare table code, a `DestatisLocator`, or the dict form abo
 it round-trips through a recipe file); see [docs/destatis-options.md](docs/destatis-options.md) for
 the full parameter table. `peek` lists the ffcsv columns the same way as the other readers.
 
+A recipe file bundles the features, joins, and provenance of one run as JSON; `load_recipe` returns what
+`mloda.run_all` needs plus the compliance block (license, attribution, payload sha256, credential env names).
+See [docs/recipes.md](docs/recipes.md).
+
 ## Demo
 
 An interactive [marimo](https://marimo.io) notebook walks through dataset discovery and all three example datasets. The notebook lives in the repository (not in the published package), so run it from a source checkout:
