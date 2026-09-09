@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import json
+import math
 from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from mloda.provider import FeatureGroup
-from mloda.user import Feature, Index, JoinSpec, Link, load_features_from_config
+from mloda.user import Feature, Index, JoinSpec, Link, Options, load_features_from_config
 from pydantic import ValidationError
 
 # Registration side effect: a fresh process loading a recipe must resolve GovDataFeature and the readers.
@@ -20,9 +21,19 @@ from .model import Compliance, JoinSide, LinkSpec, Recipe, RecipeError, error_su
 
 # mloda's DefaultOptionKeys.in_features is a str enum equal to this; the loader stores it in Options.context.
 IN_FEATURES = "in_features"
-# Feature attributes with no field in the mloda feature config. domain and compute_framework may also
-# arrive through options (mloda reads those keys itself); then they round-trip with the options.
-_UNSUPPORTED = (("data_type", None), ("index", None), ("domain", "domain"), ("compute_frameworks", "compute_framework"))
+# Feature constructor parameters the mloda feature config can carry (the rest must be at their defaults).
+SUPPORTED_FEATURE_PARAMETERS: frozenset[str] = frozenset({"name", "options", "link", "feature_group"})
+# Attribute name, its default, and the option key mloda also reads it from (then it round-trips with the options).
+_UNSUPPORTED: tuple[tuple[str, Any, str | None], ...] = (
+    ("data_type", None, None),
+    ("index", None, None),
+    ("domain", None, "domain"),
+    ("compute_frameworks", None, "compute_framework"),
+    ("initial_requested_data", False, None),
+    ("forward_group", None, None),
+    ("forward_group_exclude", frozenset(), None),
+    ("inherit_context_keys", frozenset(), None),
+)
 
 
 @dataclass(frozen=True)
@@ -35,7 +46,10 @@ class LoadedRecipe:
 
 
 def build_recipe(features: Iterable[Feature | str], compliance: Compliance, links: Iterable[Link] = ()) -> Recipe:
-    """Feature objects (or names), links, and compliance to a validated ``Recipe``; feature-level links are hoisted."""
+    """Feature objects (or names), links, and compliance to a validated ``Recipe``; feature-level links are hoisted.
+
+    The result is also run through the loader, so the writer never emits a file its own loader rejects.
+    """
     feature_list = list(features)
     all_links = list(links)
     for feature in feature_list:
@@ -47,9 +61,11 @@ def build_recipe(features: Iterable[Feature | str], compliance: Compliance, link
     ]
     try:
         specs = [_link_spec(link, position) for position, link in enumerate(all_links)]
-        return Recipe(features=items, links=specs, compliance=compliance)
+        recipe = Recipe(features=items, links=specs, compliance=compliance)
     except ValidationError as exc:
         raise RecipeError(error_summary(exc)) from None
+    realize_recipe(recipe)
+    return recipe
 
 
 def recipe_to_json(recipe: Recipe) -> str:
@@ -59,7 +75,7 @@ def recipe_to_json(recipe: Recipe) -> str:
         "links": [spec.model_dump(mode="json", exclude_none=True) for spec in recipe.links],
         "compliance": recipe.compliance.model_dump(mode="json", exclude_none=True),
     }
-    return json.dumps(document, indent=2, ensure_ascii=False) + "\n"
+    return json.dumps(document, indent=2, ensure_ascii=False, allow_nan=False) + "\n"
 
 
 def write_recipe(
@@ -89,20 +105,29 @@ def realize_recipe(recipe: Recipe, label: str = "recipe") -> LoadedRecipe:
     try:
         features = load_features_from_config(json.dumps(recipe.features), format="json")
     except (TypeError, ValueError) as exc:
-        raise RecipeError(f"{label}: mloda rejected the feature array: {exc}") from exc
+        raise RecipeError(f"{label}: mloda rejected the feature array: {exc}") from None
     links = [_build_link(spec, f"{label}: links[{position}]") for position, spec in enumerate(recipe.links)]
     return LoadedRecipe(features=features, links=links, compliance=recipe.compliance)
 
 
 def _feature_item(feature: Feature, position: int) -> dict[str, Any]:
-    where = f"features[{position}] ({feature.name})"
+    # Position only: a feature name is caller data and must not end up in an error message.
+    where = f"features[{position}]"
     options = feature.options
-    for attribute, option_key in _UNSUPPORTED:
-        if getattr(feature, attribute) is not None and (option_key is None or option_key not in options.group):
-            raise RecipeError(
-                f"{where}: Feature.{attribute} has no field in the mloda feature config; "
-                "a recipe carries name, options, in_features, feature_group, and propagate_context_keys"
-            )
+    # What mloda derives from the options alone; a constructor argument that differs would be lost.
+    from_options = Feature(str(feature.name), options=Options(group=dict(options.group), context=dict(options.context)))
+    for attribute, default, option_key in _UNSUPPORTED:
+        value = getattr(feature, attribute)
+        if _same(value, default) or (option_key is not None and _same(value, getattr(from_options, attribute))):
+            continue
+        raise RecipeError(
+            f"{where}: Feature.{attribute} has no field in the mloda feature config; "
+            "a recipe carries name, options, in_features, feature_group, and propagate_context_keys"
+        )
+    if IN_FEATURES in options.group:
+        raise RecipeError(
+            f"{where}: {IN_FEATURES!r} belongs in Options.context; mloda reads a dict there as a nested Feature"
+        )
     group = _json_value(options.group, f"{where}.options")
     context = dict(options.context)
     in_features = context.pop(IN_FEATURES, None)
@@ -124,6 +149,15 @@ def _feature_item(feature: Feature, position: int) -> dict[str, Any]:
     return item
 
 
+def _same(value: Any, other: Any) -> bool:
+    # Index.__eq__ raises on a non-Index, so identity comes first and None never reaches __eq__.
+    if value is other:
+        return True
+    if value is None or other is None:
+        return False
+    return bool(value == other)
+
+
 def _in_feature_names(value: Any, where: str) -> list[str]:
     names = [name.strip() for name in value.split(",")] if isinstance(value, str) else list(value)
     if not all(isinstance(name, str) and name for name in names):
@@ -133,6 +167,8 @@ def _in_feature_names(value: Any, where: str) -> list[str]:
 
 def _json_value(value: Any, where: str) -> Any:
     """The JSON-safe subset of option values; a locator becomes its string or dict form."""
+    if isinstance(value, float) and not math.isfinite(value):
+        raise RecipeError(f"{where}: non-finite floats are not JSON")
     if value is None or isinstance(value, (bool, int, float, str)):
         return value
     if isinstance(value, DestatisLocator):
@@ -142,10 +178,12 @@ def _json_value(value: Any, where: str) -> Any:
             raise RecipeError(
                 f"{where}: a GovDataLocator with a non-default ckan_base or resource_index has no config form"
             )
+        if value.dataset_id and value.distribution_url:
+            raise RecipeError(f"{where}: a GovDataLocator with both dataset_id and distribution_url has no config form")
         return value.describe()
-    if isinstance(value, (set, frozenset)):
-        return sorted((_json_value(item, where) for item in value), key=str)
-    if isinstance(value, (list, tuple)):
+    if isinstance(value, (set, frozenset, tuple)):
+        raise RecipeError(f"{where}: {type(value).__name__} values do not survive JSON; pass a list")
+    if isinstance(value, list):
         return [_json_value(item, where) for item in value]
     if isinstance(value, Mapping):
         result: dict[str, Any] = {}
@@ -207,7 +245,7 @@ def _subclasses(cls: type[FeatureGroup]) -> Iterator[type[FeatureGroup]]:
 
 
 def _contains(links: list[Link], link: Link) -> bool:
-    # Link equality ignores discriminators, so two nodes of one class joined twice stay distinct here.
+    # Link equality ignores discriminators; the model rejects such near-duplicates, so compare fully here.
     return any(
         known == link
         and known.left_discriminator == link.left_discriminator
