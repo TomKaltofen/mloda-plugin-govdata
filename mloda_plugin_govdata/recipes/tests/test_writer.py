@@ -1,0 +1,297 @@
+"""Writer and loader: the supported Feature subset round-trips, links build, and only the feature array reaches mloda."""
+
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, cast
+
+import pytest
+from mloda.core.abstract_plugins.components.link import JoinType
+from mloda.user import Feature, Index, JoinSpec, Link, Options, load_features_from_config
+
+from mloda_plugin_govdata.feature_groups.destatis import DestatisLocator, DestatisReader
+from mloda_plugin_govdata.feature_groups.govdata import BundeswahlleiterinReader, GovDataFeature, GovDataLocator
+from mloda_plugin_govdata.recipes import (
+    Compliance,
+    RecipeError,
+    SourceCompliance,
+    build_recipe,
+    load_recipe,
+    parse_recipe,
+    recipe_to_json,
+    write_recipe,
+)
+
+KERG_URL = "https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata/btw25/csv/kerg.csv"
+BERLIN_URL = "https://www.wahlen-berlin.de/wahlen/BE2023/AFSPRAES/agh/Datenexport_AGH2023_Zweitstimme_W_BE.csv"
+LAND_LOCATOR = {"name": "12411-0010", "startyear": 2024, "endyear": 2024}
+LAND_SHA256 = "aba0f99e3b8eef1f4d975c0e2ed3d7323024dd8a798dbd875e35ae34447f3916"
+COMPLIANCE = Compliance(
+    sources=[
+        SourceCompliance(
+            license="dl-de/by-2-0",
+            attribution="(c) Statistisches Bundesamt (Destatis), 2026",
+            dataset_uri="https://genesis.destatis.de/datenbank/online/statistic/12411/table/12411-0010",
+            retrieved_at=datetime(2026, 9, 8, tzinfo=timezone.utc),
+            sha256=LAND_SHA256,
+            credential_env=["GENESIS_TOKEN"],
+        )
+    ]
+)
+LAND_LINK = Link.inner(
+    JoinSpec(GovDataFeature, "1_variable_attribute_code"),
+    JoinSpec(GovDataFeature, "Nr"),
+    left_discriminator={DestatisReader.__name__: LAND_LOCATOR},
+    right_discriminator={BundeswahlleiterinReader.__name__: KERG_URL},
+)
+
+
+def _features(features: list[Feature | str]) -> list[Feature]:
+    assert all(isinstance(feature, Feature) for feature in features)
+    return cast(list[Feature], features)
+
+
+@pytest.fixture(autouse=True)
+def _no_genesis_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
+    for name in ("GENESIS_TOKEN", "GENESIS_USER", "GENESIS_PASSWORD"):
+        monkeypatch.delenv(name, raising=False)
+
+
+def test_round_trip_keeps_names_options_context_scope_and_plain_strings(tmp_path: Path) -> None:
+    features: list[Feature | str] = [
+        "plain",
+        Feature("value", options=cast(dict[str, Any], {DestatisReader: DestatisLocator("12411-0010", startyear=2024)})),
+        Feature("Nr", options={BundeswahlleiterinReader.__name__: KERG_URL}),
+        Feature(
+            "derived",
+            options=Options(
+                group={"k": 1, "keys": ["03159", "03152"]},
+                context={"in_features": frozenset({"b", "a"}), "flag": True},
+                propagate_context_keys=frozenset({"flag"}),
+            ),
+            feature_group="GovDataFeature",
+        ),
+        Feature("scoped", feature_group=GovDataFeature),
+        Feature("context_only", options=Options(context={"note": "x"})),
+    ]
+
+    loaded = load_recipe(write_recipe(tmp_path / "r.json", features, COMPLIANCE))
+
+    assert loaded.features[0] == "plain"
+    value, nr, derived, scoped, context_only = _features(loaded.features[1:])
+    assert str(value.name) == "value"
+    assert value.options.group == {
+        DestatisReader.__name__: {
+            "name": "12411-0010",
+            "startyear": 2024,
+            "quality": False,
+            "host": "genesis",
+            "language": "de",
+        }
+    }
+    assert DestatisLocator.coerce(value.options.group[DestatisReader.__name__]) == DestatisLocator(
+        "12411-0010", startyear=2024
+    )
+    assert nr.options.group == {BundeswahlleiterinReader.__name__: KERG_URL}
+    assert derived.options.group == {"k": 1, "keys": ["03159", "03152"]}
+    assert derived.options.context == {"in_features": frozenset({"a", "b"}), "flag": True}
+    assert derived.options.propagate_context_keys == frozenset({"flag"})
+    assert derived.feature_group_scope == "GovDataFeature"
+    assert scoped.feature_group_scope == "GovDataFeature" and scoped.options.group == {}
+    assert context_only.options.group == {} and context_only.options.context == {"note": "x"}
+    assert loaded.links == []
+    assert loaded.compliance == COMPLIANCE
+
+
+def test_writing_a_loaded_recipe_again_gives_the_same_text() -> None:
+    features: list[Feature | str] = [
+        Feature("value", options={DestatisReader.__name__: LAND_LOCATOR}, link=LAND_LINK),
+        Feature("Nr", options={BundeswahlleiterinReader.__name__: KERG_URL}),
+    ]
+    first = recipe_to_json(build_recipe(features, COMPLIANCE))
+    loaded = parse_recipe(first)
+    second = recipe_to_json(build_recipe(loaded.features, loaded.compliance, loaded.links))
+    assert first == second
+
+
+def test_the_fixture_is_what_the_writer_produces(fixtures_dir: Path) -> None:
+    compliance = Compliance(
+        sources=[
+            SourceCompliance(
+                license="dl-de/by-2-0",
+                attribution="(c) Statistisches Bundesamt (Destatis), 2026",
+                dataset_uri="https://genesis.destatis.de/datenbank/online/statistic/12411/table/12411-0010",
+                retrieved_at=datetime(2026, 9, 8, tzinfo=timezone.utc),
+                sha256=LAND_SHA256,
+                modifications=[
+                    "ffcsv reply parsed into a typed table; the raw value sign is kept in value_marker",
+                    "time normalized to the calendar year of the Stichtag",
+                ],
+                credential_env=["GENESIS_TOKEN"],
+            )
+        ],
+        notes="Fortschreibung des Bevölkerungsstandes, Stichtag 2024-12-31, all 16 Länder (DLAND 01 to 16).",
+    )
+    features = [
+        Feature(name, options={DestatisReader.__name__: LAND_LOCATOR})
+        for name in ("1_variable_attribute_code", "value")
+    ]
+    assert recipe_to_json(build_recipe(features, compliance)) == (fixtures_dir / "land_population.json").read_text(
+        "utf-8"
+    )
+
+
+def test_links_block_builds_the_link_with_discriminators() -> None:
+    loaded = parse_recipe(recipe_to_json(build_recipe(["value", "Nr"], COMPLIANCE, [LAND_LINK])))
+
+    (link,) = loaded.links
+    assert link.jointype is JoinType.INNER
+    assert link.left_feature_group is GovDataFeature and link.right_feature_group is GovDataFeature
+    assert link.left_index == Index(("1_variable_attribute_code",)) and link.right_index == Index(("Nr",))
+    assert link.left_discriminator == {DestatisReader.__name__: LAND_LOCATOR}
+    assert link.right_discriminator == {BundeswahlleiterinReader.__name__: KERG_URL}
+    assert link == LAND_LINK
+
+
+def test_a_same_name_key_link_and_a_multi_column_index_round_trip() -> None:
+    same_key = Link.left(
+        JoinSpec(GovDataFeature, ("Nr", "Gebiet")),
+        JoinSpec(GovDataFeature, ("Nr", "Gebiet")),
+        left_discriminator={BundeswahlleiterinReader.__name__: KERG_URL},
+        right_discriminator={BundeswahlleiterinReader.__name__: BERLIN_URL},
+    )
+    loaded = parse_recipe(recipe_to_json(build_recipe(["Nr"], COMPLIANCE, [same_key])))
+    (link,) = loaded.links
+    assert link.jointype is JoinType.LEFT
+    assert link.left_index == link.right_index == Index(("Nr", "Gebiet"))
+    assert link.left_discriminator != link.right_discriminator
+
+
+def test_a_feature_level_link_is_hoisted_once() -> None:
+    features: list[Feature | str] = [
+        Feature("value", options={DestatisReader.__name__: LAND_LOCATOR}, link=LAND_LINK),
+        Feature("Nr", options={BundeswahlleiterinReader.__name__: KERG_URL}, link=LAND_LINK),
+    ]
+    recipe = build_recipe(features, COMPLIANCE, [LAND_LINK])
+    assert len(recipe.links) == 1
+    loaded = parse_recipe(recipe_to_json(recipe))
+    assert all(isinstance(feature, Feature) and feature.link is None for feature in loaded.features)
+
+
+def test_links_that_differ_only_by_discriminator_are_both_kept() -> None:
+    other = Link.inner(
+        JoinSpec(GovDataFeature, "1_variable_attribute_code"),
+        JoinSpec(GovDataFeature, "Nr"),
+        left_discriminator={DestatisReader.__name__: LAND_LOCATOR},
+        right_discriminator={BundeswahlleiterinReader.__name__: BERLIN_URL},
+    )
+    features: list[Feature | str] = [Feature("value", link=LAND_LINK), Feature("Nr", link=other)]
+    assert len(build_recipe(features, COMPLIANCE).links) == 2
+
+
+def test_an_unknown_feature_group_in_the_links_block_is_named() -> None:
+    text = recipe_to_json(build_recipe(["Nr"], COMPLIANCE, [LAND_LINK])).replace("GovDataFeature", "NoSuchFeature", 1)
+    with pytest.raises(RecipeError, match=r"links\[0\].left: no FeatureGroup named 'NoSuchFeature' is loaded"):
+        parse_recipe(text)
+
+
+def test_an_asof_link_has_no_recipe_form() -> None:
+    asof = Link.asof(
+        JoinSpec(GovDataFeature, "Nr"), JoinSpec(GovDataFeature, "Nr"), left_time_column="t", right_time_column="t"
+    )
+    with pytest.raises(RecipeError, match=r"links\[0\]: asof joins have no recipe form"):
+        build_recipe(["Nr"], COMPLIANCE, [asof])
+
+
+@pytest.mark.parametrize(
+    ("feature", "attribute"),
+    [
+        (Feature("x", data_type="INT64"), "data_type"),
+        (Feature("x", index=Index(("a",))), "index"),
+        (Feature("x", domain="d"), "domain"),
+        (Feature("x", compute_framework="PyArrowTable"), "compute_frameworks"),
+    ],
+)
+def test_feature_attributes_without_a_config_field_raise_instead_of_being_dropped(
+    feature: Feature, attribute: str
+) -> None:
+    with pytest.raises(RecipeError, match=rf"features\[0\] \(x\): Feature.{attribute} has no field"):
+        build_recipe([feature], COMPLIANCE)
+
+
+def test_domain_and_compute_framework_given_as_options_round_trip() -> None:
+    feature = Feature("x", options={"domain": "d", "compute_framework": "PyArrowTable"})
+    (loaded,) = _features(parse_recipe(recipe_to_json(build_recipe([feature], COMPLIANCE))).features)
+    assert loaded.options.group == {"domain": "d", "compute_framework": "PyArrowTable"}
+    assert loaded.domain is not None and loaded.compute_frameworks == feature.compute_frameworks
+
+
+def test_govdata_locator_instances_become_their_string_form() -> None:
+    features: list[Feature | str] = [
+        Feature("a", options={"GovDataReader": GovDataLocator.from_string("einwohner-stuttgart")}),
+        Feature("b", options={"BundeswahlleiterinReader": GovDataLocator.from_string(KERG_URL)}),
+    ]
+    a, b = _features(parse_recipe(recipe_to_json(build_recipe(features, COMPLIANCE))).features)
+    assert a.options.group == {"GovDataReader": "einwohner-stuttgart"}
+    assert b.options.group == {"BundeswahlleiterinReader": KERG_URL}
+
+
+def test_a_govdata_locator_with_non_default_fields_raises() -> None:
+    feature = Feature("a", options={"GovDataReader": GovDataLocator(dataset_id="slug", resource_index=1)})
+    with pytest.raises(
+        RecipeError, match=r"features\[0\] \(a\).options.GovDataReader: a GovDataLocator with a non-default"
+    ):
+        build_recipe([feature], COMPLIANCE)
+
+
+def test_a_nested_feature_inside_in_features_raises() -> None:
+    feature = Feature("d", options=Options(context={"in_features": frozenset({Feature("a", options={"k": 1})})}))
+    with pytest.raises(RecipeError, match="in_features must be feature names"):
+        build_recipe([feature], COMPLIANCE)
+
+
+def test_comma_separated_in_features_become_a_list() -> None:
+    feature = Feature("d", options=Options(context={"in_features": "b, a"}))
+    recipe = build_recipe([feature], COMPLIANCE)
+    assert recipe.features == [{"name": "d", "in_features": ["a", "b"]}]
+
+
+@pytest.mark.parametrize("value", [object(), Path("x"), {1: "non-string key"}])
+def test_values_outside_the_json_safe_subset_raise(value: Any) -> None:
+    with pytest.raises(RecipeError, match=r"features\[0\] \(x\).options"):
+        build_recipe([Feature("x", options={"k": value})], COMPLIANCE)
+
+
+def test_only_the_feature_array_reaches_mloda(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: list[str] = []
+    original = load_features_from_config
+
+    def capture(config_str: str, format: str = "json") -> Any:
+        seen.append(config_str)
+        return original(config_str, format=format)
+
+    monkeypatch.setattr("mloda_plugin_govdata.recipes.writer.load_features_from_config", capture)
+    features: list[Feature | str] = [Feature("value", options={DestatisReader.__name__: LAND_LOCATOR}), "Nr"]
+    text = recipe_to_json(build_recipe(features, COMPLIANCE, [LAND_LINK]))
+
+    parse_recipe(text)
+
+    (passed,) = seen
+    assert json.loads(passed) == json.loads(text)["features"]
+    assert "compliance" not in passed and "links" not in passed and "sha256" not in passed
+
+
+def test_load_recipe_labels_errors_with_the_path(tmp_path: Path) -> None:
+    broken = tmp_path / "broken.json"
+    broken.write_text("{", encoding="utf-8")
+    with pytest.raises(RecipeError, match=rf"^{broken}: Invalid JSON"):
+        load_recipe(broken)
+
+
+def test_mloda_rejections_of_the_feature_array_are_wrapped() -> None:
+    # A nested in_features dict without a name passes the item model but fails inside mloda's loader.
+    text = recipe_to_json(build_recipe(["Nr"], COMPLIANCE)).replace(
+        '"Nr"', '{"name": "d", "options": {"in_features": {}}}'
+    )
+    with pytest.raises(RecipeError, match="mloda rejected the feature array"):
+        parse_recipe(text)
