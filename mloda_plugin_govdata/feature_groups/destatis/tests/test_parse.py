@@ -1,4 +1,4 @@
-"""ffcsv: zip handling, the layout guard, and the typed parser, pinned to the six Destatis example files."""
+"""ffcsv: zip handling, the layout guard, and the typed parser, pinned to the Destatis example files and one live reply."""
 
 import io
 import json
@@ -229,6 +229,23 @@ def test_parse_ffcsv_zip_end_to_end(fixtures_dir: Path, name: str) -> None:
     table = parse_ffcsv_zip(zip_bytes)
     assert table.num_rows > 0
     assert "value_marker" in table.schema.names
+
+
+def test_parse_captured_land_table(fixtures_dir: Path) -> None:
+    # First real GENESIS-Online tablefile reply in the fixtures: 12411-0010, one STAG, all 16 Länder.
+    table = parse_ffcsv_zip((fixtures_dir / "ffcsv" / "12411-0010_2024_de_flat.zip").read_bytes())
+    assert table.num_rows == 16
+    assert table.column("time_code").to_pylist() == ["STAG"] * 16
+    assert table.column("time").to_pylist() == [2024] * 16
+    assert table.column("1_variable_code").to_pylist() == ["DLAND"] * 16
+    assert set(table.column("1_variable_attribute_code").to_pylist()) == {f"{n:02d}" for n in range(1, 17)}
+    assert table.column("value_marker").to_pylist() == [""] * 16
+    assert "value_q" not in table.schema.names
+    saarland = next(row for row in table.to_pylist() if row["1_variable_attribute_code"] == "10")
+    assert saarland["1_variable_attribute_label"] == "Saarland"
+    assert saarland["value"] == 1012141.0
+    assert saarland["value_unit"] == "Anzahl"
+    assert saarland["value_variable_code"] == "BEVSTD"
 
 
 def test_parse_ffcsv_zip_rejects_over_the_size_cap(fixtures_dir: Path) -> None:

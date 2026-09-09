@@ -19,7 +19,9 @@ URL: https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata
 Copyright line in the file: "(c) Die Bundeswahlleiterin, Wiesbaden 2025".
 License stated in the file: Datenlizenz Deutschland Namensnennung Version 2.0 (dl-de/by-2-0), https://www.govdata.de/dl-de/by-2-0
 Attribution: Die Bundeswahlleiterin, Wiesbaden 2025, dl-de/by-2-0
-Sample: the 5-line preamble, the 3 header rows, and the first Wahlkreis rows plus one Land row, unchanged.
+Sample: the 5-line preamble, the 3 header rows, the first Wahlkreis rows, and all 16 Land rows (Nr 01 to 16,
+"gehört zu" 99), unchanged. Land rows 02 to 16 were appended at the end on 2026-09-08 from the same file, so they
+do not follow their own Wahlkreis block as in the source; the Bundesgebiet row (Nr 99) is not included.
 
 berlin_wahl_sample.csv
 Source: Datenexport CSV of the 2023 Abgeordnetenhaus election (Zweitstimme, Wahlbezirke), publisher Der Landeswahlleiter für Berlin / Amt für Statistik Berlin-Brandenburg (as stated in the site footer).
