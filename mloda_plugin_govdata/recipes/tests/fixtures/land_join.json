@@ -1,0 +1,78 @@
+{
+  "features": [
+    {
+      "name": "value",
+      "options": {
+        "DestatisReader": {
+          "name": "12411-0010",
+          "startyear": 2024,
+          "endyear": 2024
+        }
+      }
+    },
+    {
+      "name": "Wahlberechtigte Erststimmen Endgültig",
+      "options": {
+        "BundeswahlleiterinReader": "https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata/btw25/csv/kerg.csv"
+      }
+    }
+  ],
+  "links": [
+    {
+      "join": "inner",
+      "left": {
+        "feature_group": "GovDataFeature",
+        "index": [
+          "1_variable_attribute_code"
+        ],
+        "discriminator": {
+          "DestatisReader": {
+            "name": "12411-0010",
+            "startyear": 2024,
+            "endyear": 2024
+          }
+        }
+      },
+      "right": {
+        "feature_group": "GovDataFeature",
+        "index": [
+          "Nr"
+        ],
+        "discriminator": {
+          "BundeswahlleiterinReader": "https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata/btw25/csv/kerg.csv"
+        }
+      }
+    }
+  ],
+  "compliance": {
+    "sources": [
+      {
+        "license": "dl-de/by-2-0",
+        "attribution": "(c) Statistisches Bundesamt (Destatis), 2026",
+        "dataset_uri": "https://genesis.destatis.de/datenbank/online/statistic/12411/table/12411-0010",
+        "retrieved_at": "2026-09-08T00:00:00Z",
+        "sha256": "aba0f99e3b8eef1f4d975c0e2ed3d7323024dd8a798dbd875e35ae34447f3916",
+        "modifications": [
+          "ffcsv reply parsed into a typed table; the raw value sign is kept in value_marker",
+          "time normalized to the calendar year of the Stichtag"
+        ],
+        "credential_env": [
+          "GENESIS_TOKEN"
+        ]
+      },
+      {
+        "license": "dl-de/by-2-0",
+        "attribution": "(c) Die Bundeswahlleiterin, Wiesbaden 2025",
+        "dataset_uri": "https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata/btw25/csv/kerg.csv",
+        "retrieved_at": "2026-09-08T00:00:00Z",
+        "sha256": "31ab27391d5753a6a972936d436092879f5c9cca11570272cd72e3e272d16731",
+        "modifications": [
+          "three-row merged header flattened to one column name per measure",
+          "vote counts read as integers"
+        ],
+        "credential_env": []
+      }
+    ],
+    "notes": "The Land rows (gehört zu = 99) carry the AGS-2 in Nr, which equals the Destatis DLAND code, so the join needs no name mapping. The join itself waits on mloda honoring link discriminators for same-class links."
+  }
+}

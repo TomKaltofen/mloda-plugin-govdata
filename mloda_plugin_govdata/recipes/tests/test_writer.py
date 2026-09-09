@@ -1,5 +1,6 @@
 """Writer and loader: the supported Feature subset round-trips, links build, and only the feature array reaches mloda."""
 
+import inspect
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -21,6 +22,7 @@ from mloda_plugin_govdata.recipes import (
     recipe_to_json,
     write_recipe,
 )
+from mloda_plugin_govdata.recipes.writer import _UNSUPPORTED, SUPPORTED_FEATURE_PARAMETERS
 
 KERG_URL = "https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata/btw25/csv/kerg.csv"
 BERLIN_URL = "https://www.wahlen-berlin.de/wahlen/BE2023/AFSPRAES/agh/Datenexport_AGH2023_Zweitstimme_W_BE.csv"
@@ -178,15 +180,18 @@ def test_a_feature_level_link_is_hoisted_once() -> None:
     assert all(isinstance(feature, Feature) and feature.link is None for feature in loaded.features)
 
 
-def test_links_that_differ_only_by_discriminator_are_both_kept() -> None:
+def test_links_that_differ_only_by_discriminator_are_rejected() -> None:
+    # mloda's Link equality ignores discriminators, so run_all(links=set(...)) would silently keep one of them.
     other = Link.inner(
         JoinSpec(GovDataFeature, "1_variable_attribute_code"),
         JoinSpec(GovDataFeature, "Nr"),
         left_discriminator={DestatisReader.__name__: LAND_LOCATOR},
         right_discriminator={BundeswahlleiterinReader.__name__: BERLIN_URL},
     )
+    assert len({LAND_LINK, other}) == 1
     features: list[Feature | str] = [Feature("value", link=LAND_LINK), Feature("Nr", link=other)]
-    assert len(build_recipe(features, COMPLIANCE).links) == 2
+    with pytest.raises(RecipeError, match=r"links\[1\] repeats links\[0\]"):
+        build_recipe(features, COMPLIANCE)
 
 
 def test_an_unknown_feature_group_in_the_links_block_is_named() -> None:
@@ -203,6 +208,13 @@ def test_an_asof_link_has_no_recipe_form() -> None:
         build_recipe(["Nr"], COMPLIANCE, [asof])
 
 
+def test_every_feature_constructor_parameter_is_either_carried_or_refused() -> None:
+    parameters = set(inspect.signature(Feature.__init__).parameters) - {"self"}
+    refused = {attribute for attribute, _, _ in _UNSUPPORTED}
+    # compute_framework is the constructor name; the attribute is compute_frameworks.
+    assert parameters == SUPPORTED_FEATURE_PARAMETERS | (refused - {"compute_frameworks"}) | {"compute_framework"}
+
+
 @pytest.mark.parametrize(
     ("feature", "attribute"),
     [
@@ -210,12 +222,18 @@ def test_an_asof_link_has_no_recipe_form() -> None:
         (Feature("x", index=Index(("a",))), "index"),
         (Feature("x", domain="d"), "domain"),
         (Feature("x", compute_framework="PyArrowTable"), "compute_frameworks"),
+        (Feature("x", initial_requested_data=True), "initial_requested_data"),
+        (Feature("x", forward_group=False), "forward_group"),
+        (Feature("x", forward_group=["k"]), "forward_group"),
+        (Feature("x", forward_group_exclude=["k"]), "forward_group_exclude"),
+        (Feature("x", inherit_context_keys=["k"]), "inherit_context_keys"),
+        (Feature("x", options={"domain": "from_options"}, domain="from_ctor"), "domain"),
     ],
 )
 def test_feature_attributes_without_a_config_field_raise_instead_of_being_dropped(
     feature: Feature, attribute: str
 ) -> None:
-    with pytest.raises(RecipeError, match=rf"features\[0\] \(x\): Feature.{attribute} has no field"):
+    with pytest.raises(RecipeError, match=rf"features\[0\]: Feature.{attribute} has no field"):
         build_recipe([feature], COMPLIANCE)
 
 
@@ -223,7 +241,7 @@ def test_domain_and_compute_framework_given_as_options_round_trip() -> None:
     feature = Feature("x", options={"domain": "d", "compute_framework": "PyArrowTable"})
     (loaded,) = _features(parse_recipe(recipe_to_json(build_recipe([feature], COMPLIANCE))).features)
     assert loaded.options.group == {"domain": "d", "compute_framework": "PyArrowTable"}
-    assert loaded.domain is not None and loaded.compute_frameworks == feature.compute_frameworks
+    assert loaded.domain == feature.domain and loaded.compute_frameworks == feature.compute_frameworks
 
 
 def test_govdata_locator_instances_become_their_string_form() -> None:
@@ -236,17 +254,31 @@ def test_govdata_locator_instances_become_their_string_form() -> None:
     assert b.options.group == {"BundeswahlleiterinReader": KERG_URL}
 
 
-def test_a_govdata_locator_with_non_default_fields_raises() -> None:
-    feature = Feature("a", options={"GovDataReader": GovDataLocator(dataset_id="slug", resource_index=1)})
+@pytest.mark.parametrize(
+    ("locator", "match"),
+    [
+        (GovDataLocator(dataset_id="slug", resource_index=1), "a non-default ckan_base or resource_index"),
+        (GovDataLocator(dataset_id="slug", ckan_base="https://other/api"), "a non-default ckan_base or resource_index"),
+        (GovDataLocator(dataset_id="slug", distribution_url=KERG_URL), "both dataset_id and distribution_url"),
+    ],
+)
+def test_a_govdata_locator_without_a_string_form_raises(locator: GovDataLocator, match: str) -> None:
     with pytest.raises(
-        RecipeError, match=r"features\[0\] \(a\).options.GovDataReader: a GovDataLocator with a non-default"
+        RecipeError, match=rf"features\[0\].options.GovDataReader: a GovDataLocator with {match} has no config form"
     ):
-        build_recipe([feature], COMPLIANCE)
+        build_recipe([Feature("a", options={"GovDataReader": locator})], COMPLIANCE)
 
 
 def test_a_nested_feature_inside_in_features_raises() -> None:
     feature = Feature("d", options=Options(context={"in_features": frozenset({Feature("a", options={"k": 1})})}))
     with pytest.raises(RecipeError, match="in_features must be feature names"):
+        build_recipe([feature], COMPLIANCE)
+
+
+def test_in_features_in_the_group_options_raises() -> None:
+    # mloda's loader turns a dict under this key into a nested Feature, so the value would change type on reload.
+    feature = Feature("d", options=Options(group={"in_features": {"name": "a"}}))
+    with pytest.raises(RecipeError, match=r"features\[0\]: 'in_features' belongs in Options.context"):
         build_recipe([feature], COMPLIANCE)
 
 
@@ -256,10 +288,30 @@ def test_comma_separated_in_features_become_a_list() -> None:
     assert recipe.features == [{"name": "d", "in_features": ["a", "b"]}]
 
 
-@pytest.mark.parametrize("value", [object(), Path("x"), {1: "non-string key"}])
-def test_values_outside_the_json_safe_subset_raise(value: Any) -> None:
-    with pytest.raises(RecipeError, match=r"features\[0\] \(x\).options"):
+@pytest.mark.parametrize(
+    ("value", "match"),
+    [
+        (object(), "object values are not JSON-safe"),
+        (Path("x"), "values are not JSON-safe"),
+        ({1: "non-string key"}, "option key 1 is not a string"),
+        (("a", "b"), "tuple values do not survive JSON; pass a list"),
+        (frozenset({"a"}), "frozenset values do not survive JSON; pass a list"),
+        (float("nan"), "non-finite floats are not JSON"),
+        ([1.0, float("inf")], "non-finite floats are not JSON"),
+    ],
+)
+def test_values_outside_the_json_safe_subset_raise(value: Any, match: str) -> None:
+    with pytest.raises(RecipeError, match=rf"features\[0\].options.*{match}"):
         build_recipe([Feature("x", options={"k": value})], COMPLIANCE)
+
+
+def test_the_writer_refuses_what_its_own_loader_would_refuse() -> None:
+    # Passes the item model, fails inside mloda's config loader; build_recipe runs the loader so no file is written.
+    feature = Feature("x", options={"feature_group": "GovDataFeature", "k": 1})
+    with pytest.raises(
+        RecipeError, match="mloda rejected the feature array: 'feature_group' must not be a top-level key"
+    ):
+        build_recipe([feature], COMPLIANCE)
 
 
 def test_only_the_feature_array_reaches_mloda(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -270,9 +322,9 @@ def test_only_the_feature_array_reaches_mloda(monkeypatch: pytest.MonkeyPatch) -
         seen.append(config_str)
         return original(config_str, format=format)
 
-    monkeypatch.setattr("mloda_plugin_govdata.recipes.writer.load_features_from_config", capture)
     features: list[Feature | str] = [Feature("value", options={DestatisReader.__name__: LAND_LOCATOR}), "Nr"]
     text = recipe_to_json(build_recipe(features, COMPLIANCE, [LAND_LINK]))
+    monkeypatch.setattr("mloda_plugin_govdata.recipes.writer.load_features_from_config", capture)
 
     parse_recipe(text)
 
