@@ -5,7 +5,7 @@ Companion to [ap2-destatis-harmonization.md](ap2-destatis-harmonization.md)
 Tick items in the PR that lands them. If a slice moves, a checkpoint slips, or
 a cut line is pulled, edit both files in the same PR.
 
-Status: draft v2.7, 2026-08-28 (slice 5 ticked: actionable result-too-large error). v1 was reviewed by three independent advisors
+Status: draft v2.8, 2026-09-09 (slice 6 ticked: recipe format and writer, PR #23). v1 was reviewed by three independent advisors
 (two Claude models, one Codex run) against the M1 code and mloda 0.10.0; the
 findings are folded in below. Slice 0 step 0 (OpenAPI assessment) was done
 2026-08-16, reviewed by one Claude Sonnet run and one Codex run against the
@@ -656,50 +656,85 @@ Landed in fork PR #18 (https://github.com/TomKaltofen/mloda-plugin-govdata/pull/
 
 ## Slice 6: recipe format and writer (WP-F part 1, week 3, about 12 h)
 
-- [ ] Build on `mloda.user.load_features_from_config(config_str, format="json")`
+- [x] Build on `mloda.user.load_features_from_config(config_str, format="json")`
       (verified in mloda 0.10.0): takes a JSON string (not a path), returns
       `list[Feature | str]`, and requires a JSON array of feature names or
       objects with `name`, `options` (or `group_options` plus
       `context_options`), `in_features`, `feature_group` (class-name string).
       Any other key inside a feature item raises `TypeError` (verified:
       `FeatureConfig(**item)`), and a top-level object raises "must be a JSON
-      array".
-- [ ] `recipes/model.py`: the recipe file is therefore a JSON object
+      array". (Done 2026-09-09, PR #23: `recipes/writer.py:realize_recipe`
+      passes `json.dumps(recipe.features)`; item keys and the two cross-field
+      rules are pre-checked against mloda's `FeatureConfig`, pinned by a test,
+      so an unknown key fails with the allowed keys named instead of mloda's
+      raw `TypeError`.)
+- [x] `recipes/model.py`: the recipe file is therefore a JSON object
       `{"features": [...], "links": [...], "compliance": {...}}`; `features`
       is the mloda array verbatim and is passed as `json.dumps(recipe.features)`
       to the loader. `compliance` (D10 pydantic): license id, attribution
       string, dataset URI, retrieval timestamp, payload sha256, modification
       markers, required credential env names. Credential-looking values are
-      rejected by the model.
-- [ ] Option values inside `features` are JSON primitives only: reader
+      rejected by the model. (Done: pydantic `Recipe`, `FeatureItem`,
+      `LinkSpec`/`JoinSide`, `Compliance`/`SourceCompliance`; compliance is a
+      `sources` list plus `notes`, since recipe 3 reads two portals; rejection
+      covers credential-named keys, token-shaped values and keys (the real
+      GENESIS token is one 32-char alnum run, threshold 24), URL userinfo,
+      non-name `credential_env` entries, and the process's own GENESIS token
+      and password values; error text never carries the rejected value.)
+- [x] Option values inside `features` are JSON primitives only: reader
       locators go in as strings or dicts (`DestatisLocator.coerce(dict)`,
       slice 4). The writer only round-trips the JSON-safe subset of options
       this plugin produces (slugs, URLs, table codes, years, region lists,
       reader class-name keys); it is not a general `Options` serializer.
-- [ ] `links` block: `load_recipe` turns it into `Link` objects (`Link.inner`
+      (Done: `_json_value` covers str, finite numbers, bool, None, lists,
+      dicts, `DestatisLocator` as its dict form with `None` fields omitted,
+      `GovDataLocator` default form as its string; tuples, sets, and every
+      `Feature` constructor argument the config cannot carry raise instead
+      of being dropped, pinned against `Feature.__init__`'s signature.)
+- [x] `links` block: `load_recipe` turns it into `Link` objects (`Link.inner`
       with `JoinSpec`, `Index`, and `left_discriminator` /
       `right_discriminator`; verified exported from `mloda.user`), since the
-      feature loader cannot express joins. Empty list allowed.
-- [ ] `recipes/writer.py`: Feature list plus links plus compliance to recipe
+      feature loader cannot express joins. Empty list allowed. (Done: `join`
+      plus two sides; class names resolved over loaded `FeatureGroup`
+      subclasses, ambiguity and missing class fail loud; `asof` rejected;
+      two links equal under mloda's `Link` equality, which ignores
+      discriminators, are rejected because `run_all`'s links set keeps one;
+      the empty list is the shipped `recipes/land_population.json`, the Land
+      join shape is `recipes/tests/fixtures/land_join.json`.)
+- [x] `recipes/writer.py`: Feature list plus links plus compliance to recipe
       JSON; `load_recipe(path) -> LoadedRecipe` with `features:
       list[Feature | str]` (the loader's real return type, verified; not
       every `Feature` attribute survives the config model, so the supported
       round-trip subset is documented), `links: list[Link]`, `compliance`.
       It imports the plugin's feature-group modules first so a fresh process
       resolves them. Test: the compliance and links blocks are stripped
-      before the feature JSON reaches mloda.
-- [ ] Recipe file location decided together with the reference-data decision
+      before the feature JSON reaches mloda. (Done: `build_recipe`,
+      `recipe_to_json`, `write_recipe`, `parse_recipe`, `load_recipe`;
+      feature-level links hoisted into `links`; the writer runs its output
+      through the loader; subset documented in `docs/recipes.md`; strip test
+      in `recipes/tests/test_writer.py`.)
+- [x] Recipe file location decided together with the reference-data decision
       in slice 8: shipped as package data
       (`mloda_plugin_govdata/recipes/files/*.json` with
       `[tool.setuptools.package-data]`; verified: no package-data or
       MANIFEST.in exists today, so non-`.py` files are not reliably in the
       wheel) or repo-root `recipes/` outside the wheel. If shipped: a test
-      builds the wheel and asserts the JSON files are inside.
-- [ ] Tests: round trip; a recipe carrying a token-like value fails
+      builds the wheel and asserts the JSON files are inside. (Decided
+      2026-09-09, mirroring ADR 0006: not package data, repo-root `recipes/`
+      outside the wheel, no `package-data` entry, so no wheel test; a wheel
+      build during review confirmed it holds no non-`.py` files. First file:
+      `recipes/land_population.json`; test recipes under
+      `recipes/tests/fixtures/`.)
+- [x] Tests: round trip; a recipe carrying a token-like value fails
       validation; a recipe with a mloda-unknown key inside a feature item
       fails at load with a clear message; a recipe over a fixture runs
-      through `mloda.run_all` in a fresh subprocess.
-- [ ] Commit `feat(recipes): recipe model, writer, loader`.
+      through `mloda.run_all` in a fresh subprocess. (Done: 99 tests in
+      `recipes/tests/`; the fresh-subprocess run reads the captured
+      `12411-0010` Land table, whose sha256 the recipe's compliance block
+      pins; a second fresh process resolves the Land join link.)
+- [x] Commit `feat(recipes): recipe model, writer, loader`. (Done, plus
+      `fix(recipes): close review findings in the recipe model and writer`;
+      PR #23.)
 
 ## Slice 7: period model and Land-level join plumbing (WP-E part 1, week 3, about 18 h)
 
