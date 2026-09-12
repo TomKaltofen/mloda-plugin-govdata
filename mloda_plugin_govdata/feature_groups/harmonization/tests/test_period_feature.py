@@ -104,3 +104,11 @@ def test_a_missing_time_value_is_refused(tmp_path: Path, monkeypatch: pytest.Mon
     feature = Feature("Jahr__year_period", options={GovDataReader.__name__: CSV_URL}, feature_group=AnnualPeriodFeature)
     with pytest.raises(ValueError, match="Jahr, row 1: no time value"):
         _run([feature])
+
+
+@respx.mock
+def test_a_contradicting_explicit_freq_is_refused(genesis: Callable[[str], respx.Route]) -> None:
+    genesis(GOETTINGEN_ZIP)
+    options = {DestatisReader.__name__: GOETTINGEN_LOCATOR, "period_freq": "quarter"}
+    with pytest.raises(ValueError, match="names period_freq 'year' but its option says 'quarter'"):
+        _run([Feature("time__year_period", options=options)])

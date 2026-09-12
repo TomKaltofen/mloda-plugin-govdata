@@ -77,3 +77,4 @@ def test_chained_request_resolves_in_a_fresh_subprocess(
     )
     assert completed.returncode == 0, completed.stdout + completed.stderr
     assert completed.stdout.strip() == "OK"
+    assert "sub-token" not in completed.stdout + completed.stderr

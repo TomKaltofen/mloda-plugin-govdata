@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import asdict
 from pathlib import Path
@@ -15,6 +14,7 @@ from mloda.user import Feature, FeatureName, Options
 
 from ...harmonization.rebase import (
     DEFAULT_TOLERANCE,
+    KeyEdition,
     Policy,
     RebasedRow,
     RebaseIssue,
@@ -26,7 +26,7 @@ from ...harmonization.rebase import (
 from ...harmonization.reference.bbsr import UmsteigeschluesselRow, load_bbsr_kreise
 from ...harmonization.reference.sources import BBSR_KREISE, ReferenceSource
 from ..govdata.core.cache import CacheMissError, DownloadCache
-from .base import HarmonizationFeature
+from .base import PART_PATTERN, HarmonizationFeature
 
 KREIS_VARIABLE = "KREISE"
 VARIABLE_COLUMN = "1_variable_code"
@@ -46,10 +46,10 @@ class KreisRebaseFeature(HarmonizationFeature):
     the value column and ``value_marker``; the key sheets come from the BBSR file in the cache.
     Returns one row per (Kreis, year): ``~key``, ``~year``, ``~value``, ``~flag``, ``~sources``,
     ``~marker``, ``~issues`` (the issues touching that row) and ``~edition`` (the key edition, census
-    breaks and the issues on keys outside the request, as JSON). The input rows do not survive.
+    breaks and the issues no row carries, as JSON). The input rows do not survive.
     """
 
-    PREFIX_PATTERN = r".*__(rebased)(?:~\w+)?$"
+    PREFIX_PATTERN = rf".*__(rebased)(?:~{PART_PATTERN})?$"
     MIN_IN_FEATURES = 1
     MAX_IN_FEATURES = 1
     PROPERTY_MAPPING: ClassVar = {
@@ -97,14 +97,27 @@ class KreisRebaseFeature(HarmonizationFeature):
     @classmethod
     def calculate_feature(cls, data: Any, features: FeatureSet) -> Any:
         table: pa.Table = data
+        keys, source = cls.load_keys()
         columns: dict[str, pa.Array] = {}
-        for feature in features.features:
-            result = cls._rebase(table, cls.source_column(feature), feature.options)
-            columns.update(cls._columns(cls.base_name(str(feature.name)), result))
+        for name, feature in cls.by_base(features).items():
+            result = cls._rebase(table, cls.source_column(feature), feature.options, keys, source)
+            columns.update(cls._columns(name, result))
         return pa.table(columns)
 
     @classmethod
-    def _rebase(cls, table: pa.Table, value_column: str, options: Options) -> RebaseResult:
+    def _rebase(
+        cls,
+        table: pa.Table,
+        value_column: str,
+        options: Options,
+        keys: Sequence[UmsteigeschluesselRow],
+        source: ReferenceSource,
+    ) -> RebaseResult:
+        from_year, to_year = _year(options, "rebase_from_year"), _year(options, "rebase_to_year")
+        share = ShareKind(_option(options, "rebase_share", ShareKind.POPULATION.value))
+        if table.num_rows == 0:  # an empty selection is an empty result with its schema, not a wrong one
+            edition = KeyEdition(source.name, source.url, source.sha256, from_year, to_year, share)
+            return RebaseResult((), edition, (), ())
         variables = sorted(set(table.column(VARIABLE_COLUMN).to_pylist()))
         if variables != [KREIS_VARIABLE]:
             raise ValueError(
@@ -116,14 +129,13 @@ class KreisRebaseFeature(HarmonizationFeature):
             table.column(value_column).to_pylist(),
             table.column(MARKER_COLUMN).to_pylist(),
         )
-        keys, source = cls.load_keys()
         return rebase(
             observations,
             keys=keys,
             source=source,
-            from_year=_year(options, "rebase_from_year"),
-            to_year=_year(options, "rebase_to_year"),
-            share=_option(options, "rebase_share", ShareKind.POPULATION.value),
+            from_year=from_year,
+            to_year=to_year,
+            share=share,
             tolerance=_option(options, "rebase_tolerance", DEFAULT_TOLERANCE),
             on_unmatched=_policy(options, "rebase_on_unmatched"),
             on_incomplete=_policy(options, "rebase_on_incomplete"),
@@ -134,16 +146,13 @@ class KreisRebaseFeature(HarmonizationFeature):
         rows = result.rows
         attached: set[RebaseIssue] = set()
         issues = [_issues_for(row, result.issues, attached) for row in rows]
-        elsewhere: dict[str, set[str]] = defaultdict(set)
-        for issue in result.issues:
-            if issue not in attached:
-                elsewhere[issue.kind.value].add(issue.key)
+        elsewhere = [asdict(issue) for issue in result.issues if issue not in attached]
         edition = {
             **asdict(result.edition),
             "share": result.edition.share.value,
             "sheet": result.edition.sheet,
             "census_breaks": list(result.census_breaks),
-            "issues_elsewhere": {kind: sorted(keys) for kind, keys in sorted(elsewhere.items())},
+            "issues_elsewhere": [{**issue, "kind": issue["kind"].value} for issue in elsewhere],
         }
         edition_json = json.dumps(edition, sort_keys=True)
         return {
@@ -159,11 +168,11 @@ class KreisRebaseFeature(HarmonizationFeature):
 
 
 def _issues_for(row: RebasedRow, issues: Sequence[RebaseIssue], attached: set[RebaseIssue]) -> str:
-    """Issues naming the row's key or one of its source keys, for the row's year or for every year."""
+    """Issues naming the row's key, one of its source keys, or the row as their target, for its year or all years."""
     mine = [
         issue
         for issue in issues
-        if (issue.key == row.key or issue.key in row.sources) and issue.year in (None, row.year)
+        if (row.key in (issue.key, issue.target) or issue.key in row.sources) and issue.year in (None, row.year)
     ]
     attached.update(mine)
     return "; ".join(f"{issue.kind.value}: {issue.detail}" for issue in mine)

@@ -5,7 +5,7 @@ Three derived FeatureGroups turn a reader's columns into comparable ones. Each i
 harmonized feature travels to the reader columns it needs, so one `Feature` describes the whole chain.
 
 ```python
-from mloda.user import Feature, mloda
+from mloda.user import Feature, Options, mloda
 from mloda_plugin_govdata.feature_groups.destatis import DestatisReader
 from mloda_plugin_govdata.feature_groups.harmonization import KreisRebaseFeature  # noqa: F401 (registers the groups)
 
@@ -42,8 +42,9 @@ Feature(
 ```
 
 Names are ASCII (`bevoelkerung`, not `Bevölkerung`). A result with several parts comes back as
-`<name>~<part>` columns; request `<name>~<part>` to get one part alone. mloda returns one frame per
-FeatureGroup, so a reader column requested next to a harmonized feature lands in its own frame.
+`<name>~<part>` columns; request `<name>~<part>` to get one part alone, and chain onto a part to go on
+(`value__rebased~key__nuts2024` maps the re-based keys). mloda returns one frame per FeatureGroup, so a
+reader column requested next to a harmonized feature lands in its own frame.
 
 ## `value__rebased` (`KreisRebaseFeature`)
 
@@ -62,8 +63,8 @@ in the cache (`load_bbsr_kreise(cache, revalidate=True)` once, offline afterward
 Output, one row per Kreis and year: `~key`, `~year`, `~value` (float, never rounded), `~flag`
 (`observed` or `rebased`), `~sources` (the contributing keys, `+`-joined), `~marker` (the raw GENESIS
 sign of an observed cell), `~issues` (the issues that touch that row, `kind: detail`), and `~edition`
-(JSON: source, URL, sha256, sheet, share, census breaks, and the issues on keys no row carries, as kind
-to keys). The input rows do not survive; a partial sum or a key the sheet does not know raises unless
+(JSON: source, URL, sha256, sheet, share, census breaks, and the full records of the issues no row
+carries). The input rows do not survive; a partial sum or a key the sheet does not know raises unless
 the policy says otherwise.
 
 ## `<key>__nuts2024` (`AgsToNutsFeature`)
@@ -71,7 +72,8 @@ the policy says otherwise.
 Maps AGS keys through the pinned Eurostat LAU-to-NUTS crosswalk (`harmonization/nuts.py`). The edition
 is part of the name (or the `nuts_version` option) and must be the one the cache holds
 (`load_edition(cache, revalidate=True)` once). Kreis keys retired before the edition resolve through
-GV-ISys history when the edition carries it; Land keys are out of scope.
+the GV-ISys change files named in `AgsToNutsFeature.history_years` (the pinned year, fetched once with
+`load_gv_isys_changes(year, cache, revalidate=True)`); Land keys are out of scope.
 
 | Option | Meaning |
 | --- | --- |

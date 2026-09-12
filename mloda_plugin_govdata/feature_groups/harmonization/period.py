@@ -42,6 +42,7 @@ class AnnualPeriodFeature(HarmonizationFeature):
     def calculate_feature(cls, data: Any, features: FeatureSet) -> Any:
         table: pa.Table = data
         for feature in features.features:
+            cls.declared(feature, "period_freq")  # the name and an explicit option must agree
             source = cls.source_column(feature)
             starts = [_period_start(source, row, value) for row, value in enumerate(table.column(source).to_pylist())]
             table = table.append_column(str(feature.name), pa.array(starts, pa.date32()))

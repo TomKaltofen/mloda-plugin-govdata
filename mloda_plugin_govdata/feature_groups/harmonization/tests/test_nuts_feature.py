@@ -11,11 +11,19 @@ from mloda.user import Feature, FeatureName, Options, mloda
 from mloda_plugin_govdata.feature_groups.destatis.core.auth import OPTION_GENESIS_CREDENTIALS
 from mloda_plugin_govdata.feature_groups.destatis.reader import DestatisReader
 from mloda_plugin_govdata.feature_groups.govdata.core.cache import CacheMissError
-from mloda_plugin_govdata.feature_groups.harmonization.nuts import PARTS, AgsToNutsFeature
+from mloda_plugin_govdata.feature_groups.harmonization.nuts import NULL_KEY, PARTS, AgsToNutsFeature
 from mloda_plugin_govdata.harmonization.edition import Edition
 from mloda_plugin_govdata.harmonization.nuts import UnmatchedKeysError
 
-from .conftest import GOETTINGEN_LOCATOR, GOETTINGEN_ZIP, LAND_ZIP, fixture_edition
+from .conftest import (
+    GOETTINGEN_LOCATOR,
+    GOETTINGEN_ZIP,
+    LAND_ZIP,
+    ffcsv_zip_with_rows,
+    fixture_edition,
+    gv_isys_changes,
+    lau_rows,
+)
 
 KEY = "1_variable_attribute_code"
 NAME = f"{KEY}__nuts2024"
@@ -133,3 +141,88 @@ def test_an_edition_missing_from_the_cache_names_the_fetch_call(
     monkeypatch.setattr(AgsToNutsFeature, "cache_dir", str(tmp_path))
     with pytest.raises(CacheMissError, match="load_edition\\(cache, revalidate=True\\)"):
         AgsToNutsFeature.edition()
+
+
+@respx.mock
+def test_two_parts_of_one_output_in_one_request(
+    genesis: Callable[[str], respx.Route], extract_edition: Edition
+) -> None:
+    genesis(GOETTINGEN_ZIP)
+    options = {DestatisReader.__name__: GOETTINGEN_LOCATOR}
+    table = _run([Feature(f"{NAME}~nuts1", options=options), Feature(f"{NAME}~nuts3", options=options)])[0]
+    assert sorted(table.schema.names) == [f"{NAME}~nuts1", f"{NAME}~nuts3"]
+    assert table.num_rows == 15
+
+
+@respx.mock
+def test_the_real_edition_carries_the_pinned_history(
+    genesis: Callable[[str], respx.Route], monkeypatch: pytest.MonkeyPatch, reference_fixtures_dir: Path, tmp_path: Path
+) -> None:
+    # Only the two fetch-and-verify loaders are replaced, so edition() itself assembles the history.
+    rows, changes = lau_rows(reference_fixtures_dir), gv_isys_changes(reference_fixtures_dir)
+    monkeypatch.setattr("mloda_plugin_govdata.harmonization.edition.load_lau_nuts_de", lambda cache, **kw: list(rows))
+    monkeypatch.setattr(
+        "mloda_plugin_govdata.feature_groups.harmonization.nuts.load_gv_isys_changes",
+        lambda year, cache, **kw: list(changes) if year == 2016 else [],
+    )
+    monkeypatch.setattr(AgsToNutsFeature, "cache_dir", str(tmp_path))
+    edition = AgsToNutsFeature.edition()
+    assert (edition.nuts_version, edition.year_range) == ("2024", (2016, 2024))
+    assert edition.gv_isys_changes == changes
+
+    genesis(GOETTINGEN_ZIP)
+    table = _run([Feature(NAME, options={DestatisReader.__name__: GOETTINGEN_LOCATOR})])[0]
+    assert set(table.column(f"{NAME}~nuts3").to_pylist()) == {"DE91C"}
+
+
+@respx.mock
+def test_nuts_codes_for_the_rebased_keys(
+    genesis: Callable[[str], respx.Route], extract_edition: Edition, extract_keys: None
+) -> None:
+    # A part of one output is a column another group can chain onto.
+    genesis(GOETTINGEN_ZIP)
+    name = "value__rebased~key__nuts2024"
+    options = {DestatisReader.__name__: GOETTINGEN_LOCATOR, "rebase_from_year": 2015, "rebase_to_year": 2016}
+    table = _run([Feature(name, options=options)])[0]
+    assert sorted(table.schema.names) == sorted(f"{name}~{part}" for part in PARTS)
+    assert table.column(f"{name}~key").to_pylist() == ["03159"] * 5
+    assert set(table.column(f"{name}~nuts3").to_pylist()) == {"DE91C"}
+
+
+@respx.mock
+def test_a_non_string_key_column_is_refused_by_name(
+    genesis: Callable[[str], respx.Route], extract_edition: Edition
+) -> None:
+    genesis(GOETTINGEN_ZIP)
+    with pytest.raises(TypeError, match="time must be a string column of AGS keys"):
+        _run([Feature("time__nuts2024", options={DestatisReader.__name__: GOETTINGEN_LOCATOR})])
+
+
+@respx.mock
+def test_null_key_cells_are_named_and_kept_only_on_request(
+    genesis: Callable[[str | bytes], respx.Route], extract_edition: Edition, ffcsv_fixtures_dir: Path
+) -> None:
+    zip_bytes = (ffcsv_fixtures_dir / GOETTINGEN_ZIP).read_bytes()
+
+    def blank_one_key(row: str) -> str:
+        return row.replace(";03159;", ";;", 1) if "327065" in row else row
+
+    genesis(ffcsv_zip_with_rows(zip_bytes, lambda row: True, edit=blank_one_key))
+    with pytest.raises(ValueError, match=rf"{KEY}, row \d+: {NULL_KEY}"):
+        _run([Feature(NAME, options={DestatisReader.__name__: GOETTINGEN_LOCATOR})])
+    options = {DestatisReader.__name__: GOETTINGEN_LOCATOR, "nuts_on_unmatched": "flag"}
+    table = _run([Feature(NAME, options=options)])[0]
+    keys, nuts3, reasons = (table.column(f"{NAME}~{part}").to_pylist() for part in ("key", "nuts3", "unmatched"))
+    (row,) = [i for i, key in enumerate(keys) if key is None]
+    assert (nuts3[row], reasons[row]) == (None, NULL_KEY)
+    assert nuts3.count("DE91C") == 14 and reasons.count("") == 14
+
+
+@respx.mock
+def test_a_contradicting_explicit_version_is_refused(
+    genesis: Callable[[str], respx.Route], extract_edition: Edition
+) -> None:
+    genesis(GOETTINGEN_ZIP)
+    options = {DestatisReader.__name__: GOETTINGEN_LOCATOR, "nuts_version": "2021"}
+    with pytest.raises(ValueError, match="names nuts_version '2024' but its option says '2021'"):
+        _run([Feature(NAME, options=options)])
