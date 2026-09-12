@@ -59,7 +59,9 @@ recipe.compliance.sources[0].attribution  # what to print next to the result
   `Link` equality ignores discriminators, so `run_all` would keep only one of them.
 - `compliance.sources`: one entry per data source with `license`, `attribution`, `dataset_uri`,
   `retrieved_at` (timezone-aware), the payload `sha256`, `modifications` (what the reader changes; dl-de/by-2-0
-  requires marking changes), and `credential_env` (the env-var names the source needs, never values).
+  requires marking changes), and `credential_env` (the env-var names of the source's default credential path,
+  never values; a GENESIS source names `GENESIS_TOKEN`, the user plus password pair from
+  [credentials.md](credentials.md) works the same).
 
 ## What round-trips
 
@@ -106,8 +108,10 @@ once). The Land join waits on mloda honoring link discriminators for same-class 
 its features without the links block and combine the two frames yourself, checking the Land names with
 `harmonization.land_codes.check_land_names`. A `-` in a GENESIS cell arrives as 0 with the sign kept in
 `value_marker`; only the harmonization step, which knows the validity windows, turns it into not applicable,
-so a consumer of raw columns reads the marker before taking a 0 as a count. Every shipped recipe has a test
-pinning its zero-versus-missing case.
+so a consumer of raw columns reads the marker before taking a 0 as a count. Each recipe except the first
+has a test pinning its zero-versus-missing case, and each pins the sha256 of the payload it was run against
+(the kerg and Stuttgart files are too large to commit; a `live`-marked test checks their pins against the
+source).
 
 `mloda_plugin_govdata/recipes/tests/shipped.py` holds the same recipes as Python; a test pins each file to
 the writer's output of its definition, so edit the definition and rewrite the file rather than the JSON.

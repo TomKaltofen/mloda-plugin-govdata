@@ -65,6 +65,6 @@
         "credential_env": []
       }
     ],
-    "notes": "Amtliches Endergebnis of the Bundestagswahl 2025. Wahlkreis rows carry a three-digit Nr and their Land in gehört zu, Land rows have gehört zu = 99, the Bundesgebiet row has Nr 99. An empty vote cell means the party was not on the ballot there and stays null; Übrige is 0 where no other candidates ran."
+    "notes": "Amtliches Endergebnis of the Bundestagswahl 2025. Wahlkreis rows carry a three-digit Nr and their Land in gehört zu, Land rows have gehört zu = 99, the Bundesgebiet row has Nr 99. An empty vote cell means the party was not on the ballot there and stays null; Übrige is 0 where no other candidates ran. Re-fetched on 2026-09-12: unchanged since the first capture on 2026-09-08."
   }
 }

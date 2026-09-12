@@ -177,10 +177,11 @@ LAND_POPULATION_VOTERS = ShippedRecipe(
         sources=[_destatis("12411-0010", _at(2026, 9, 8), LAND_SHA256), KERG_SOURCE],
         notes=(
             "Population per eligible voter by Land. The kerg Land rows (gehört zu = 99) carry the AGS-2 in Nr, which "
-            "equals the Destatis DLAND code, so the join needs no name mapping; harmonization.land_codes checks the "
-            "names on both sides. A party column is empty where the party was not on the ballot (the CSU outside "
+            "equals the Destatis DLAND code, so the join needs no name mapping; check the names on both sides with "
+            "harmonization.land_codes. A party column is empty where the party was not on the ballot (the CSU outside "
             "Bayern), which is not a zero. The join itself waits on mloda honoring link discriminators for "
-            "same-class links; until then run the features without the links block and combine the two frames."
+            "same-class links; until then run the features without the links block and combine the two frames. "
+            "kerg.csv re-fetched on 2026-09-12: unchanged since the first capture."
         ),
     ),
     [LAND_LINK],
@@ -231,7 +232,8 @@ BUNDESTAGSWAHL_2025 = ShippedRecipe(
         notes=(
             "Amtliches Endergebnis of the Bundestagswahl 2025. Wahlkreis rows carry a three-digit Nr and their Land "
             "in gehört zu, Land rows have gehört zu = 99, the Bundesgebiet row has Nr 99. An empty vote cell means "
-            "the party was not on the ballot there and stays null; Übrige is 0 where no other candidates ran."
+            "the party was not on the ballot there and stays null; Übrige is 0 where no other candidates ran. "
+            "Re-fetched on 2026-09-12: unchanged since the first capture on 2026-09-08."
         ),
     ),
 )

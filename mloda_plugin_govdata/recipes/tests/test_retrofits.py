@@ -1,5 +1,6 @@
 """The three M1 retrofits run offline through mloda, each with its zero-vs-missing case."""
 
+import hashlib
 import json
 from datetime import date
 from pathlib import Path
@@ -63,6 +64,11 @@ def test_bundestagswahl_zero_vs_missing_not_on_the_ballot_is_null_and_no_others_
     assert csu["09"] > 0 and csu["01"] is None
     assert 0 in table.column(UEBRIGE_VORPERIODE).to_pylist()
     assert table.column(UEBRIGE_VORPERIODE).null_count == 0
+
+
+def test_uba_ozone_pins_the_captured_reply(recipes_dir: Path) -> None:
+    (source,) = load_recipe(recipes_dir / UBA_OZONE_STATION_143.file).compliance.sources
+    assert source.sha256 == hashlib.sha256((GOVDATA_FIXTURES / "uba_measures.json").read_bytes()).hexdigest()
 
 
 @respx.mock

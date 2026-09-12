@@ -25,7 +25,7 @@ LAND_NAMES: Mapping[str, str] = MappingProxyType(
         "16": "Thüringen",
     }
 )
-_FOLD = str.maketrans({"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss"})
+_FOLD = str.maketrans({"ä": "ae", "ö": "oe", "ü": "ue"})  # casefold() already turns ß into ss
 
 
 class LandNameError(ValueError):
@@ -56,8 +56,8 @@ def land_code(name: str) -> str:
         raise LandNameError(f"{name!r} is not a Land name") from None
 
 
-def check_land_names(rows: Iterable[tuple[str, str]], *, complete: bool = True) -> None:
-    """Every ``(code, name)`` pair must agree with the constant; ``complete`` also wants each Land exactly once."""
+def check_land_names(rows: Iterable[tuple[str, object]], *, complete: bool = True) -> None:
+    """Every ``(code, name)`` pair must agree with the constant, no code twice; ``complete`` also wants all 16."""
     problems: list[str] = []
     seen: dict[str, int] = {}
     for position, (code, name) in enumerate(rows):
@@ -65,11 +65,13 @@ def check_land_names(rows: Iterable[tuple[str, str]], *, complete: bool = True) 
         if expected is None:
             problems.append(f"row {position}: {code!r} is not a Land code")
             continue
-        if normalize_land_name(name) != normalize_land_name(expected):
-            problems.append(f"row {position}: {code} is {expected!r}, not {name!r}")
         seen[code] = seen.get(code, 0) + 1
+        if not isinstance(name, str):
+            problems.append(f"row {position}: {code} has no name ({type(name).__name__})")
+        elif normalize_land_name(name) != normalize_land_name(expected):
+            problems.append(f"row {position}: {code} is {expected!r}, not {name!r}")
+    problems.extend(f"{code} appears {count} times" for code, count in sorted(seen.items()) if count > 1)
     if complete:
-        problems.extend(f"{code} appears {count} times" for code, count in sorted(seen.items()) if count > 1)
         missing = sorted(set(LAND_NAMES) - set(seen))
         if missing:
             problems.append(f"missing Land codes {missing}")
