@@ -122,8 +122,8 @@ edition as columns; see [docs/harmonization.md](docs/harmonization.md).
 
 A recipe file bundles the features, joins, and provenance of one run as JSON; `load_recipe` returns what
 `mloda.run_all` needs plus the compliance block (license, attribution, payload sha256, credential env names).
-Recipes ship under `recipes/`: the re-based Kreis series, a rate with its denominator, the Land-level
-join, and the three example datasets above. See [docs/recipes.md](docs/recipes.md).
+Recipes ship under `recipes/`: the Land table, the re-based Kreis series, a rate with its denominator, the
+Land-level join, and the three example datasets above. See [docs/recipes.md](docs/recipes.md).
 
 ## Demo
 

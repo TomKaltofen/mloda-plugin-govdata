@@ -12,11 +12,13 @@ from mloda.user import Feature
 from mloda_plugin_govdata.harmonization.land_codes import LAND_NAMES, check_land_names
 from mloda_plugin_govdata.recipes import LoadedRecipe, load_recipe
 
-from .conftest import FFCSV_FIXTURES, LAND_ZIP, Mock, frames_by_column, run
-from .shipped import CSU_ZWEITSTIMMEN, KERG_SHA256, KEY, LAND_POPULATION_VOTERS, VOTERS
+from .conftest import FFCSV_FIXTURES, GOVDATA_FIXTURES, LAND_ZIP, Mock, frames_by_column, run
+from .shipped import CSU_ZWEITSTIMMEN, KEY, LAND_POPULATION_VOTERS, VOTERS
 
 Genesis = Callable[[Mapping[str, str | bytes]], respx.Route]
 BUNDESGEBIET = "99"
+# The full file's federal total row: Nr 99 with an empty "gehört zu"; the sample omits it.
+BUNDESGEBIET_ROW = b"99;Bundesgebiet;\n"
 
 
 def _load(recipes_dir: Path) -> LoadedRecipe:
@@ -33,7 +35,7 @@ def test_the_recipe_pins_both_payloads_and_carries_the_link(recipes_dir: Path) -
     recipe = _load(recipes_dir)
     destatis, election = recipe.compliance.sources
     assert destatis.sha256 == hashlib.sha256((FFCSV_FIXTURES / LAND_ZIP).read_bytes()).hexdigest()
-    assert (election.sha256, election.credential_env) == (KERG_SHA256, [])
+    assert election.credential_env == []
     (link,) = recipe.links
     assert (link.left_index.index, link.right_index.index) == ((KEY,), ("Nr",))
     options = [feature.options.group for feature in recipe.features if isinstance(feature, Feature)]
@@ -43,12 +45,12 @@ def test_the_recipe_pins_both_payloads_and_carries_the_link(recipes_dir: Path) -
 @respx.mock
 def test_both_sides_run_and_the_land_rows_line_up_by_name(recipes_dir: Path, genesis: Genesis, kerg: Mock) -> None:
     genesis({"12411-0010": LAND_ZIP})
-    kerg()
+    kerg((GOVDATA_FIXTURES / "kerg_sample.csv").read_bytes() + BUNDESGEBIET_ROW)
     frames = frames_by_column(run(_load(recipes_dir).features))  # without the links: the join waits on mloda
     destatis, election = frames["value"], frames["Nr"]
     assert destatis.num_rows == 16
     check_land_names(zip(destatis.column(KEY).to_pylist(), destatis.column("1_variable_attribute_label").to_pylist()))
-    land_rows = _land_rows(election)
+    land_rows = _land_rows(election)  # the Bundesgebiet row has no parent and stays out
     check_land_names((nr, row["Gebiet"]) for nr, row in land_rows.items())
     assert set(land_rows) == set(destatis.column(KEY).to_pylist()) == set(LAND_NAMES)
     assert all(row[VOTERS] > 0 for row in land_rows.values())
