@@ -1,5 +1,8 @@
 from pathlib import Path
 
+import openpyxl
+import pytest
+
 from mloda_plugin_govdata.harmonization.reference.bbsr import parse_bbsr_kreise_workbook
 
 
@@ -41,3 +44,29 @@ def test_known_upstream_defect_is_reproduced_not_fixed(fixtures_dir: Path) -> No
     cochem_2015_2016 = next(r for r in rows if r.from_year == 2015 and r.source_key == "07135")
     assert cochem_2015_2016.target_key == "07135"  # identity row
     assert cochem_2015_2016.area_share != 1.0  # yet carries a non-identity share, the defect
+
+
+def test_direction_comes_from_the_sheet_name_and_the_header_stichtage_agree(fixtures_dir: Path) -> None:
+    path = fixtures_dir / "bbsr-ref-kreise-extract.xlsx"
+    rows = parse_bbsr_kreise_workbook(path)
+    workbook = openpyxl.load_workbook(path, read_only=True)
+    for name in workbook.sheetnames:
+        header = next(workbook[name].iter_rows(values_only=True))
+        stichtage = tuple(int(str(header[i]).rsplit("31.12.", 1)[1]) for i in (0, 8))
+        assert stichtage == tuple(int(y) for y in name.split("-"))
+        assert {(r.from_year, r.to_year) for r in rows if r.from_year == stichtage[0]} == {stichtage}
+
+
+def test_a_header_that_contradicts_the_sheet_name_is_refused(tmp_path: Path) -> None:
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    assert sheet is not None
+    sheet.title = "2015-2016"
+    sheet.append(
+        ["Kreise\n 31.12.2016", "Kreisname 2016", "", "", "", "", "", "", "Kreise\n 31.12.2015", "Kreisname 2015"]
+    )
+    sheet.append([3152000, "Göttingen", 1, 1, 1, 0, 0, 0, 3159000, "Göttingen"])
+    path = tmp_path / "swapped.xlsx"
+    workbook.save(path)
+    with pytest.raises(ValueError, match=r"sheet 2015-2016: header Stichtage \(2016, 2015\)"):
+        parse_bbsr_kreise_workbook(path)

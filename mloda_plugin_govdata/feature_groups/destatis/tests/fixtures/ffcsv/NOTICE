@@ -47,3 +47,29 @@ quality=off, compress=false, transpose=false, job=false; 16 rows (DLAND 01 to 16
 Retrieved: 2026-09-08 with a registered account; the zip member name carries the server's job id.
 License: Datenlizenz Deutschland Namensnennung 2.0 (dl-de/by-2-0), https://www.govdata.de/dl-de/by-2-0,
 the GENESIS-Online data license. Attribution: (c) Statistisches Bundesamt (Destatis), 2026.
+
+Live captures from GENESIS-Online (data/tablefile replies, one CSV member each, unchanged), used as the
+inputs of the re-basing expected-value tests (harmonization/tests/fixtures/):
+
+12411-0015_2013-2017_de_flat.zip
+sha256: 39e590f654fd92f20306ef5a52ed59ef04bb757b1331e5216df2cfafcddd7411
+Source: Statistisches Bundesamt (Destatis), GENESIS-Online table 12411-0015 (Fortschreibung des
+Bevölkerungsstandes: Kreise, Stichtag), https://genesis.destatis.de/datenbank/online/statistic/12411/table/12411-0015
+Request: data/tablefile with name=12411-0015, regionalvariable=KREISE, regionalkey=03152,03156,03159,
+startyear=2013, endyear=2017, language=de, format=ffcsv, quality=off, compress=false, transpose=false,
+job=false; 15 rows in server order (three Kreise, STAG 2013-12-31 to 2017-12-31, BEVSTD). The retired
+Kreise 03152 and 03156 carry "-" from 2016 on, the merged 03159 carries "-" before 2016: the
+Gebietsstand validity case, not zeros.
+Retrieved: 2026-09-12 with a registered account; the zip member name carries the server's job id.
+License: Datenlizenz Deutschland Namensnennung 2.0 (dl-de/by-2-0), https://www.govdata.de/dl-de/by-2-0,
+the GENESIS-Online data license. Attribution: (c) Statistisches Bundesamt (Destatis), 2026.
+
+12411-0015_2013-2014_de_flat.zip
+sha256: 397c83d6ff4a0dd8deecd1b84939fc17639edd9940d52a5b1fd2c6affc46263b
+Source: as above, table 12411-0015.
+Request: data/tablefile with name=12411-0015, regionalvariable=KREISE, regionalkey=07135,07140,
+startyear=2013, endyear=2014, language=de, format=ffcsv, quality=off, compress=false, transpose=false,
+job=false; 4 rows in server order (Cochem-Zell and Rhein-Hunsrück-Kreis, STAG 2013-12-31 and
+2014-12-31, BEVSTD): the fractional-share case.
+Retrieved: 2026-09-12 with a registered account; the zip member name carries the server's job id.
+License: as above. Attribution: (c) Statistisches Bundesamt (Destatis), 2026.
