@@ -152,6 +152,7 @@ class RebaseIssue:
     key: str
     year: int | None
     detail: str
+    target: str | None = None  # the re-based key the issue affects, when the key itself is a feeder
 
 
 @dataclass(frozen=True)
@@ -432,7 +433,7 @@ def rebase(
                     f"{key} {year} was not given but feeds {target} on sheet {sheet.name}; "
                     f"the re-based {target} {year} is null"
                 )
-                issues.append(RebaseIssue(IssueKind.MISSING_SOURCE, key, year, detail))
+                issues.append(RebaseIssue(IssueKind.MISSING_SOURCE, key, year, detail, target))
         only = contributions[0]
         if not missing and feeders == {target} and only.weight == 1.0:
             rows.append(RebasedRow(target, year, only.value, Flag.OBSERVED, (), only.marker))
@@ -440,11 +441,11 @@ def rebase(
         for part in contributions:
             if part.marker == NOT_AVAILABLE_MARKER:
                 detail = f"{part.source} {year} is a '-' cell taken as 0 in the re-based {target} {year}"
-                issues.append(RebaseIssue(IssueKind.ZERO_MARKER, part.source, year, detail))
+                issues.append(RebaseIssue(IssueKind.ZERO_MARKER, part.source, year, detail, target))
         nulls = [part for part in contributions if part.value is None]
         for part in nulls:
             detail = f"{part.source} {year} is null ({part.marker!r}); the re-based {target} {year} is null"
-            issues.append(RebaseIssue(IssueKind.NULL_INPUT, part.source, year, detail))
+            issues.append(RebaseIssue(IssueKind.NULL_INPUT, part.source, year, detail, target))
         complete = not nulls and not missing
         value = sum(part.weight * (part.value or 0.0) for part in contributions) if complete else None
         contributing = tuple(sorted({part.source for part in contributions}))

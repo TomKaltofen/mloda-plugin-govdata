@@ -117,8 +117,8 @@ the full parameter table. `peek` lists the ffcsv columns the same way as the oth
 
 Harmonized features sit on top of the reader columns: `value__rebased` re-bases a Kreis series onto a
 later Gebietsstand with the BBSR keys, `1_variable_attribute_code__nuts2024` adds NUTS codes, and
-`time__year_period` types the period. Each carries its flags and edition as columns; see
-[docs/harmonization.md](docs/harmonization.md).
+`time__year_period` types the period. The re-based series carries its flags, sources, issues and key
+edition as columns; see [docs/harmonization.md](docs/harmonization.md).
 
 A recipe file bundles the features, joins, and provenance of one run as JSON; `load_recipe` returns what
 `mloda.run_all` needs plus the compliance block (license, attribution, payload sha256, credential env names).

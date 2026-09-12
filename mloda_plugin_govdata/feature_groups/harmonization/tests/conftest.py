@@ -1,7 +1,10 @@
 """Offline fixtures: the captured GENESIS replies behind a mocked POST, the reference extracts behind the loaders."""
 
+import io
+import zipfile
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import httpx
 import pytest
@@ -15,7 +18,7 @@ from mloda_plugin_govdata.harmonization.edition import Edition
 from mloda_plugin_govdata.harmonization.reference.bbsr import parse_bbsr_kreise_workbook
 from mloda_plugin_govdata.harmonization.reference.eurostat import parse_lau_nuts_de_workbook
 from mloda_plugin_govdata.harmonization.reference.gv_isys import parse_gv_isys_workbook
-from mloda_plugin_govdata.harmonization.reference.sources import BBSR_KREISE, ReferenceSource
+from mloda_plugin_govdata.harmonization.tests.test_rebase import EXTRACT
 
 _PACKAGE = Path(__file__).resolve().parents[3]
 TOKEN = "test-token"
@@ -30,14 +33,7 @@ GOETTINGEN_LOCATOR = {
     "endyear": 2017,
 }
 
-# The fixture is an extract, so its edition names the extract's own hash (see the reference NOTICE).
-EXTRACT = ReferenceSource(
-    name="BBSR Umsteigeschluessel Kreise (test extract)",
-    url=BBSR_KREISE.url,
-    sha256="5784d7da0cffc2f0643529531bafa34a764753202955c3b35dbf5335a3e47fb0",
-    license=BBSR_KREISE.license,
-    attribution=BBSR_KREISE.attribution,
-)
+__all__ = ["EXTRACT"]  # the extract's own ReferenceSource, shared with the module tests
 
 
 @pytest.fixture
@@ -66,13 +62,27 @@ def genesis(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, ffcsv_fixtures_dir:
     monkeypatch.setattr(DestatisReader, "cache_dir", str(tmp_path))
     monkeypatch.setenv("GENESIS_TOKEN", TOKEN)
 
-    def mock(zip_name: str) -> respx.Route:
-        zip_bytes = (ffcsv_fixtures_dir / zip_name).read_bytes()
+    def mock(zip_name: str | bytes) -> respx.Route:
+        zip_bytes = zip_name if isinstance(zip_name, bytes) else (ffcsv_fixtures_dir / zip_name).read_bytes()
         return respx.post(GENESIS_ONLINE.base_url + "data/tablefile").mock(
             return_value=httpx.Response(200, content=zip_bytes, headers={"content-type": "application/octet-stream"})
         )
 
     return mock
+
+
+def ffcsv_zip_with_rows(
+    zip_bytes: bytes, keep: Callable[[str], bool], edit: Callable[[str], str] = lambda row: row
+) -> bytes:
+    """The fixture zip with only the CSV rows ``keep`` accepts, each passed through ``edit`` (the header stays)."""
+    with zipfile.ZipFile(io.BytesIO(zip_bytes)) as archive:
+        (member,) = archive.namelist()
+        header, *rows = archive.read(member).decode("utf-8-sig").splitlines(keepends=True)
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as archive:
+        body = header + "".join(edit(row) for row in rows if keep(row))
+        archive.writestr(member, ("﻿" + body).encode("utf-8"))
+    return out.getvalue()
 
 
 @pytest.fixture
@@ -81,9 +91,17 @@ def extract_keys(monkeypatch: pytest.MonkeyPatch, reference_fixtures_dir: Path) 
     monkeypatch.setattr(KreisRebaseFeature, "load_keys", classmethod(lambda cls: (rows, EXTRACT)))
 
 
+def lau_rows(reference_fixtures_dir: Path) -> tuple[Any, ...]:
+    return tuple(parse_lau_nuts_de_workbook(reference_fixtures_dir / "eurostat-lau-nuts-de-extract.xlsx"))
+
+
+def gv_isys_changes(reference_fixtures_dir: Path) -> tuple[Any, ...]:
+    return tuple(parse_gv_isys_workbook(reference_fixtures_dir / "gv-isys-2016-extract.xlsx"))
+
+
 def fixture_edition(reference_fixtures_dir: Path, *, with_history: bool = True) -> Edition:
-    lau_rows = tuple(parse_lau_nuts_de_workbook(reference_fixtures_dir / "eurostat-lau-nuts-de-extract.xlsx"))
-    changes = tuple(parse_gv_isys_workbook(reference_fixtures_dir / "gv-isys-2016-extract.xlsx"))
+    rows = lau_rows(reference_fixtures_dir)
+    changes = gv_isys_changes(reference_fixtures_dir)
     return Edition(
         gebietsstand="2024",
         nuts_version="2024",
@@ -91,7 +109,7 @@ def fixture_edition(reference_fixtures_dir: Path, *, with_history: bool = True) 
         url="test://lau-nuts",
         sha256=None,
         year_range=(2016, 2024),
-        lau_rows=lau_rows,
+        lau_rows=rows,
         gv_isys_changes=changes if with_history else (),
     )
 

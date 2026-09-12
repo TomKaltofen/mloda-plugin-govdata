@@ -3,6 +3,7 @@
 import csv
 import json
 from collections.abc import Callable
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -16,8 +17,9 @@ from mloda_plugin_govdata.feature_groups.destatis.reader import DestatisReader
 from mloda_plugin_govdata.feature_groups.govdata.core.cache import CacheMissError
 from mloda_plugin_govdata.feature_groups.harmonization.rebase import PARTS, KreisRebaseFeature
 from mloda_plugin_govdata.harmonization.rebase import Flag, ShareKind, rebase
+from mloda_plugin_govdata.recipes import Compliance, SourceCompliance, build_recipe, parse_recipe, recipe_to_json
 
-from .conftest import COCHEM_ZELL_ZIP, EXTRACT, GOETTINGEN_LOCATOR, GOETTINGEN_ZIP, LAND_ZIP
+from .conftest import COCHEM_ZELL_ZIP, EXTRACT, GOETTINGEN_LOCATOR, GOETTINGEN_ZIP, LAND_ZIP, ffcsv_zip_with_rows
 
 D1_NAME = "destatis__bevoelkerung__kreise"
 YEARS = {"rebase_from_year": 2015, "rebase_to_year": 2016}
@@ -141,8 +143,82 @@ def test_issues_sit_next_to_their_rows_and_the_edition_carries_the_rest(
     assert edition["source"] == EXTRACT.name
     assert edition["sha256"] == EXTRACT.sha256
     assert (edition["sheet"], edition["share"], edition["census_breaks"]) == ("2015-2016", "population", [])
-    # Issues on keys no output row carries are kept as kind to keys, never dropped.
-    assert edition["issues_elsewhere"] == {"not_applicable": ["03152", "03156"], "share_sum": ["07135", "07137"]}
+    # Issues no output row carries keep their full record, never dropped.
+    elsewhere = {(i["kind"], i["key"], i["year"]) for i in edition["issues_elsewhere"]}
+    assert elsewhere == {
+        ("not_applicable", "03152", 2016),
+        ("not_applicable", "03152", 2017),
+        ("not_applicable", "03156", 2016),
+        ("not_applicable", "03156", 2017),
+        ("share_sum", "07135", None),
+        ("share_sum", "07137", None),
+    }
+    assert any("0.9828486" in i["detail"] for i in edition["issues_elsewhere"])
+
+
+@respx.mock
+def test_two_parts_of_one_output_in_one_request(genesis: Callable[[str], respx.Route], extract_keys: None) -> None:
+    genesis(GOETTINGEN_ZIP)
+    options = {DestatisReader.__name__: GOETTINGEN_LOCATOR, **YEARS}
+    table = _run([Feature("value__rebased~key", options=options), Feature("value__rebased~value", options=options)])[0]
+    assert sorted(table.schema.names) == ["value__rebased~key", "value__rebased~value"]
+    assert table.num_rows == 5
+
+
+@respx.mock
+def test_a_missing_feeder_is_explained_on_the_null_target_row(
+    genesis: Callable[[str | bytes], respx.Route], extract_keys: None, ffcsv_fixtures_dir: Path
+) -> None:
+    # Only 03152 is observed, so the re-based 03159 is null; its row says which feeder is missing.
+    only_03152 = ffcsv_zip_with_rows((ffcsv_fixtures_dir / GOETTINGEN_ZIP).read_bytes(), lambda row: ";03152;" in row)
+    genesis(only_03152)
+    options = {DestatisReader.__name__: GOETTINGEN_LOCATOR, **YEARS, "rebase_on_incomplete": "flag"}
+    table = _run([Feature("value__rebased", options=options)])[0]
+    rows = {
+        year: (value, sources, issues)
+        for year, value, sources, issues in zip(
+            *(table.column(f"value__rebased~{part}").to_pylist() for part in ("year", "value", "sources", "issues"))
+        )
+    }
+    assert set(table.column("value__rebased~key").to_pylist()) == {"03159"}
+    assert rows[2015][:2] == (None, "03152")
+    assert "missing_source: 03156 2015 was not given but feeds 03159" in rows[2015][2]
+
+
+@respx.mock
+def test_an_empty_selection_keeps_the_schema(
+    genesis: Callable[[str | bytes], respx.Route], extract_keys: None, ffcsv_fixtures_dir: Path
+) -> None:
+    genesis(ffcsv_zip_with_rows((ffcsv_fixtures_dir / GOETTINGEN_ZIP).read_bytes(), lambda row: False))
+    table = _run([Feature("value__rebased", options={DestatisReader.__name__: GOETTINGEN_LOCATOR, **YEARS})])[0]
+    assert sorted(table.schema.names) == sorted(f"value__rebased~{part}" for part in PARTS)
+    assert table.num_rows == 0
+
+
+@respx.mock
+def test_the_configured_name_round_trips_through_a_recipe(
+    genesis: Callable[[str], respx.Route], extract_keys: None, expected_dir: Path
+) -> None:
+    genesis(GOETTINGEN_ZIP)
+    feature = Feature(
+        D1_NAME,
+        Options(group={DestatisReader.__name__: GOETTINGEN_LOCATOR, **YEARS}, context={"in_features": "value"}),
+    )
+    compliance = Compliance(
+        sources=[
+            SourceCompliance(
+                license="dl-de/by-2-0",
+                attribution="(c) Statistisches Bundesamt (Destatis), 2026",
+                dataset_uri="https://genesis.destatis.de/datenbank/online/statistic/12411/table/12411-0015",
+                retrieved_at=datetime(2026, 9, 12, tzinfo=timezone.utc),
+                sha256="0" * 64,
+                credential_env=["GENESIS_TOKEN"],
+            )
+        ]
+    )
+    loaded = parse_recipe(recipe_to_json(build_recipe([feature], compliance)))
+    table = _run(list(loaded.features))[0]
+    assert _cells(table, D1_NAME) == _expected(expected_dir / "c2-goettingen-2016.csv")
 
 
 @respx.mock
