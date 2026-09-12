@@ -1,6 +1,26 @@
 {
   "features": [
     {
+      "name": "1_variable_attribute_code",
+      "options": {
+        "DestatisReader": {
+          "name": "12411-0010",
+          "startyear": 2024,
+          "endyear": 2024
+        }
+      }
+    },
+    {
+      "name": "1_variable_attribute_label",
+      "options": {
+        "DestatisReader": {
+          "name": "12411-0010",
+          "startyear": 2024,
+          "endyear": 2024
+        }
+      }
+    },
+    {
       "name": "value",
       "options": {
         "DestatisReader": {
@@ -11,7 +31,41 @@
       }
     },
     {
+      "name": "value_marker",
+      "options": {
+        "DestatisReader": {
+          "name": "12411-0010",
+          "startyear": 2024,
+          "endyear": 2024
+        }
+      }
+    },
+    {
+      "name": "Nr",
+      "options": {
+        "BundeswahlleiterinReader": "https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata/btw25/csv/kerg.csv"
+      }
+    },
+    {
+      "name": "Gebiet",
+      "options": {
+        "BundeswahlleiterinReader": "https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata/btw25/csv/kerg.csv"
+      }
+    },
+    {
+      "name": "gehört zu",
+      "options": {
+        "BundeswahlleiterinReader": "https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata/btw25/csv/kerg.csv"
+      }
+    },
+    {
       "name": "Wahlberechtigte Erststimmen Endgültig",
+      "options": {
+        "BundeswahlleiterinReader": "https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata/btw25/csv/kerg.csv"
+      }
+    },
+    {
+      "name": "Christlich-Soziale Union in Bayern e.V. Zweitstimmen Endgültig",
       "options": {
         "BundeswahlleiterinReader": "https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata/btw25/csv/kerg.csv"
       }
@@ -64,7 +118,7 @@
         "license": "dl-de/by-2-0",
         "attribution": "(c) Die Bundeswahlleiterin, Wiesbaden 2025",
         "dataset_uri": "https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata/btw25/csv/kerg.csv",
-        "retrieved_at": "2026-09-08T00:00:00Z",
+        "retrieved_at": "2026-09-12T00:00:00Z",
         "sha256": "31ab27391d5753a6a972936d436092879f5c9cca11570272cd72e3e272d16731",
         "modifications": [
           "three-row merged header flattened to one column name per measure",
@@ -73,6 +127,6 @@
         "credential_env": []
       }
     ],
-    "notes": "The Land rows (gehört zu = 99) carry the AGS-2 in Nr, which equals the Destatis DLAND code, so the join needs no name mapping. The join itself waits on mloda honoring link discriminators for same-class links."
+    "notes": "Population per eligible voter by Land. The kerg Land rows (gehört zu = 99) carry the AGS-2 in Nr, which equals the Destatis DLAND code, so the join needs no name mapping; harmonization.land_codes checks the names on both sides. A party column is empty where the party was not on the ballot (the CSU outside Bayern), which is not a zero. The join itself waits on mloda honoring link discriminators for same-class links; until then run the features without the links block and combine the two frames."
   }
 }
