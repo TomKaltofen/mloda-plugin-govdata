@@ -6,11 +6,9 @@ import os
 import re
 from dataclasses import dataclass
 
-import openpyxl
-
 from mloda_plugin_govdata.feature_groups.govdata.core.cache import DownloadCache
 
-from .download import fetch_pinned
+from .download import fetch_pinned, load_workbook
 from .sources import EUROSTAT_LAU_NUTS, EUROSTAT_NUTS_CORRESPONDENCE
 
 _LAST_UPDATE = re.compile(r"last update (\d{2}/\d{2}/\d{4}).*based on (NUTS \d+ and LAU \d+)")
@@ -34,7 +32,7 @@ class NutsCorrespondenceOverview:
 
 
 def parse_nuts_correspondence_workbook(path: str | os.PathLike[str]) -> NutsCorrespondenceOverview:
-    workbook = openpyxl.load_workbook(path, data_only=True, read_only=True)
+    workbook = load_workbook(path)
     sheet = workbook[workbook.sheetnames[0]]
 
     last_update = ""
@@ -89,7 +87,7 @@ def parse_lau_nuts_de_workbook(path: str | os.PathLike[str]) -> list[LauNutsRow]
     partial-validation caveat there (2018 FUA commuting data), so this DE-only
     loader never needs to surface a per-row validation flag.
     """
-    workbook = openpyxl.load_workbook(path, data_only=True, read_only=True)
+    workbook = load_workbook(path)
     sheet = workbook["DE"]
 
     row_iter = sheet.iter_rows(values_only=True)
