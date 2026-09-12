@@ -16,6 +16,7 @@ from .download import fetch_pinned
 from .sources import BBSR_KREISE
 
 _SHEET_NAME = re.compile(r"^(\d{4})-(\d{4})$")
+_HEADER_STICHTAG = re.compile(r"31\.12\.(\d{4})")
 
 
 @dataclass(frozen=True)
@@ -34,10 +35,21 @@ class UmsteigeschluesselRow:
     target_name: str
 
 
+def _header_year(cell: Any) -> int | None:
+    match = _HEADER_STICHTAG.search(str(cell))
+    return int(match.group(1)) if match else None
+
+
 def _parse_sheet(sheet: Any, from_year: int, to_year: int) -> list[UmsteigeschluesselRow]:
     rows: list[UmsteigeschluesselRow] = []
     row_iter = sheet.iter_rows(values_only=True)
-    next(row_iter)  # header
+    header = next(row_iter)
+    # Direction is data: the sheet name and the two "Kreise 31.12.<year>" header cells must agree.
+    stichtage = (_header_year(header[0]), _header_year(header[8]))
+    if stichtage != (from_year, to_year):
+        raise ValueError(
+            f"sheet {from_year}-{to_year}: header Stichtage {stichtage} do not match the sheet name's year pair"
+        )
     for cells in row_iter:
         if cells[0] is None:  # trailing all-empty row ends the sheet's data
             break
@@ -64,11 +76,12 @@ def _parse_sheet(sheet: Any, from_year: int, to_year: int) -> list[Umsteigeschlu
 def parse_bbsr_kreise_workbook(path: str | os.PathLike[str]) -> list[UmsteigeschluesselRow]:
     """Parses every year-pair sheet of a BBSR Kreise Umsteigeschluessel workbook.
 
-    The full file has 34 sheets, 1990 to 2024, one per consecutive year pair named
-    ``<y>-<y+1>``; direction is old to new (forward), read from the sheet name. Does
-    not validate per-key share sums: at least one sheet carries a known upstream defect
-    where split shares land on identity rows instead of a transfer row (see the fixture
-    ``NOTICE``); asserting and raising on that is the re-basing loader's job, not this one's.
+    The full file spans 1990 to 2024, one sheet per consecutive year pair named
+    ``<y>-<y+1>``; direction is old to new (forward), read from the sheet name and
+    cross-checked against the header's Stichtag cells. Does not validate per-key share
+    sums: at least one sheet carries a known upstream defect where split shares land on
+    identity rows instead of a transfer row (see the fixture ``NOTICE``); asserting and
+    raising on that is ``harmonization/rebase.py``'s job, not this one's.
     """
     workbook = openpyxl.load_workbook(path, data_only=True, read_only=True)
     rows: list[UmsteigeschluesselRow] = []
