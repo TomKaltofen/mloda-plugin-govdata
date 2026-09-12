@@ -18,3 +18,8 @@ def reference_fixtures_dir() -> Path:
 @pytest.fixture
 def ffcsv_fixtures_dir() -> Path:
     return _FEATURE_GROUPS / "destatis" / "tests" / "fixtures" / "ffcsv"
+
+
+@pytest.fixture
+def govdata_fixtures_dir() -> Path:
+    return _FEATURE_GROUPS / "govdata" / "tests" / "fixtures"

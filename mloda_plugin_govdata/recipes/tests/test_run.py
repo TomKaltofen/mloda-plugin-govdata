@@ -10,9 +10,9 @@ import pytest
 
 from mloda_plugin_govdata.recipes import load_recipe
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-FFCSV_FIXTURES = REPO_ROOT / "mloda_plugin_govdata" / "feature_groups" / "destatis" / "tests" / "fixtures" / "ffcsv"
-LAND_TABLE_ZIP = FFCSV_FIXTURES / "12411-0010_2024_de_flat.zip"
+from .conftest import FFCSV_FIXTURES, GOETTINGEN_ZIP, LAND_ZIP, RECIPES_DIR, REFERENCE_FIXTURES, REPO_ROOT
+
+LAND_TABLE_ZIP = FFCSV_FIXTURES / LAND_ZIP
 
 _RUN_SCRIPT = textwrap.dedent(
     """
@@ -42,6 +42,43 @@ _RUN_SCRIPT = textwrap.dedent(
     assert table.num_rows == 16, table.num_rows
     assert sorted(table.column_names) == ["1_variable_attribute_code", "value"], table.column_names
     assert sorted(table.column("1_variable_attribute_code").to_pylist()) == [f"{n:02d}" for n in range(1, 17)]
+    print("OK")
+    """
+)
+
+_REBASE_SCRIPT = textwrap.dedent(
+    """
+    import sys
+    import httpx
+    import respx
+    from mloda.user import mloda
+
+    # Loading the recipe registers the harmonization groups; nothing else is imported first.
+    from mloda_plugin_govdata.recipes import load_recipe
+
+    recipe_path, fixture_zip, keys_xlsx, cache_dir = sys.argv[1:5]
+    recipe = load_recipe(recipe_path)
+
+    from mloda_plugin_govdata.feature_groups.destatis import DestatisReader
+    from mloda_plugin_govdata.feature_groups.destatis.core.hosts import GENESIS_ONLINE
+    from mloda_plugin_govdata.feature_groups.harmonization import KreisRebaseFeature
+    from mloda_plugin_govdata.harmonization.reference.bbsr import parse_bbsr_kreise_workbook
+    from mloda_plugin_govdata.harmonization.reference.sources import BBSR_KREISE
+
+    DestatisReader.cache_dir = cache_dir
+    rows = parse_bbsr_kreise_workbook(keys_xlsx)
+    KreisRebaseFeature.load_keys = classmethod(lambda cls: (rows, BBSR_KREISE))
+    with open(fixture_zip, "rb") as handle:
+        zip_bytes = handle.read()
+    with respx.mock:
+        respx.post(GENESIS_ONLINE.base_url + "data/tablefile").mock(
+            return_value=httpx.Response(200, content=zip_bytes, headers={"content-type": "application/octet-stream"})
+        )
+        result = mloda.run_all(recipe.features, compute_frameworks=["PyArrowTable"])
+    values = result[0].column("destatis__bevoelkerung__kreise~value").to_pylist()
+    assert values == [322616.0, 324013.0, 329538.0, 327065.0, 328036.0], values
+    steps = [step.feature_group_name for step in result.plan if step.step_kind == "compute"]
+    assert steps == ["GovDataFeature", "KreisRebaseFeature"], steps
     print("OK")
     """
 )
@@ -98,5 +135,12 @@ def test_recipe_runs_through_mloda_in_a_fresh_process(
     _fresh_process(_RUN_SCRIPT, str(fixtures_dir / "land_population.json"), str(LAND_TABLE_ZIP), str(tmp_path))
 
 
-def test_links_resolve_in_a_fresh_process(fixtures_dir: Path) -> None:
-    _fresh_process(_LINK_SCRIPT, str(fixtures_dir / "land_join.json"))
+def test_the_rebased_recipe_runs_in_a_fresh_process(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GENESIS_TOKEN", "test-token")
+    keys = REFERENCE_FIXTURES / "bbsr-ref-kreise-extract.xlsx"
+    recipe = RECIPES_DIR / "kreis_population_rebased.json"
+    _fresh_process(_REBASE_SCRIPT, str(recipe), str(FFCSV_FIXTURES / GOETTINGEN_ZIP), str(keys), str(tmp_path))
+
+
+def test_links_resolve_in_a_fresh_process() -> None:
+    _fresh_process(_LINK_SCRIPT, str(RECIPES_DIR / "land_population_voters.json"))

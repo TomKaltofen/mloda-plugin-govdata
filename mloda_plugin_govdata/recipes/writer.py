@@ -14,7 +14,7 @@ from mloda.user import Feature, Index, JoinSpec, Link, Options, load_features_fr
 from pydantic import ValidationError
 
 # Registration side effect: a fresh process loading a recipe must resolve GovDataFeature and the readers.
-from ..feature_groups import destatis, govdata  # noqa: F401
+from ..feature_groups import destatis, govdata, harmonization  # noqa: F401
 from ..feature_groups.destatis.locator import DestatisLocator
 from ..feature_groups.govdata.core.locator import DEFAULT_CKAN_BASE, GovDataLocator
 from .model import Compliance, JoinSide, LinkSpec, Recipe, RecipeError, error_summary
