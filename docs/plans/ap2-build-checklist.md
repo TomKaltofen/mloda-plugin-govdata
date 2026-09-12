@@ -5,7 +5,7 @@ Companion to [ap2-destatis-harmonization.md](ap2-destatis-harmonization.md)
 Tick items in the PR that lands them. If a slice moves, a checkpoint slips, or
 a cut line is pulled, edit both files in the same PR.
 
-Status: draft v2.9, 2026-09-12 (slice 9 ticked: re-basing with BBSR keys, PR #24). v1 was reviewed by three independent advisors
+Status: draft v2.10, 2026-09-12 (slice 10 ticked: harmonization FeatureGroups, PR #25; C2 met, PR #24 merged). v1 was reviewed by three independent advisors
 (two Claude models, one Codex run) against the M1 code and mloda 0.10.0; the
 findings are folded in below. Slice 0 step 0 (OpenAPI assessment) was done
 2026-08-16, reviewed by one Claude Sonnet run and one Codex run against the
@@ -1034,20 +1034,22 @@ Checkpoint C2 target (Sep 20). Week 5 is three working days (SciCAR).
 - [x] Planning repo: ADR 0005 (harmonization as data plus flags), status
       proposed. (Done 2026-09-12: planning repo commit 4aee113, local, not
       pushed.)
-- [ ] **C2 (Sep 20):** that named test is green on `main` (re-based
+- [x] **C2 (Sep 20):** that named test is green on `main` (re-based
       multi-year Kreis series, flagged, edition-pinned, exact values). If
       red: pull cut line 3 (slice 10 shrinks to module plus notebook; see
-      the slice 11 note on what that does to recipes 1 and 3). (PR #24 is
-      open with the named test
+      the slice 11 note on what that does to recipes 1 and 3). (Met
+      2026-09-12: PR #24 merged to `main` with
       `test_c2_goettingen_series_rebased_onto_gebietsstand_2016_cell_for_cell`
-      green on the branch; C2 is met the day it merges to `main`.)
+      green; cut line 3 not pulled.)
 
 ## Slice 10: harmonization FeatureGroups (WP-E part 3, week 6, about 15 h)
 
-- [ ] Read mloda-registry feature-group-pattern guides 02, 03, 04, 08, 11,
+- [x] Read mloda-registry feature-group-pattern guides 02, 03, 04, 08, 11,
       26, 27 before writing code. Done state: the PR body names which guide
       each design choice follows (naming, `input_features`, required-context
-      forwarding).
+      forwarding). (Done 2026-09-12: guides 01, 02, 03, 04, 05, 08, 09, 10,
+      11, 12, 13, 14, 26, 27 read; the PR #25 body maps each design choice
+      to its guide.)
 - [ ] `feature_groups/harmonization/`: derived FeatureGroups over reader
       outputs: AGS-to-NUTS, re-base, period alignment. D1 naming
       (`destatis__bevoelkerung__kreise`, ASCII rule). Written down before
@@ -1056,15 +1058,32 @@ Checkpoint C2 target (Sep 20). Week 5 is three working days (SciCAR).
       required options such as edition and locator attached), how the
       `in_features` option is used, and how context is propagated
       (`Options` forwarding). Any required context option travels with the
-      child features so chained requests resolve.
-- [ ] Tests: `mloda.run_all` over fixtures for each FeatureGroup; one test
+      child features so chained requests resolve. (Done 2026-09-12, PR #25:
+      `feature_groups/harmonization/` with `KreisRebaseFeature`
+      (`value__rebased`), `AgsToNutsFeature` (`<key>__nuts2024`) and
+      `AnnualPeriodFeature` (`<time>__year_period`) on
+      `FeatureChainParserMixin`; each also takes the D1 name
+      (`destatis__bevoelkerung__kreise`) with `in_features` plus group
+      options; outputs are `~` parts (key, year, value, flag, sources,
+      marker, issues, edition); the reader locator forwards to the children,
+      the group's own keys are carved out with `forward_group_exclude`, the
+      GENESIS credentials are pulled with `inherit_context_keys`.
+      `DestatisReader` declines chained names because `GovDataFeature`
+      claims any name whose options carry a reader key; the other readers
+      need `feature_group=` scoping. ADR 0008 records the surface.)
+- [x] Tests: `mloda.run_all` over fixtures for each FeatureGroup; one test
       runs a chained request with edition and locator options in a fresh
-      subprocess.
+      subprocess. (Done 2026-09-12, PR #25: C2 cells through both spellings,
+      the fractional case, parts, policies, credentials through the chain,
+      the mapper with its GV-ISys history, the period group over `time` and
+      a plain CSV, a recipe round trip, the fresh-subprocess chain.)
 - [ ] `[-]` Cut line 3: pure module plus a worked notebook example if C2 is
-      red or week 6 is short.
-- [ ] Commit `feat(harmonization): mloda feature groups`.
-- [ ] Planning repo: ADR 0008 (feature surface D1, join level D2), status
-      proposed.
+      red or week 6 is short. (Not pulled: C2 met 2026-09-12.)
+- [x] Commit `feat(harmonization): mloda feature groups`. (PR #25,
+      https://github.com/TomKaltofen/mloda-plugin-govdata/pull/25)
+- [x] Planning repo: ADR 0008 (feature surface D1, join level D2), status
+      proposed. (Done 2026-09-12: planning repo commit e2f72a8, local, not
+      pushed.)
 
 ## Slice 11: six recipes (WP-F part 2, week 6, about 23 h)
 
