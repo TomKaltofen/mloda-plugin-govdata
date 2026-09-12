@@ -3,7 +3,8 @@ from pathlib import Path
 import openpyxl
 import pytest
 
-from mloda_plugin_govdata.harmonization.reference.bbsr import parse_bbsr_kreise_workbook
+from mloda_plugin_govdata.feature_groups.govdata.core.cache import DownloadCache
+from mloda_plugin_govdata.harmonization.reference.bbsr import load_bbsr_kreise, parse_bbsr_kreise_workbook
 
 
 def test_parses_all_three_fixture_sheets(fixtures_dir: Path) -> None:
@@ -57,16 +58,68 @@ def test_direction_comes_from_the_sheet_name_and_the_header_stichtage_agree(fixt
         assert {(r.from_year, r.to_year) for r in rows if r.from_year == stichtage[0]} == {stichtage}
 
 
-def test_a_header_that_contradicts_the_sheet_name_is_refused(tmp_path: Path) -> None:
+SHARE_HEADERS = [
+    "flächen-\nproportionaler\nUmsteige-schlüssel",
+    "bevölkerungs- \nproportionaler \nUmsteige- \nschlüssel",
+    "beschäftigten- \nproportionaler \nUmsteige- \nschlüssel",
+    "Fläche am 31.12.2015 in km²",
+    "Bevölkerung am 31.12.2015 in 1000",
+    "sozialvers.pflichtig Beschäftigte am Arbeitsort am 30.6.2015 in 1000",
+]
+
+
+def _workbook(tmp_path: Path, header: list[str], data: list[object] | None = None) -> Path:
     workbook = openpyxl.Workbook()
     sheet = workbook.active
     assert sheet is not None
     sheet.title = "2015-2016"
-    sheet.append(
-        ["Kreise\n 31.12.2016", "Kreisname 2016", "", "", "", "", "", "", "Kreise\n 31.12.2015", "Kreisname 2015"]
-    )
-    sheet.append([3152000, "Göttingen", 1, 1, 1, 0, 0, 0, 3159000, "Göttingen"])
-    path = tmp_path / "swapped.xlsx"
+    sheet.append(header)
+    if data is not None:
+        sheet.append(data)
+    path = tmp_path / "made.xlsx"
     workbook.save(path)
-    with pytest.raises(ValueError, match=r"sheet 2015-2016: header Stichtage \(2016, 2015\)"):
+    return path
+
+
+@pytest.mark.parametrize(
+    ("first", "ninth", "seen"),
+    [
+        ("Kreise\n 31.12.2016", "Kreise\n 31.12.2015", r"\(2016, 2015\)"),  # swapped direction
+        ("Kreise\n 30.06.2015", "Kreise\n 31.12.2016", r"\(2016,\)"),  # not the 31 Dec Stichtag
+    ],
+)
+def test_a_header_that_contradicts_the_sheet_name_is_refused(tmp_path: Path, first: str, ninth: str, seen: str) -> None:
+    path = _workbook(tmp_path, [first, "Kreisname 2015", *SHARE_HEADERS, ninth, "Kreisname 2016"])
+    with pytest.raises(ValueError, match=f"sheet 2015-2016: header Stichtage {seen}"):
         parse_bbsr_kreise_workbook(path)
+
+
+def test_a_header_without_share_columns_is_refused_by_name(tmp_path: Path) -> None:
+    path = _workbook(tmp_path, ["Kreise\n 31.12.2015", "Kreisname 2015", "Kreise\n 31.12.2016", "Kreisname 2016"])
+    with pytest.raises(ValueError, match=r"sheet 2015-2016: header lacks \['area_share', 'population_share'"):
+        parse_bbsr_kreise_workbook(path)
+
+
+def test_early_sheets_without_employee_columns_parse_with_none(tmp_path: Path) -> None:
+    # The real file's 1990s sheets carry area and population only; columns are found by header text, not position.
+    header = [
+        "Kreise\n 31.12.2015",
+        "Kreisname 2015",
+        *SHARE_HEADERS[:2],
+        *SHARE_HEADERS[3:5],
+        "Kreise\n 31.12.2016",
+        "Kreisname 2016",
+    ]
+    path = _workbook(tmp_path, header, [3152000, "Göttingen", 1, 0.5, 1117.24, 255.7, 3159000, "Göttingen"])
+    (row,) = parse_bbsr_kreise_workbook(path)
+    assert (row.source_key, row.area_share, row.population_share, row.target_key) == ("03152", 1.0, 0.5, "03159")
+    assert (row.area_km2, row.population_thousands) == (1117.24, 255.7)
+    assert (row.employee_share, row.svb_thousands) == (None, None)
+
+
+@pytest.mark.live
+def test_the_pinned_real_file_parses_with_the_header_cross_check(tmp_path: Path) -> None:
+    with DownloadCache(tmp_path) as cache:
+        rows = load_bbsr_kreise(cache, revalidate=True)
+    assert {(r.from_year, r.to_year) for r in rows} == {(year, year + 1) for year in range(1990, 2024)}
+    assert all(len(r.source_key) == 5 and len(r.target_key) == 5 for r in rows)

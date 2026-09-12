@@ -8,7 +8,11 @@ content drift that a mere HTTP 200 would not.
 
 from __future__ import annotations
 
+import io
+import os
 from pathlib import Path
+
+import openpyxl
 
 from mloda_plugin_govdata.feature_groups.govdata.core.cache import DownloadCache
 
@@ -27,3 +31,12 @@ def fetch_pinned(cache: DownloadCache, source: ReferenceSource, *, revalidate: b
             f"{source.sha256} (url={source.url}); the upstream file may have changed since ADR 0006"
         )
     return cached.path
+
+
+def load_workbook(path: str | os.PathLike[str]) -> openpyxl.Workbook:
+    """Read-only workbook from a stream.
+
+    The cache stores bodies as ``<sha256>.bin``; openpyxl refuses that suffix on a path but not on a stream.
+    """
+    with Path(path).open("rb") as handle:
+        return openpyxl.load_workbook(io.BytesIO(handle.read()), data_only=True, read_only=True)

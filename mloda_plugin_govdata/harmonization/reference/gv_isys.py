@@ -15,11 +15,9 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
-import openpyxl
-
 from mloda_plugin_govdata.feature_groups.govdata.core.cache import DownloadCache
 
-from .download import fetch_pinned
+from .download import fetch_pinned, load_workbook
 from .sources import GV_ISYS_2016_SHA256, gv_isys_source
 
 _KNOWN_SHA256: dict[int, str] = {2016: GV_ISYS_2016_SHA256}
@@ -56,7 +54,7 @@ def parse_gv_isys_workbook(path: str | os.PathLike[str]) -> list[GvIsysChange]:
     A merger or split reads as several rows sharing one ``change_id`` (one row per
     donating/dissolving unit).
     """
-    workbook = openpyxl.load_workbook(path, data_only=True, read_only=True)
+    workbook = load_workbook(path)
     sheet = workbook[workbook.sheetnames[0]]
 
     changes: list[GvIsysChange] = []
