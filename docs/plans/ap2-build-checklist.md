@@ -5,7 +5,7 @@ Companion to [ap2-destatis-harmonization.md](ap2-destatis-harmonization.md)
 Tick items in the PR that lands them. If a slice moves, a checkpoint slips, or
 a cut line is pulled, edit both files in the same PR.
 
-Status: draft v2.10, 2026-09-12 (slice 10 ticked: harmonization FeatureGroups, PR #25; C2 met, PR #24 merged). v1 was reviewed by three independent advisors
+Status: draft v2.11, 2026-09-12 (slice 11 ticked: six recipes, PR #26; slice 10 merged as PR #25). v1 was reviewed by three independent advisors
 (two Claude models, one Codex run) against the M1 code and mloda 0.10.0; the
 findings are folded in below. Slice 0 step 0 (OpenAPI assessment) was done
 2026-08-16, reviewed by one Claude Sonnet run and one Codex run against the
@@ -1087,38 +1087,84 @@ Checkpoint C2 target (Sep 20). Week 5 is three working days (SciCAR).
 
 ## Slice 11: six recipes (WP-F part 2, week 6, about 23 h)
 
-- [ ] `harmonization/land_codes.py`: the 16-row Land name to AGS-2 constant
+- [x] `harmonization/land_codes.py`: the 16-row Land name to AGS-2 constant
       (D2), used as a name check against the kerg Land rows (`gehört zu =
       99`, `Nr` = AGS-2, Bundesgebiet `Nr = 99` with empty `gehört zu`,
-      verified in slice 0 on the full file), not as the join key.
-- [ ] Recipe 1: population by Kreis over time, GENESIS-Online `12411-0015`
+      verified in slice 0 on the full file), not as the join key. (Done
+      2026-09-12, PR #26, https://github.com/TomKaltofen/mloda-plugin-govdata/pull/26:
+      `LAND_NAMES`, `land_code`, `land_name`, `normalize_land_name` (case,
+      spacing, ae/oe/ue spelling), `check_land_names(rows, complete=True)`
+      raising `LandNameError` per row; tested against the kerg sample plus
+      the Bundesgebiet row and the captured `12411-0010` labels.)
+- [x] Recipe 1: population by Kreis over time, GENESIS-Online `12411-0015`
       over `03152`, `03156`, `03159`, 2013 to 2017, the U2 re-basing scenario;
       runs against fixture; compliance block filled; zero-vs-missing test
       uses `03159` before 2016 (`-`, not applicable) against a numeric cell.
+      (Done 2026-09-12, PR #26: `recipes/kreis_population_rebased.json`, the
+      D1 name `destatis__bevoelkerung__kreise` with `in_features` and the
+      re-basing options; compliance cites the capture and the BBSR file;
+      runs to the C2 cells in-process and in a fresh subprocess, which
+      needed the writer to import the harmonization package; the
+      zero-vs-missing tests pin the re-based rows with `not_applicable`
+      issues, empty markers on the observed rows, the retired keys' `-` in
+      `issues_elsewhere`, and a numeric 0 where GENESIS writes `-` raising
+      `ValidityError`.)
 - [ ] Recipe 2: Kreis-level labor-market indicator, Regionalstatistik
       `13211-02-05-4` with `contents=ERWP06,ERWP10` (Arbeitslose in Anzahl,
       Quote in %), the U1 rate-with-denominator scenario in one file (two
       `value_unit` values per key); zero-vs-missing test. Fallback if the
       Regionalstatistik path is not usable by then: `12521-0040` over
-      `12411-0015` on GENESIS-Online, same scenario.
+      `12411-0015` on GENESIS-Online, same scenario. (Done 2026-09-12, PR
+      #26, on the fallback: no Regionalstatistik account exists, so
+      `recipes/kreis_foreigners_share.json` reads `12521-0040` (new live
+      capture `12521-0040_2013-2017_de_flat.zip`, 45 rows, the GES block as
+      variable block 2 with an empty code on the Insgesamt rows) over
+      `12411-0015` for the same keys and years; two frames, the share is a
+      consumer's job; zero-vs-missing pins `-` as 0 plus `value_marker` `-`
+      on both sides against counted cells. Swap to `13211-02-05-4` once the
+      account exists.)
 - [ ] Recipe 3: Destatis population by Land (GENESIS-Online `12411-0010`)
       joined with Bundestagswahl results by Land (D2, `Nr` = `DLAND`) through
       the slice 7 `links` block; the flagship integration test and the Demo
-      Day story.
-- [ ] Retrofit 1: population (M1) as a recipe file.
-- [ ] Retrofit 2: elections (M1) as a recipe file.
-- [ ] Retrofit 3: UBA (M1) as a recipe file.
-- [ ] Every recipe: license id, attribution, dataset URI, retrieval timestamp,
+      Day story. (Filed 2026-09-12, PR #26, as
+      `recipes/land_population_voters.json` with the links block; the join
+      itself still waits on mloda honoring link discriminators (os-050) and
+      is a strict xfail in `recipes/tests/test_land_voters.py`; both sides
+      run without the links and their Land rows line up by AGS-2 and name.
+      The flagship integration test flips the day mloda changes.)
+- [x] Retrofit 1: population (M1) as a recipe file. (Done 2026-09-12, PR
+      #26: `recipes/stuttgart_population.json`, full CSV sha256 pinned, the
+      offline test runs the 1000-row excerpt.)
+- [x] Retrofit 2: elections (M1) as a recipe file. (Done: `recipes/
+      bundestagswahl_2025.json`, full-file sha256 re-verified unchanged.)
+- [x] Retrofit 3: UBA (M1) as a recipe file. (Done: `recipes/
+      uba_ozone_station_143.json`; the endpoint has revised the 2025-01-01
+      values by one unit in most hours since the 2026-08-16 capture, so the
+      pin is the fixture's hash and the notes say the hash identifies the
+      retrieval, not the series.)
+- [x] Every recipe: license id, attribution, dataset URI, retrieval timestamp,
       payload sha256, modification markers, credential env names; one
-      zero-vs-missing test; one `mloda.run_all` fixture test.
-- [ ] If cut line 3 was pulled: recipes 1 and 3 keep their raw-pull features
+      zero-vs-missing test; one `mloda.run_all` fixture test. (Done: every
+      file is produced by `write_recipe` from
+      `recipes/tests/shipped.py` and pinned to it; hashes of the committed
+      payloads asserted, the kerg and Stuttgart pins checked by a
+      `live`-marked test, green on 2026-09-12.)
+- [ ] `[-]` If cut line 3 was pulled (it was not): recipes 1 and 3 keep their raw-pull features
       as JSON recipes; the harmonized or joined step moves to the notebook,
       and acceptance items 2 and 3 are carried by the module tests plus the
       slice 7 join test rather than by a recipe. Say so in the recipe notes.
 - [ ] `[-]` Cut line 1: recipe 3 becomes a Destatis-only two-table join.
 - [ ] `[-]` Cut line 4: retrofits shrink to one worked file plus a template.
-- [ ] Commit series `feat(recipes): destatis recipes`, `feat(recipes): M1
-      retrofits`.
+- [x] Commit series `feat(recipes): destatis recipes`, `feat(recipes): M1
+      retrofits`. (Done as one `feat(recipes): six shipped recipes and the
+      Land code check` plus a `fix(recipes)` commit, PR #26.)
+- [ ] Follow-ups from slice 11: `[tool.setuptools.packages.find]` ships every
+      `*.tests` package and its fixtures in the wheel while the recipe tests
+      read repo-root `recipes/`; exclude the tests from the wheel (slice 12
+      packaging pass). `credential_env` names the token path only; the
+      user plus password pair is documented as equivalent in
+      `docs/recipes.md`. Regionalstatistik account still open (recipe 2
+      swap).
 
 ## Slice 12: docs, demo, handoff (WP-G, woven through, about 20 h)
 
