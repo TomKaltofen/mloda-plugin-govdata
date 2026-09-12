@@ -11,8 +11,10 @@ from __future__ import annotations
 
 import functools
 from pathlib import Path
+from typing import Any
 
 import pyarrow as pa
+from mloda.provider import CHAIN_SEPARATOR
 from mloda.user import Options
 
 from ..govdata.core.provenance import FetchedPayload, Provenance
@@ -35,6 +37,16 @@ class DestatisReader(BaseGovDataReader[DestatisLocator]):
     @classmethod
     def locator_type(cls) -> type[DestatisLocator]:
         return DestatisLocator
+
+    @classmethod
+    def match_subclass_data_access(
+        cls, data_access: Any, feature_names: list[str], options: Any
+    ) -> DestatisLocator | None:
+        # An ffcsv column never carries mloda's chain separator, so a chained name (``value__rebased``)
+        # belongs to a derived group; claiming it too would leave the request ambiguous.
+        if any(CHAIN_SEPARATOR in name for name in feature_names):
+            return None
+        return super().match_subclass_data_access(data_access, feature_names, options)
 
     @classmethod
     def _tablefile_fields(cls, locator: DestatisLocator) -> dict[str, object]:
