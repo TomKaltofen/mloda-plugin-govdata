@@ -5,7 +5,7 @@ Companion to [ap2-destatis-harmonization.md](ap2-destatis-harmonization.md)
 Tick items in the PR that lands them. If a slice moves, a checkpoint slips, or
 a cut line is pulled, edit both files in the same PR.
 
-Status: draft v2.8, 2026-09-09 (slice 6 ticked: recipe format and writer, PR #23). v1 was reviewed by three independent advisors
+Status: draft v2.9, 2026-09-12 (slice 9 ticked: re-basing with BBSR keys, PR #24). v1 was reviewed by three independent advisors
 (two Claude models, one Codex run) against the M1 code and mloda 0.10.0; the
 findings are folded in below. Slice 0 step 0 (OpenAPI assessment) was done
 2026-08-16, reviewed by one Claude Sonnet run and one Codex run against the
@@ -895,7 +895,15 @@ loaders, key model, edition model, mapping.
       BBSR Kreis loader matches the week-0 characterization exactly (sheet
       name `<y>-<y+1>` gives direction and year pair, trailing all-empty
       rows end a sheet, a split source yields several rows); does not
-      itself assert per-key share sums (that stays slice 9's job). GV-ISys
+      itself assert per-key share sums (that stays slice 9's job). (Two
+      defects found 2026-09-12 by slice 9's new `live` test against the
+      pinned real file, fixed in PR #24: the GET cache names bodies
+      `<sha256>.bin` and openpyxl refuses that suffix on a path, so no
+      `load_*` wrapper had ever opened a fetched file; and the BBSR sheets
+      before the SvB series carry eight columns, no employee share and no
+      SvB, so the positional ten-cell unpack failed on sheet `1990-1991`.
+      All four loaders now open from a stream and the BBSR loader finds its
+      columns by header text, employee fields optional.) GV-ISys
       loader finds data rows by their own Kennziffer shape
       (`\d{2}/\d{4}/\d+-[A-Z]`) rather than a fixed header row offset, since
       one sample year cannot pin that layout across 1990-2024. GV100
@@ -960,7 +968,7 @@ loaders, key model, edition model, mapping.
 
 Checkpoint C2 target (Sep 20). Week 5 is three working days (SciCAR).
 
-- [ ] `harmonization/rebase.py`: apply BBSR proportional keys onto a target
+- [x] `harmonization/rebase.py`: apply BBSR proportional keys onto a target
       Gebietsstand; direction and key edition explicit arguments; documented
       rounding; share-sum check with tolerance (renormalize inside, raise
       beyond) scoped to the source keys in the request, with the rest of the
@@ -970,7 +978,23 @@ Checkpoint C2 target (Sep 20). Week 5 is three working days (SciCAR).
       a flag column; observed values never replaced in place; a `-` cell
       whose key is outside its validity at that Stichtag is excluded and
       reported, never summed as 0; census breaks (2011, 2022) noted in output
-      metadata, not smoothed.
+      metadata, not smoothed. (Done 2026-09-12, PR #24:
+      `rebase(observations, keys=, source=, from_year=, to_year=, share=,
+      tolerance=, on_unmatched=, on_incomplete=)`, one key sheet per call,
+      `source` required and recorded as the `KeyEdition`; rows carry
+      `flag` (`observed`/`rebased`) plus `sources`; the share-sum check
+      raises `ShareSumError` for requested keys and reports the rest
+      (`IssueKind.SHARE_SUM`, the 07135/07137 defect shows up there when
+      re-basing Goettingen), tolerance capped at 1e-2 and a renormalization
+      beyond float noise reported; validity at the two Stichtage the sheet
+      adjudicates (`-` excluded and reported, a numeric value raises
+      `ValidityError`), a `-` entering a sum at an earlier Stichtag taken as
+      0 and reported; a target whose feeders are not all observed raises
+      `IncompleteError` by default (a partial sum never poses as a Kreis
+      total); other sheets given in `keys` verify each requested key was
+      unchanged in between, missing sheets reported as unverified; no
+      rounding, documented in the module docstring; census breaks in
+      `RebaseResult.census_breaks`. Chaining several sheets is not built.)
 - [ ] Expected-value fixture from slice 0, computed by hand 2026-08-16 (BBSR
       learning in the planning repo): source `12411-0015`,
       `regionalkey=03152,03156,03159`, 2013 to 2017, target Gebietsstand
@@ -983,22 +1007,40 @@ Checkpoint C2 target (Sep 20). Week 5 is three working days (SciCAR).
       exact), 1,084 moves to `07140` (100,770 becomes 101,854). Committed
       under `harmonization/tests/fixtures/` with the `NOTICE`; the input
       cells are re-read from the slice-2 live fixture before the test is
-      pinned.
-- [ ] Tests: hypothesis share-sum property; direction asserted from the key
+      pinned. (Done 2026-09-12, PR #24: the input cells were captured live
+      from `12411-0015` with the registered token, two zips under
+      `destatis/tests/fixtures/ffcsv/` (Goettingen keys 2013 to 2017,
+      Cochem-Zell and Rhein-Hunsrueck 2013 to 2014) with NOTICE entries
+      covered by the hash-walk contract test; every cell equals the paper
+      value. Expected values as two CSVs under
+      `harmonization/tests/fixtures/` with a NOTICE carrying the BBSR and
+      Destatis attribution.)
+- [x] Tests: hypothesis share-sum property; direction asserted from the key
       file's own metadata (sheet name, header years) in a fixture test;
       duplicated pairs and zero-share rows detected; the known stale-share
       defect is a fixture that the scoped check tolerates and the report
       names; the named multi-year Kreis series re-based across the slice-0
       Gebietsstand change matches the expected-value fixture cell for cell,
       with flag column and edition metadata asserted; the fractional case
-      matches to the integer.
-- [ ] Commit `feat(harmonization): re-basing with BBSR keys`.
-- [ ] Planning repo: ADR 0005 (harmonization as data plus flags), status
-      proposed.
+      matches to the integer. (Done 2026-09-12, PR #24: all of the above in
+      `harmonization/tests/test_rebase.py` and
+      `reference/tests/test_bbsr.py`, the header years cross-checked by the
+      loader itself; plus the absorbing-key and missing-feeder cases, NaN
+      and negative shares, the `-` marker on observed rows, a numeric zero
+      outside validity, census-break boundaries, and a `live`-marked parse
+      of the pinned real BBSR file.)
+- [x] Commit `feat(harmonization): re-basing with BBSR keys`. (PR #24,
+      https://github.com/TomKaltofen/mloda-plugin-govdata/pull/24)
+- [x] Planning repo: ADR 0005 (harmonization as data plus flags), status
+      proposed. (Done 2026-09-12: planning repo commit 4aee113, local, not
+      pushed.)
 - [ ] **C2 (Sep 20):** that named test is green on `main` (re-based
       multi-year Kreis series, flagged, edition-pinned, exact values). If
       red: pull cut line 3 (slice 10 shrinks to module plus notebook; see
-      the slice 11 note on what that does to recipes 1 and 3).
+      the slice 11 note on what that does to recipes 1 and 3). (PR #24 is
+      open with the named test
+      `test_c2_goettingen_series_rebased_onto_gebietsstand_2016_cell_for_cell`
+      green on the branch; C2 is met the day it merges to `main`.)
 
 ## Slice 10: harmonization FeatureGroups (WP-E part 3, week 6, about 15 h)
 
@@ -1122,6 +1164,11 @@ values, `tox` green.
 
 - [ ] Full job path (submit, poll, download, remove), about 20 h.
 - [ ] Gemeinde-level mapping, about 15 h.
+- [ ] Re-basing across several Gebietsstand changes at once (compose
+      consecutive BBSR sheets year by year), about 6 h: slice 9 built one
+      sheet per call and verifies the other sheets given for unchanged keys
+      (raises otherwise), so a series that crosses two changes needs two
+      calls today; pull in only if a recipe needs it (ADR 0005 consequences).
 - [-] Regionalstatistik host, about 10 h: moved into WP-A scope in slice 0
       (2026-08-16), recipe 2 needs it (slice 2 items).
 - [ ] Discovery helper, about 8 h (kept out of AP2 by D5, re-checked in
