@@ -50,17 +50,6 @@ def run(features: Iterable[Feature | str], links: Iterable[Link] = ()) -> Any:
     return mloda.run_all(list(features), compute_frameworks=["PyArrowTable"], links=set(links))
 
 
-def frames_by_column(result: Any) -> dict[str, Any]:
-    """mloda returns one frame per feature group and locator; index them by the columns they carry."""
-    frames: dict[str, Any] = {}
-    for table in result:
-        for name in table.schema.names:
-            if name in frames:
-                raise AssertionError(f"column {name!r} is in two frames; pick the frame by another column")
-            frames[name] = table
-    return frames
-
-
 def ffcsv_zip_with_rows(zip_bytes: bytes, edit: Callable[[str], str]) -> bytes:
     """The fixture zip with every CSV row passed through ``edit`` (the header stays)."""
     with zipfile.ZipFile(io.BytesIO(zip_bytes)) as archive:

@@ -1,5 +1,6 @@
 """Recipe files: the mloda feature array plus a links block and a compliance block, and the JSON round trip."""
 
+from .frames import frames_by_column
 from .model import (
     CREDENTIAL_KEY_WORDS,
     TOKEN_RUN_LENGTH,
@@ -27,6 +28,7 @@ __all__ = [
     "SourceCompliance",
     "build_recipe",
     "environment_secrets",
+    "frames_by_column",
     "load_recipe",
     "parse_recipe",
     "realize_recipe",
