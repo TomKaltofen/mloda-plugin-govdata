@@ -343,5 +343,7 @@ def test_a_land_table_is_refused_by_its_variable(genesis: Callable[[str], respx.
 
 def test_keys_missing_from_the_cache_name_the_fetch_call(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(KreisRebaseFeature, "cache_dir", str(tmp_path))
-    with pytest.raises(CacheMissError, match="load_bbsr_kreise\\(cache, revalidate=True\\)"):
+    with pytest.raises(
+        CacheMissError, match="load_bbsr_kreise\\(cache, revalidate=True\\).*KreisRebaseFeature.cache_dir"
+    ):
         KreisRebaseFeature.load_keys()

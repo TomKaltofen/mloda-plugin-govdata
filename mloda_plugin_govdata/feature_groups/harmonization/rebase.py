@@ -85,7 +85,9 @@ class KreisRebaseFeature(HarmonizationFeature):
                 return load_bbsr_kreise(cache), BBSR_KREISE
             except CacheMissError as exc:
                 raise CacheMissError(
-                    f"{exc} Call load_bbsr_kreise(cache, revalidate=True) once to fetch and cache it."
+                    f"{exc}. Call load_bbsr_kreise(cache, revalidate=True) once to fetch and cache it. If the "
+                    f"key sheet lives elsewhere, set HarmonizationFeature.cache_dir (or {cls.__name__}.cache_dir "
+                    "for this group alone), independent of any reader's cache_dir."
                 ) from exc
 
     def input_features(self, options: Options, feature_name: FeatureName) -> set[Feature] | None:

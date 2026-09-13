@@ -55,8 +55,10 @@ class AgsToNutsFeature(HarmonizationFeature):
                 return load_edition(cache, gv_isys_changes=changes)
             except CacheMissError as exc:
                 raise CacheMissError(
-                    f"{exc} Call load_edition(cache, revalidate=True) and load_gv_isys_changes(year, cache, "
-                    f"revalidate=True) for each year in {cls.history_years} once to fetch and cache them."
+                    f"{exc}. Call load_edition(cache, revalidate=True) and load_gv_isys_changes(year, cache, "
+                    f"revalidate=True) for each year in {cls.history_years} once to fetch and cache them. If the "
+                    f"reference tables live elsewhere, set HarmonizationFeature.cache_dir (or {cls.__name__}."
+                    "cache_dir for this group alone), independent of any reader's cache_dir."
                 ) from exc
 
     def input_features(self, options: Options, feature_name: FeatureName) -> set[Feature] | None:

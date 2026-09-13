@@ -139,7 +139,7 @@ def test_an_edition_missing_from_the_cache_names_the_fetch_call(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(AgsToNutsFeature, "cache_dir", str(tmp_path))
-    with pytest.raises(CacheMissError, match="load_edition\\(cache, revalidate=True\\)"):
+    with pytest.raises(CacheMissError, match="load_edition\\(cache, revalidate=True\\).*AgsToNutsFeature.cache_dir"):
         AgsToNutsFeature.edition()
 
 
