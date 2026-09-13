@@ -23,7 +23,9 @@ def _as_tuple(value: object, field_name: str) -> tuple[str, ...] | None:
     """A selection field as a tuple of stripped strings; blank elements and an empty result are ``None``.
 
     ``bytes``/``bytearray`` are rejected even though they are a ``Sequence``: iterating one yields
-    integers, not the per-key strings a caller means.
+    integers, not the per-key strings a caller means. Every element must already be a ``str``: an
+    int can't be zero-padded back (which AGS level, 2/5/8 digits, is not decidable from a bare int),
+    so it is rejected rather than guessed, like every other non-str element.
     """
     if value is None:
         return None
@@ -37,6 +39,14 @@ def _as_tuple(value: object, field_name: str) -> tuple[str, ...] | None:
         raise TypeError(
             f"DestatisLocator.{field_name} must be a str, a sequence of str, or None, got {type(value).__name__}"
         )
+    for item in items:
+        if not isinstance(item, str):
+            hint = (
+                ": an int loses a key's leading zeros" if isinstance(item, int) and not isinstance(item, bool) else ""
+            )
+            raise TypeError(
+                f"DestatisLocator.{field_name} element {item!r} must be a str{hint}, got {type(item).__name__}"
+            )
     cleaned = tuple(str(item).strip() for item in items if str(item).strip())
     return cleaned or None
 
