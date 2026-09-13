@@ -1,0 +1,65 @@
+{
+  "features": [
+    {
+      "name": "station_id",
+      "options": {
+        "UbaAirReader": true,
+        "govdata_uba_station": 143,
+        "govdata_uba_component": 3,
+        "govdata_uba_scope": 2,
+        "govdata_uba_date_from": "2025-01-01",
+        "govdata_uba_date_to": "2025-01-01"
+      }
+    },
+    {
+      "name": "date_start",
+      "options": {
+        "UbaAirReader": true,
+        "govdata_uba_station": 143,
+        "govdata_uba_component": 3,
+        "govdata_uba_scope": 2,
+        "govdata_uba_date_from": "2025-01-01",
+        "govdata_uba_date_to": "2025-01-01"
+      }
+    },
+    {
+      "name": "value",
+      "options": {
+        "UbaAirReader": true,
+        "govdata_uba_station": 143,
+        "govdata_uba_component": 3,
+        "govdata_uba_scope": 2,
+        "govdata_uba_date_from": "2025-01-01",
+        "govdata_uba_date_to": "2025-01-01"
+      }
+    },
+    {
+      "name": "index",
+      "options": {
+        "UbaAirReader": true,
+        "govdata_uba_station": 143,
+        "govdata_uba_component": 3,
+        "govdata_uba_scope": 2,
+        "govdata_uba_date_from": "2025-01-01",
+        "govdata_uba_date_to": "2025-01-01"
+      }
+    }
+  ],
+  "links": [],
+  "compliance": {
+    "sources": [
+      {
+        "license": "§ 12a EGovG (Umweltbundesamt data terms, attribution required)",
+        "attribution": "Umweltbundesamt, Luftdaten API v4",
+        "dataset_uri": "https://luftdaten.umweltbundesamt.de/api/air-data/v4/measures/json?date_from=2025-01-01&time_from=1&date_to=2025-01-01&time_to=24&station=143&component=3&scope=2&lang=en",
+        "retrieved_at": "2026-08-16T00:00:00Z",
+        "sha256": "befda29b594c110d5f982dc41e2fe83ead231dbbec4baa99735c02db1e9a321d",
+        "modifications": [
+          "JSON flattened to one row per station and hour; value as a float, ids and index as integers"
+        ],
+        "credential_env": []
+      }
+    ],
+    "notes": "Hourly ozone (component 3, scope 2) at station 143 on 2025-01-01. The endpoint re-serves revised values: a re-fetch on 2026-09-12 differed from the pinned payload in most hours by one unit, so the sha256 identifies this retrieval, not the series."
+  }
+}

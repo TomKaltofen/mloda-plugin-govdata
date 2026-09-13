@@ -1,0 +1,6306 @@
+{
+  "openapi" : "3.0.1",
+  "info" : {
+    "title" : "GENESIS-Online RESTful-JSON-API",
+    "description" : "This RESTfull-JSON API of GENESIS-Online is published to enable users to communicate with GENESIS via REST.",
+    "contact" : {
+      "name" : "Contact us",
+      "url" : "https://www.destatis.de/DE/Service/Kontakt/Genesis/Servicekontakt-GENESIS.html"
+    },
+    "version" : "1.0.0"
+  },
+  "servers" : [ {
+    "url" : "/genesisWS"
+  } ],
+  "paths" : {
+    "/rest/2020/catalogue/cubes2statistic" : {
+      "post" : {
+        "tags" : [ "catalogue" ],
+        "summary" : "Service to retrieve a list of cubes associated to a statistics.",
+        "operationId" : "cubes2statisticPost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "selection" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "pagelength" : {
+                    "type" : "string",
+                    "default" : "100"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "List of cube-items.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Cubes2StatisticCatalogue"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/catalogue/cubes2variable" : {
+      "post" : {
+        "tags" : [ "catalogue" ],
+        "summary" : "Service to retrieve a list of cubes associated to a variable.",
+        "operationId" : "cubes2variablePost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "selection" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "pagelength" : {
+                    "type" : "string",
+                    "default" : "100"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "List of cube-items.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Cubes2VariableCatalogue"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/catalogue/cubes" : {
+      "post" : {
+        "tags" : [ "catalogue" ],
+        "summary" : "Service to retrieve a list of cubes.",
+        "operationId" : "cubesPost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "selection" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "pagelength" : {
+                    "type" : "string",
+                    "default" : "100"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "List of cube-items.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CubesCatalogue"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/catalogue/jobs" : {
+      "post" : {
+        "tags" : [ "catalogue" ],
+        "summary" : "Service to retrieve a list of jobs.",
+        "operationId" : "jobsPost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "selection" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "searchcriterion" : {
+                    "type" : "string",
+                    "default" : "Code"
+                  },
+                  "sortcriterion" : {
+                    "type" : "string",
+                    "default" : "Name"
+                  },
+                  "type" : {
+                    "type" : "string",
+                    "default" : "Alle"
+                  },
+                  "pagelength" : {
+                    "type" : "string",
+                    "default" : "100"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "List of job-items.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/JobsCatalogue"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/catalogue/modifieddata" : {
+      "post" : {
+        "tags" : [ "catalogue" ],
+        "summary" : "Service to retrieve a list of modified data items, listed as such.",
+        "operationId" : "modifieddataPost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "selection" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "type" : {
+                    "type" : "string",
+                    "default" : "Alle"
+                  },
+                  "date" : {
+                    "type" : "string",
+                    "default" : "01.01.1970 01:00"
+                  },
+                  "pagelength" : {
+                    "type" : "string",
+                    "default" : "100"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "List of modified data items.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ModifiedDataCatalogue"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/catalogue/qualitysigns" : {
+      "get" : {
+        "tags" : [ "catalogue" ],
+        "summary" : "Service to retrieve a list of quality signs.",
+        "operationId" : "qualitysigns",
+        "parameters" : [ {
+          "name" : "language",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "de"
+          }
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "List of quality signs.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/QualitySignsCatalogue"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "catalogue" ],
+        "summary" : "Service to retrieve a list of quality signs.",
+        "operationId" : "qualitysignsPost",
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "List of quality signs.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/QualitySignsCatalogue"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/catalogue/results" : {
+      "post" : {
+        "tags" : [ "catalogue" ],
+        "summary" : "Service to retrieve a list of results.",
+        "operationId" : "resultsPost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "selection" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "pagelength" : {
+                    "type" : "string",
+                    "default" : "100"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "List of result items.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ResultsCatalogue"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/catalogue/statistics2variable" : {
+      "post" : {
+        "tags" : [ "catalogue" ],
+        "summary" : "Service to retrieve a list of statistics associated to a variable.",
+        "operationId" : "statistics2variablePost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "selection" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "searchcriterion" : {
+                    "type" : "string",
+                    "default" : "Code"
+                  },
+                  "sortcriterion" : {
+                    "type" : "string",
+                    "default" : "Name"
+                  },
+                  "pagelength" : {
+                    "type" : "string",
+                    "default" : "100"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "List of statistic items.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Statistics2VariableCatalogue"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/catalogue/statistics" : {
+      "post" : {
+        "tags" : [ "catalogue" ],
+        "summary" : "Service to retrieve a list of statistics.",
+        "operationId" : "statisticsPost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "selection" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "searchcriterion" : {
+                    "type" : "string",
+                    "default" : "Code"
+                  },
+                  "sortcriterion" : {
+                    "type" : "string",
+                    "default" : "Name"
+                  },
+                  "pagelength" : {
+                    "type" : "string",
+                    "default" : "100"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "List of statistic items.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/StatisticsCatalogue"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/catalogue/tables2statistic" : {
+      "post" : {
+        "tags" : [ "catalogue" ],
+        "summary" : "Service to retrieve a list of tables associated to a statistic.",
+        "operationId" : "tables2statisticPost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "selection" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "pagelength" : {
+                    "type" : "string",
+                    "default" : "100"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "List of table items.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Tables2StatisticCatalogue"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/catalogue/tables2variable" : {
+      "post" : {
+        "tags" : [ "catalogue" ],
+        "summary" : "Service to retrieve a list of tables associated to a variable.",
+        "operationId" : "tables2variablePost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "selection" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "pagelength" : {
+                    "type" : "string",
+                    "default" : "100"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "List of table items.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Tables2VariableCatalogue"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/catalogue/tables" : {
+      "post" : {
+        "tags" : [ "catalogue" ],
+        "summary" : "Service to retrieve a list of tables.",
+        "operationId" : "tablesPost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "selection" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "searchcriterion" : {
+                    "type" : "string",
+                    "default" : "Code"
+                  },
+                  "sortcriterion" : {
+                    "type" : "string",
+                    "default" : "Code"
+                  },
+                  "pagelength" : {
+                    "type" : "string",
+                    "default" : "100"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "List of table items.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TablesCatalogue"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/catalogue/terms" : {
+      "post" : {
+        "tags" : [ "catalogue" ],
+        "summary" : "Service to retrieve a list of terms.",
+        "operationId" : "termsPost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "selection" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "pagelength" : {
+                    "type" : "string",
+                    "default" : "100"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "List of term items.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TermsCatalogue"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/catalogue/timeseries2statistic" : {
+      "post" : {
+        "tags" : [ "catalogue" ],
+        "summary" : "Service to retrieve a list of timeseries to a statistic.",
+        "operationId" : "timeseries2statisticPost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "selection" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "pagelength" : {
+                    "type" : "string",
+                    "default" : "100"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "List of timeseries items.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Timeseries2StatisticCatalogue"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/catalogue/timeseries2variable" : {
+      "post" : {
+        "tags" : [ "catalogue" ],
+        "summary" : "Service to retrieve a list of timeseries to a variable.",
+        "operationId" : "timeseries2variablePost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "selection" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "pagelength" : {
+                    "type" : "string",
+                    "default" : "100"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "List of timeseries items.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Timeseries2VariableCatalogue"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/catalogue/timeseries" : {
+      "post" : {
+        "tags" : [ "catalogue" ],
+        "summary" : "Service to retrieve a list of timeseries.",
+        "operationId" : "timeseriesPost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "selection" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "pagelength" : {
+                    "type" : "string",
+                    "default" : "100"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "List of timeseries items.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TimeseriesCatalogue"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/catalogue/values2variable" : {
+      "post" : {
+        "tags" : [ "catalogue" ],
+        "summary" : "Service to retrieve a list of values to a variable.",
+        "operationId" : "values2variablePost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "selection" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "searchcriterion" : {
+                    "type" : "string",
+                    "default" : "Code"
+                  },
+                  "sortcriterion" : {
+                    "type" : "string",
+                    "default" : "Name"
+                  },
+                  "pagelength" : {
+                    "type" : "string",
+                    "default" : "100"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "List of value items.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Values2VariableCatalogue"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/catalogue/values" : {
+      "post" : {
+        "tags" : [ "catalogue" ],
+        "summary" : "Service to retrieve a list of values.",
+        "operationId" : "valuesPost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "selection" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "searchcriterion" : {
+                    "type" : "string",
+                    "default" : "Code"
+                  },
+                  "sortcriterion" : {
+                    "type" : "string",
+                    "default" : "Name"
+                  },
+                  "pagelength" : {
+                    "type" : "string",
+                    "default" : "100"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "List of value items.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ValuesCatalogue"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/catalogue/variables2statistic" : {
+      "post" : {
+        "tags" : [ "catalogue" ],
+        "summary" : "Service to retrieve a list of variables to a statistic.",
+        "operationId" : "variables2statisticPost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "selection" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "searchcriterion" : {
+                    "type" : "string",
+                    "default" : "Code"
+                  },
+                  "sortcriterion" : {
+                    "type" : "string",
+                    "default" : "Name"
+                  },
+                  "type" : {
+                    "type" : "string",
+                    "default" : "Alle"
+                  },
+                  "pagelength" : {
+                    "type" : "string",
+                    "default" : "100"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "List of variable items.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Variables2StatisticCatalogue"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/catalogue/variables" : {
+      "post" : {
+        "tags" : [ "catalogue" ],
+        "summary" : "Service to retrieve a list of variables.",
+        "operationId" : "variablesPost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "selection" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "searchcriterion" : {
+                    "type" : "string",
+                    "default" : "Code"
+                  },
+                  "sortcriterion" : {
+                    "type" : "string",
+                    "default" : "Name"
+                  },
+                  "type" : {
+                    "type" : "string",
+                    "default" : "Alle"
+                  },
+                  "pagelength" : {
+                    "type" : "string",
+                    "default" : "100"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "List of variable items.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/VariablesCatalogue"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/data/chart2result" : {
+      "post" : {
+        "tags" : [ "data" ],
+        "summary" : "Service to receive a chart to a reult.",
+        "operationId" : "chart2resultPost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "charttype" : {
+                    "type" : "string",
+                    "default" : "0"
+                  },
+                  "drawpoints" : {
+                    "type" : "string",
+                    "default" : "false"
+                  },
+                  "zoom" : {
+                    "type" : "string",
+                    "default" : "2"
+                  },
+                  "focus" : {
+                    "type" : "string",
+                    "default" : "false"
+                  },
+                  "tops" : {
+                    "type" : "string",
+                    "default" : "false"
+                  },
+                  "format" : {
+                    "type" : "string",
+                    "default" : "png"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "PNG-File.",
+            "content" : {
+              "image/png" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/data/chart2table" : {
+      "post" : {
+        "tags" : [ "data" ],
+        "summary" : "Service to receive a chart to a table.",
+        "operationId" : "chart2tablePost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "charttype" : {
+                    "type" : "string",
+                    "default" : "0"
+                  },
+                  "drawpoints" : {
+                    "type" : "string",
+                    "default" : "false"
+                  },
+                  "zoom" : {
+                    "type" : "string",
+                    "default" : "2"
+                  },
+                  "focus" : {
+                    "type" : "string",
+                    "default" : "false"
+                  },
+                  "tops" : {
+                    "type" : "string",
+                    "default" : "false"
+                  },
+                  "startyear" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "endyear" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "timeslices" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "regionalvariable" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "regionalkey" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable1" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey1" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable2" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey2" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable3" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey3" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "format" : {
+                    "type" : "string",
+                    "default" : "png"
+                  },
+                  "stand" : {
+                    "type" : "string",
+                    "default" : "01.01.1970 01:00"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "PNG-File.",
+            "content" : {
+              "image/png" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/data/chart2timeseries" : {
+      "post" : {
+        "tags" : [ "data" ],
+        "summary" : "Service to receive a chart to a time series.",
+        "operationId" : "chart2timeseriesPost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "charttype" : {
+                    "type" : "string",
+                    "default" : "0"
+                  },
+                  "drawpoints" : {
+                    "type" : "string",
+                    "default" : "false"
+                  },
+                  "zoom" : {
+                    "type" : "string",
+                    "default" : "2"
+                  },
+                  "focus" : {
+                    "type" : "string",
+                    "default" : "false"
+                  },
+                  "tops" : {
+                    "type" : "string",
+                    "default" : "false"
+                  },
+                  "contents" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "startyear" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "endyear" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "timeslices" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "regionalvariable" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "regionalkey" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable1" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey1" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable2" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey2" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable3" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey3" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "format" : {
+                    "type" : "string",
+                    "default" : "png"
+                  },
+                  "stand" : {
+                    "type" : "string",
+                    "default" : "01.01.1970 01:00"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "PNG-File.",
+            "content" : {
+              "image/png" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/data/cube" : {
+      "post" : {
+        "tags" : [ "data" ],
+        "summary" : "Service to receive a cube.",
+        "operationId" : "cubePost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "values" : {
+                    "type" : "string",
+                    "default" : "true"
+                  },
+                  "metadata" : {
+                    "type" : "string",
+                    "default" : "false"
+                  },
+                  "additionals" : {
+                    "type" : "string",
+                    "default" : "false"
+                  },
+                  "contents" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "startyear" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "endyear" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "timeslices" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "regionalvariable" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "regionalkey" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable1" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey1" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable2" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey2" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable3" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey3" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "format" : {
+                    "type" : "string",
+                    "default" : "csv"
+                  },
+                  "stand" : {
+                    "type" : "string",
+                    "default" : "01.01.1970 01:00"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "CubeData-object.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CubeMetadata"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/data/cubefile" : {
+      "post" : {
+        "tags" : [ "data" ],
+        "summary" : "Service to receive a cube as a file.",
+        "operationId" : "cubefilePost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "values" : {
+                    "type" : "string",
+                    "default" : "true"
+                  },
+                  "metadata" : {
+                    "type" : "string",
+                    "default" : "false"
+                  },
+                  "additionals" : {
+                    "type" : "string",
+                    "default" : "false"
+                  },
+                  "contents" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "startyear" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "endyear" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "timeslices" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "regionalvariable" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "regionalkey" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable1" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey1" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable2" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey2" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable3" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey3" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "format" : {
+                    "type" : "string",
+                    "default" : "datencsv"
+                  },
+                  "stand" : {
+                    "type" : "string",
+                    "default" : "01.01.1970 01:00"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "Response-object.",
+            "content" : {
+              "application/octet-stream" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/data/map2result" : {
+      "post" : {
+        "tags" : [ "data" ],
+        "summary" : "Service to receive a map to a result.",
+        "operationId" : "map2resultPost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "maptype" : {
+                    "type" : "string",
+                    "default" : "0"
+                  },
+                  "classes" : {
+                    "type" : "string",
+                    "default" : "5"
+                  },
+                  "classification" : {
+                    "type" : "string",
+                    "default" : "0"
+                  },
+                  "zoom" : {
+                    "type" : "string",
+                    "default" : "2"
+                  },
+                  "format" : {
+                    "type" : "string",
+                    "default" : "png"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "PNG-File.",
+            "content" : {
+              "image/png" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/data/map2table" : {
+      "post" : {
+        "tags" : [ "data" ],
+        "summary" : "Service to receive a map to a table.",
+        "operationId" : "map2tablePost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "maptype" : {
+                    "type" : "string",
+                    "default" : "0"
+                  },
+                  "classes" : {
+                    "type" : "string",
+                    "default" : "5"
+                  },
+                  "classification" : {
+                    "type" : "string",
+                    "default" : "0"
+                  },
+                  "zoom" : {
+                    "type" : "string",
+                    "default" : "2"
+                  },
+                  "startyear" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "endyear" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "timeslices" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "regionalvariable" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "regionalkey" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable1" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey1" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable2" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey2" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable3" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey3" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "format" : {
+                    "type" : "string",
+                    "default" : "png"
+                  },
+                  "stand" : {
+                    "type" : "string",
+                    "default" : "01.01.1970 01:00"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "PNG-File.",
+            "content" : {
+              "image/png" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/data/map2timeseries" : {
+      "post" : {
+        "tags" : [ "data" ],
+        "summary" : "Service to receive a map to a time series.",
+        "operationId" : "map2timeseriesPost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "maptype" : {
+                    "type" : "string",
+                    "default" : "0"
+                  },
+                  "classes" : {
+                    "type" : "string",
+                    "default" : "5"
+                  },
+                  "classification" : {
+                    "type" : "string",
+                    "default" : "0"
+                  },
+                  "zoom" : {
+                    "type" : "string",
+                    "default" : "2"
+                  },
+                  "contents" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "startyear" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "endyear" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "timeslices" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "regionalvariable" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "regionalkey" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable1" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey1" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable2" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey2" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable3" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey3" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "format" : {
+                    "type" : "string",
+                    "default" : "png"
+                  },
+                  "stand" : {
+                    "type" : "string",
+                    "default" : "01.01.1970 01:00"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "PNG-File.",
+            "content" : {
+              "image/png" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/data/result" : {
+      "post" : {
+        "tags" : [ "data" ],
+        "summary" : "Service to receive a result.",
+        "operationId" : "resultPost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "compress" : {
+                    "type" : "string",
+                    "default" : "false"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "ResultData-object.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ResultData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/data/resultfile" : {
+      "post" : {
+        "tags" : [ "data" ],
+        "summary" : "Service to receive a result as a file.",
+        "operationId" : "resultfilePost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "compress" : {
+                    "type" : "string",
+                    "default" : "false"
+                  },
+                  "format" : {
+                    "type" : "string",
+                    "default" : "datencsv"
+                  },
+                  "quality" : {
+                    "type" : "string",
+                    "default" : "off"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "Response-object.",
+            "content" : {
+              "application/octet-stream" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/data/table" : {
+      "post" : {
+        "tags" : [ "data" ],
+        "summary" : "Service to receive a table.",
+        "operationId" : "tablePost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "structureinformation" : {
+                    "type" : "string",
+                    "default" : "false"
+                  },
+                  "compress" : {
+                    "type" : "string",
+                    "default" : "false"
+                  },
+                  "transpose" : {
+                    "type" : "string",
+                    "default" : "false"
+                  },
+                  "contents" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "startyear" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "endyear" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "timeslices" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "regionalvariable" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "regionalkey" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable1" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey1" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable2" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey2" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable3" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey3" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable4" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey4" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable5" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey5" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "job" : {
+                    "type" : "string",
+                    "default" : "false"
+                  },
+                  "stand" : {
+                    "type" : "string",
+                    "default" : "01.01.1970 01:00"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "TableData-object.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TableData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/data/tablefile" : {
+      "post" : {
+        "tags" : [ "data" ],
+        "summary" : "Service to receive a table as a file.",
+        "operationId" : "tablefilePost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "compress" : {
+                    "type" : "string",
+                    "default" : "false"
+                  },
+                  "transpose" : {
+                    "type" : "string",
+                    "default" : "false"
+                  },
+                  "contents" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "startyear" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "endyear" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "timeslices" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "regionalvariable" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "regionalkey" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable1" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey1" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable2" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey2" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable3" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey3" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable4" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey4" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable5" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey5" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "format" : {
+                    "type" : "string",
+                    "default" : "datencsv"
+                  },
+                  "quality" : {
+                    "type" : "string",
+                    "default" : "off"
+                  },
+                  "job" : {
+                    "type" : "string",
+                    "default" : "false"
+                  },
+                  "stand" : {
+                    "type" : "string",
+                    "default" : "01.01.1970 01:00"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "Response-object.",
+            "content" : {
+              "application/octet-stream" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/data/timeseries" : {
+      "post" : {
+        "tags" : [ "data" ],
+        "summary" : "Service to receive a timeseries.",
+        "operationId" : "timeseriesPost_1",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "compress" : {
+                    "type" : "string",
+                    "default" : "false"
+                  },
+                  "transpose" : {
+                    "type" : "string",
+                    "default" : "false"
+                  },
+                  "contents" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "startyear" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "endyear" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "timeslices" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "regionalvariable" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "regionalkey" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "regionalkeycode" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable1" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey1" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkeycode1" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable2" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey2" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkeycode2" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable3" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey3" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkeycode3" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "job" : {
+                    "type" : "string",
+                    "default" : "false"
+                  },
+                  "stand" : {
+                    "type" : "string",
+                    "default" : "01.01.1970 01:00"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "TimeseriesData-object.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TimeseriesData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/data/timeseriesfile" : {
+      "post" : {
+        "tags" : [ "data" ],
+        "summary" : "Service to receive a timeseries as a file.",
+        "operationId" : "timeseriesfilePost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "compress" : {
+                    "type" : "string",
+                    "default" : "false"
+                  },
+                  "transpose" : {
+                    "type" : "string",
+                    "default" : "false"
+                  },
+                  "contents" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "startyear" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "endyear" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "timeslices" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "regionalvariable" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "regionalkey" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "regionalkeycode" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable1" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey1" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkeycode1" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable2" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey2" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkeycode2" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingvariable3" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkey3" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "classifyingkeycode3" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "format" : {
+                    "type" : "string",
+                    "default" : "datencsv"
+                  },
+                  "job" : {
+                    "type" : "string",
+                    "default" : "false"
+                  },
+                  "stand" : {
+                    "type" : "string",
+                    "default" : "01.01.1970 01:00"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "Response-object.",
+            "content" : {
+              "application/octet-stream" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/find/find" : {
+      "post" : {
+        "tags" : [ "find" ],
+        "summary" : "Service to find objects to a search term.",
+        "operationId" : "findPost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "term" : {
+                    "type" : "string"
+                  },
+                  "category" : {
+                    "type" : "string",
+                    "default" : "all"
+                  },
+                  "pagelength" : {
+                    "type" : "string",
+                    "default" : "100"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "Findings-object.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Findings"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/helloworld/logincheck" : {
+      "post" : {
+        "tags" : [ "helloworld" ],
+        "summary" : "Service to test your account data.",
+        "operationId" : "logincheckPost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "LoginCheck-object.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LoginCheck"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/helloworld/whoami" : {
+      "get" : {
+        "tags" : [ "helloworld" ],
+        "summary" : "Service to test the connection.",
+        "operationId" : "whoami",
+        "parameters" : [ {
+          "name" : "user-agent",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "HelloWorldInformation-object.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/HelloWorldInformation"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/metadata/cube" : {
+      "post" : {
+        "tags" : [ "metadata" ],
+        "summary" : "Service to receive metadata to a cube.",
+        "operationId" : "cubePost_1",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "CubeMetadata-object.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CubeMetadata"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/metadata/statistic" : {
+      "post" : {
+        "tags" : [ "metadata" ],
+        "summary" : "Service to receive metadata to a statistics.",
+        "operationId" : "statisticPost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "StatisticMetadata-object.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/StatisticMetadata"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/metadata/table" : {
+      "post" : {
+        "tags" : [ "metadata" ],
+        "summary" : "Service to receive metadata to a table.",
+        "operationId" : "tablePost_1",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "TableMetadata-object.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TableMetadata"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/metadata/timeseries" : {
+      "post" : {
+        "tags" : [ "metadata" ],
+        "summary" : "Service to receive metadata to a time series.",
+        "operationId" : "timeseriesPost_2",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "TimeseriesMetadata-object.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TimeseriesMetadata"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/metadata/value" : {
+      "post" : {
+        "tags" : [ "metadata" ],
+        "summary" : "Service to receive metadata to a value.",
+        "operationId" : "valuePost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "ValueMetadata-object.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ValueMetadata"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/metadata/variable" : {
+      "post" : {
+        "tags" : [ "metadata" ],
+        "summary" : "Service to receive metadata to a variable.",
+        "operationId" : "variablePost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "default" : ""
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "VariableMetadata-object.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/VariableMetadata"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/profile/password" : {
+      "post" : {
+        "tags" : [ "profile" ],
+        "summary" : "Service to change your password.",
+        "operationId" : "passwordPost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "new" : {
+                    "type" : "string"
+                  },
+                  "repeat" : {
+                    "type" : "string"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "Password-object.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Password"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/2020/profile/removeResult" : {
+      "post" : {
+        "tags" : [ "profile" ],
+        "summary" : "Service to delete your results.",
+        "operationId" : "removeResultPost",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        }, {
+          "name" : "password",
+          "in" : "header",
+          "schema" : {
+            "type" : "string",
+            "default" : "GAST"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string"
+                  },
+                  "area" : {
+                    "type" : "string",
+                    "default" : "free"
+                  },
+                  "language" : {
+                    "type" : "string",
+                    "default" : "de"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "RemoveResult-object.",
+            "content" : {
+              "application/json; charset=UTF-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RemoveResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "CubeCatalogueEntry" : {
+        "type" : "object",
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/AbstractCatalogueEntry"
+        }, {
+          "type" : "object",
+          "properties" : {
+            "State" : {
+              "type" : "string"
+            },
+            "Time" : {
+              "type" : "string"
+            },
+            "LatestUpdate" : {
+              "type" : "string"
+            },
+            "Information" : {
+              "type" : "string"
+            }
+          }
+        } ]
+      },
+      "Cubes2StatisticCatalogue" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/Cubes2StatisticCatalogueParameter"
+          },
+          "List" : {
+            "type" : "array",
+            "nullable" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/CubeCatalogueEntry"
+            }
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Cubes2StatisticCatalogueParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "selection" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          },
+          "pagelength" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Ident" : {
+        "type" : "object",
+        "properties" : {
+          "Service" : {
+            "type" : "string"
+          },
+          "Method" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Status" : {
+        "type" : "object",
+        "properties" : {
+          "Code" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "Content" : {
+            "type" : "string"
+          },
+          "Type" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Cubes2VariableCatalogue" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/Cubes2VariableCatalogueParameter"
+          },
+          "List" : {
+            "type" : "array",
+            "nullable" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/CubeCatalogueEntry"
+            }
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Cubes2VariableCatalogueParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "selection" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          },
+          "pagelength" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          }
+        }
+      },
+      "CubeCatalogueParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "selection" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          },
+          "pagelength" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          }
+        }
+      },
+      "CubesCatalogue" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/CubeCatalogueParameter"
+          },
+          "List" : {
+            "type" : "array",
+            "nullable" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/CubeCatalogueEntry"
+            }
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "JobCatalogueEntry" : {
+        "type" : "object",
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/AbstractCatalogueEntry"
+        }, {
+          "type" : "object",
+          "properties" : {
+            "Date" : {
+              "type" : "string"
+            },
+            "Time" : {
+              "type" : "string"
+            },
+            "State" : {
+              "type" : "string"
+            }
+          }
+        } ]
+      },
+      "JobCatalogueParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "selection" : {
+            "type" : "string"
+          },
+          "searchcriterion" : {
+            "type" : "string"
+          },
+          "sortcriterion" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string"
+          },
+          "pagelength" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          }
+        }
+      },
+      "JobsCatalogue" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/JobCatalogueParameter"
+          },
+          "List" : {
+            "type" : "array",
+            "nullable" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/JobCatalogueEntry"
+            }
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ModifiedDataCatalogue" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/ModifiedDataCatalogueParameter"
+          },
+          "List" : {
+            "type" : "array",
+            "nullable" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/ModifiedDataCatalogueEntry"
+            }
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ModifiedDataCatalogueEntry" : {
+        "type" : "object",
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/AbstractCatalogueEntry"
+        }, {
+          "type" : "object",
+          "properties" : {
+            "Type" : {
+              "type" : "string"
+            },
+            "Date" : {
+              "type" : "string"
+            },
+            "Added" : {
+              "type" : "string"
+            }
+          }
+        } ]
+      },
+      "ModifiedDataCatalogueParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "selection" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string"
+          },
+          "date" : {
+            "type" : "string"
+          },
+          "pagelength" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          }
+        }
+      },
+      "QualitySignCatalogueEntry" : {
+        "type" : "object",
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/AbstractCatalogueEntry"
+        } ]
+      },
+      "QualitySignsCatalogue" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/QualitySignsCatalogueParameter"
+          },
+          "List" : {
+            "type" : "array",
+            "nullable" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/QualitySignCatalogueEntry"
+            }
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "QualitySignsCatalogueParameter" : {
+        "type" : "object",
+        "properties" : {
+          "language" : {
+            "type" : "string"
+          },
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ResultCatalogueEntry" : {
+        "type" : "object",
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/AbstractCatalogueEntry"
+        }, {
+          "type" : "object",
+          "properties" : {
+            "Values" : {
+              "type" : "string"
+            }
+          }
+        } ]
+      },
+      "ResultCatalogueParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "selection" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          },
+          "pagelength" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ResultsCatalogue" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/ResultCatalogueParameter"
+          },
+          "List" : {
+            "type" : "array",
+            "nullable" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/ResultCatalogueEntry"
+            }
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "StatisticCatalogueEntry" : {
+        "type" : "object",
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/AbstractCatalogueEntry"
+        }, {
+          "type" : "object",
+          "properties" : {
+            "Cubes" : {
+              "type" : "string"
+            },
+            "Information" : {
+              "type" : "string"
+            }
+          }
+        } ]
+      },
+      "Statistics2VariableCatalogue" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/Statistics2VariableCatalogueParameter"
+          },
+          "List" : {
+            "type" : "array",
+            "nullable" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/StatisticCatalogueEntry"
+            }
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Statistics2VariableCatalogueParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "selection" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          },
+          "searchcriterion" : {
+            "type" : "string"
+          },
+          "sortcriterion" : {
+            "type" : "string"
+          },
+          "pagelength" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          }
+        }
+      },
+      "StatisticCatalogueParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "selection" : {
+            "type" : "string"
+          },
+          "searchcriterion" : {
+            "type" : "string"
+          },
+          "sortcriterion" : {
+            "type" : "string"
+          },
+          "pagelength" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          }
+        }
+      },
+      "StatisticsCatalogue" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/StatisticCatalogueParameter"
+          },
+          "List" : {
+            "type" : "array",
+            "nullable" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/StatisticCatalogueEntry"
+            }
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "TableCatalogueEntry" : {
+        "type" : "object",
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/AbstractCatalogueEntry"
+        }, {
+          "type" : "object",
+          "properties" : {
+            "Time" : {
+              "type" : "string"
+            },
+            "Valid" : {
+              "type" : "string"
+            }
+          }
+        } ]
+      },
+      "Tables2StatisticCatalogue" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/Tables2StatisticCatalogueParameter"
+          },
+          "List" : {
+            "type" : "array",
+            "nullable" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/TableCatalogueEntry"
+            }
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Tables2StatisticCatalogueParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "selection" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          },
+          "pagelength" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Tables2VariableCatalogue" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/Tables2VariableCatalogueParameter"
+          },
+          "List" : {
+            "type" : "array",
+            "nullable" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/TableCatalogueEntry"
+            }
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Tables2VariableCatalogueParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "selection" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          },
+          "pagelength" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          }
+        }
+      },
+      "TableCatalogueParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "selection" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          },
+          "searchcriterion" : {
+            "type" : "string"
+          },
+          "sortcriterion" : {
+            "type" : "string"
+          },
+          "pagelength" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          }
+        }
+      },
+      "TablesCatalogue" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/TableCatalogueParameter"
+          },
+          "List" : {
+            "type" : "array",
+            "nullable" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/TableCatalogueEntry"
+            }
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "TermCatalogueEntry" : {
+        "type" : "object",
+        "properties" : {
+          "Content" : {
+            "type" : "string"
+          }
+        },
+        "nullable" : true
+      },
+      "TermCatalogueParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "selection" : {
+            "type" : "string"
+          },
+          "pagelength" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          }
+        }
+      },
+      "TermsCatalogue" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/TermCatalogueParameter"
+          },
+          "List" : {
+            "type" : "array",
+            "nullable" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/TermCatalogueEntry"
+            }
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Timeseries2StatisticCatalogue" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/Timeseries2StatisticCatalogueParameter"
+          },
+          "List" : {
+            "type" : "array",
+            "nullable" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/TimeseriesCatalogueEntry"
+            }
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Timeseries2StatisticCatalogueParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "selection" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          },
+          "pagelength" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          }
+        }
+      },
+      "TimeseriesCatalogueEntry" : {
+        "type" : "object",
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/AbstractCatalogueEntry"
+        }, {
+          "type" : "object",
+          "properties" : {
+            "State" : {
+              "type" : "string"
+            },
+            "Time" : {
+              "type" : "string"
+            },
+            "LatestUpdate" : {
+              "type" : "string"
+            },
+            "Information" : {
+              "type" : "string"
+            }
+          }
+        } ]
+      },
+      "Timeseries2VariableCatalogue" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/Timeseries2VariableCatalogueParameter"
+          },
+          "List" : {
+            "type" : "array",
+            "nullable" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/TimeseriesCatalogueEntry"
+            }
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Timeseries2VariableCatalogueParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "selection" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          },
+          "pagelength" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          }
+        }
+      },
+      "TimeseriesCatalogue" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/TimeseriesCatalogueParameter"
+          },
+          "List" : {
+            "type" : "array",
+            "nullable" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/TimeseriesCatalogueEntry"
+            }
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "TimeseriesCatalogueParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "selection" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          },
+          "pagelength" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ValueCatalogueEntry" : {
+        "type" : "object",
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/AbstractCatalogueEntry"
+        }, {
+          "type" : "object",
+          "properties" : {
+            "Variables" : {
+              "type" : "string"
+            },
+            "Information" : {
+              "type" : "string"
+            }
+          }
+        } ]
+      },
+      "Values2VariableCatalogue" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/Values2VariableCatalogueParameter"
+          },
+          "List" : {
+            "type" : "array",
+            "nullable" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/ValueCatalogueEntry"
+            }
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Values2VariableCatalogueParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "selection" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          },
+          "searchcriterion" : {
+            "type" : "string"
+          },
+          "sortcriterion" : {
+            "type" : "string"
+          },
+          "pagelength" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ValueCatalogueParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "selection" : {
+            "type" : "string"
+          },
+          "searchcriterion" : {
+            "type" : "string"
+          },
+          "sortcriterion" : {
+            "type" : "string"
+          },
+          "pagelength" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ValuesCatalogue" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/ValueCatalogueParameter"
+          },
+          "List" : {
+            "type" : "array",
+            "nullable" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/ValueCatalogueEntry"
+            }
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "VariableCatalogueEntry" : {
+        "type" : "object",
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/AbstractCatalogueEntry"
+        }, {
+          "type" : "object",
+          "properties" : {
+            "Type" : {
+              "type" : "string"
+            },
+            "Values" : {
+              "type" : "string"
+            },
+            "Information" : {
+              "type" : "string"
+            }
+          }
+        } ]
+      },
+      "Variables2StatisticCatalogue" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/Variables2StatisticCatalogueParameter"
+          },
+          "List" : {
+            "type" : "array",
+            "nullable" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/VariableCatalogueEntry"
+            }
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Variables2StatisticCatalogueParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "selection" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          },
+          "searchcriterion" : {
+            "type" : "string"
+          },
+          "sortcriterion" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string"
+          },
+          "pagelength" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          }
+        }
+      },
+      "VariableCatalogueParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "selection" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          },
+          "searchcriterion" : {
+            "type" : "string"
+          },
+          "sortcriterion" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string"
+          },
+          "pagelength" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          }
+        }
+      },
+      "VariablesCatalogue" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/VariableCatalogueParameter"
+          },
+          "List" : {
+            "type" : "array",
+            "nullable" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/VariableCatalogueEntry"
+            }
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "EntityTag" : {
+        "type" : "object",
+        "properties" : {
+          "value" : {
+            "type" : "string"
+          },
+          "weak" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "Link" : {
+        "type" : "object",
+        "properties" : {
+          "uri" : {
+            "type" : "string",
+            "format" : "uri"
+          },
+          "params" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "uriBuilder" : {
+            "$ref" : "#/components/schemas/UriBuilder"
+          },
+          "rel" : {
+            "type" : "string"
+          },
+          "rels" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "type" : {
+            "type" : "string"
+          }
+        }
+      },
+      "MediaType" : {
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "type" : "string"
+          },
+          "subtype" : {
+            "type" : "string"
+          },
+          "parameters" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
+          },
+          "wildcardType" : {
+            "type" : "boolean"
+          },
+          "wildcardSubtype" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "MultivaluedMapStringObject" : {
+        "type" : "object",
+        "properties" : {
+          "empty" : {
+            "type" : "boolean"
+          }
+        },
+        "additionalProperties" : {
+          "type" : "array",
+          "items" : {
+            "type" : "object"
+          }
+        }
+      },
+      "MultivaluedMapStringString" : {
+        "type" : "object",
+        "properties" : {
+          "empty" : {
+            "type" : "boolean"
+          }
+        },
+        "additionalProperties" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        }
+      },
+      "NewCookie" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "value" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "path" : {
+            "type" : "string"
+          },
+          "domain" : {
+            "type" : "string"
+          },
+          "comment" : {
+            "type" : "string"
+          },
+          "maxAge" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "expiry" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "secure" : {
+            "type" : "boolean"
+          },
+          "httpOnly" : {
+            "type" : "boolean"
+          },
+          "sameSite" : {
+            "type" : "string",
+            "enum" : [ "NONE", "LAX", "STRICT" ]
+          }
+        }
+      },
+      "Response" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "entity" : {
+            "type" : "object"
+          },
+          "metadata" : {
+            "type" : "object",
+            "properties" : {
+              "empty" : {
+                "type" : "boolean"
+              }
+            },
+            "additionalProperties" : {
+              "type" : "array",
+              "items" : {
+                "type" : "object"
+              }
+            }
+          },
+          "cookies" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "$ref" : "#/components/schemas/NewCookie"
+            }
+          },
+          "statusInfo" : {
+            "$ref" : "#/components/schemas/StatusType"
+          },
+          "allowedMethods" : {
+            "uniqueItems" : true,
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "stringHeaders" : {
+            "type" : "object",
+            "properties" : {
+              "empty" : {
+                "type" : "boolean"
+              }
+            },
+            "additionalProperties" : {
+              "type" : "array",
+              "items" : {
+                "type" : "string"
+              }
+            }
+          },
+          "mediaType" : {
+            "$ref" : "#/components/schemas/MediaType"
+          },
+          "entityTag" : {
+            "$ref" : "#/components/schemas/EntityTag"
+          },
+          "links" : {
+            "uniqueItems" : true,
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Link"
+            }
+          },
+          "length" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "location" : {
+            "type" : "string",
+            "format" : "uri"
+          },
+          "language" : {
+            "type" : "object",
+            "properties" : {
+              "language" : {
+                "type" : "string"
+              },
+              "script" : {
+                "type" : "string"
+              },
+              "variant" : {
+                "type" : "string"
+              },
+              "country" : {
+                "type" : "string"
+              },
+              "unicodeLocaleAttributes" : {
+                "uniqueItems" : true,
+                "type" : "array",
+                "items" : {
+                  "type" : "string"
+                }
+              },
+              "unicodeLocaleKeys" : {
+                "uniqueItems" : true,
+                "type" : "array",
+                "items" : {
+                  "type" : "string"
+                }
+              },
+              "displayLanguage" : {
+                "type" : "string"
+              },
+              "displayScript" : {
+                "type" : "string"
+              },
+              "displayCountry" : {
+                "type" : "string"
+              },
+              "displayVariant" : {
+                "type" : "string"
+              },
+              "displayName" : {
+                "type" : "string"
+              },
+              "extensionKeys" : {
+                "uniqueItems" : true,
+                "type" : "array",
+                "items" : {
+                  "type" : "string"
+                }
+              },
+              "iso3Language" : {
+                "type" : "string"
+              },
+              "iso3Country" : {
+                "type" : "string"
+              }
+            }
+          },
+          "lastModified" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "date" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "headers" : {
+            "type" : "object",
+            "properties" : {
+              "empty" : {
+                "type" : "boolean"
+              }
+            },
+            "additionalProperties" : {
+              "type" : "array",
+              "items" : {
+                "type" : "object"
+              }
+            }
+          },
+          "closed" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "StatusType" : {
+        "type" : "object",
+        "properties" : {
+          "statusCode" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "reasonPhrase" : {
+            "type" : "string"
+          },
+          "family" : {
+            "type" : "string",
+            "enum" : [ "INFORMATIONAL", "SUCCESSFUL", "REDIRECTION", "CLIENT_ERROR", "SERVER_ERROR", "OTHER" ]
+          }
+        }
+      },
+      "UriBuilder" : {
+        "type" : "object"
+      },
+      "Axis" : {
+        "type" : "object",
+        "properties" : {
+          "Code" : {
+            "type" : "string"
+          },
+          "Content" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "Type" : {
+            "type" : "string"
+          },
+          "Updated" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Content" : {
+        "type" : "object",
+        "properties" : {
+          "Code" : {
+            "type" : "string"
+          },
+          "Content" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "Type" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "Unit" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "Values" : {
+            "type" : "string"
+          },
+          "Timeslices" : {
+            "type" : "array",
+            "nullable" : true,
+            "items" : {
+              "type" : "string",
+              "nullable" : true
+            }
+          },
+          "Updated" : {
+            "type" : "string"
+          }
+        },
+        "nullable" : true
+      },
+      "CubeMetadata" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/CubeMetadataParameter"
+          },
+          "Object" : {
+            "$ref" : "#/components/schemas/CubeMetadataEntry"
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "CubeMetadataEntry" : {
+        "type" : "object",
+        "properties" : {
+          "Code" : {
+            "type" : "string"
+          },
+          "Content" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "State" : {
+            "type" : "string"
+          },
+          "Timeslices" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "Values" : {
+            "type" : "string"
+          },
+          "Statistic" : {
+            "$ref" : "#/components/schemas/StatisticReference"
+          },
+          "Structure" : {
+            "$ref" : "#/components/schemas/Structure"
+          },
+          "Updated" : {
+            "type" : "string"
+          }
+        },
+        "nullable" : true
+      },
+      "CubeMetadataParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          }
+        }
+      },
+      "StatisticReference" : {
+        "type" : "object",
+        "properties" : {
+          "Code" : {
+            "type" : "string"
+          },
+          "Content" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "Updated" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Structure" : {
+        "type" : "object",
+        "properties" : {
+          "Axis" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Axis"
+            }
+          },
+          "Contents" : {
+            "type" : "array",
+            "nullable" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/Content"
+            }
+          }
+        }
+      },
+      "CubeData" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/CubeDataParameter"
+          },
+          "Object" : {
+            "$ref" : "#/components/schemas/CubeDataEntry"
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "CubeDataEntry" : {
+        "type" : "object",
+        "properties" : {
+          "Content" : {
+            "type" : "string"
+          }
+        },
+        "nullable" : true
+      },
+      "CubeDataParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          },
+          "values" : {
+            "type" : "string"
+          },
+          "metadata" : {
+            "type" : "string"
+          },
+          "additionals" : {
+            "type" : "string"
+          },
+          "contents" : {
+            "type" : "string"
+          },
+          "startyear" : {
+            "type" : "string"
+          },
+          "endyear" : {
+            "type" : "string"
+          },
+          "timeslices" : {
+            "type" : "string"
+          },
+          "regionalvariable" : {
+            "type" : "string"
+          },
+          "regionalkey" : {
+            "type" : "string"
+          },
+          "classifyingvariable1" : {
+            "type" : "string"
+          },
+          "classifyingkey1" : {
+            "type" : "string"
+          },
+          "classifyingvariable2" : {
+            "type" : "string"
+          },
+          "classifyingkey2" : {
+            "type" : "string"
+          },
+          "classifyingvariable3" : {
+            "type" : "string"
+          },
+          "classifyingkey3" : {
+            "type" : "string"
+          },
+          "format" : {
+            "type" : "string"
+          },
+          "stand" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          },
+          "classifyingvariable4" : {
+            "type" : "string"
+          },
+          "classifyingkey4" : {
+            "type" : "string"
+          },
+          "classifyingvariable5" : {
+            "type" : "string"
+          },
+          "classifyingkey5" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ResultData" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/ResultDataParameter"
+          },
+          "Object" : {
+            "$ref" : "#/components/schemas/ResultDataEntry"
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ResultDataEntry" : {
+        "type" : "object",
+        "properties" : {
+          "Content" : {
+            "type" : "string"
+          }
+        },
+        "nullable" : true
+      },
+      "ResultDataParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          },
+          "compress" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          }
+        }
+      },
+      "StructureElement" : {
+        "type" : "object",
+        "properties" : {
+          "Code" : {
+            "type" : "string"
+          },
+          "Content" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "Type" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "Values" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "Selected" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "Functions" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "Structure" : {
+            "type" : "array",
+            "nullable" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/StructureElement"
+            }
+          },
+          "Updated" : {
+            "type" : "string"
+          }
+        },
+        "nullable" : true
+      },
+      "TableData" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/TableDataParameter"
+          },
+          "Object" : {
+            "$ref" : "#/components/schemas/TableDataEntry"
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "TableDataEntry" : {
+        "type" : "object",
+        "properties" : {
+          "Content" : {
+            "type" : "string"
+          },
+          "Structure" : {
+            "$ref" : "#/components/schemas/TableStructure"
+          },
+          "TableLayout" : {
+            "$ref" : "#/components/schemas/TableLayout"
+          }
+        },
+        "nullable" : true
+      },
+      "TableDataParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          },
+          "structureinformation" : {
+            "type" : "string"
+          },
+          "compress" : {
+            "type" : "string"
+          },
+          "transpose" : {
+            "type" : "string"
+          },
+          "contents" : {
+            "type" : "string"
+          },
+          "startyear" : {
+            "type" : "string"
+          },
+          "endyear" : {
+            "type" : "string"
+          },
+          "timeslices" : {
+            "type" : "string"
+          },
+          "regionalvariable" : {
+            "type" : "string"
+          },
+          "regionalkey" : {
+            "type" : "string"
+          },
+          "classifyingvariable1" : {
+            "type" : "string"
+          },
+          "classifyingkey1" : {
+            "type" : "string"
+          },
+          "classifyingvariable2" : {
+            "type" : "string"
+          },
+          "classifyingkey2" : {
+            "type" : "string"
+          },
+          "classifyingvariable3" : {
+            "type" : "string"
+          },
+          "classifyingkey3" : {
+            "type" : "string"
+          },
+          "classifyingvariable4" : {
+            "type" : "string"
+          },
+          "classifyingkey4" : {
+            "type" : "string"
+          },
+          "classifyingvariable5" : {
+            "type" : "string"
+          },
+          "classifyingkey5" : {
+            "type" : "string"
+          },
+          "format" : {
+            "type" : "string"
+          },
+          "job" : {
+            "type" : "string"
+          },
+          "stand" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          }
+        }
+      },
+      "TableLayout" : {
+        "type" : "object",
+        "properties" : {
+          "TableHeaderLinesNumber" : {
+            "type" : "string"
+          },
+          "FrontColumnsNumber" : {
+            "type" : "string"
+          },
+          "HeaderColumnsNumber" : {
+            "type" : "string"
+          },
+          "RowHeadingsNumber" : {
+            "type" : "string"
+          }
+        },
+        "nullable" : true
+      },
+      "TableStructure" : {
+        "type" : "object",
+        "properties" : {
+          "Head" : {
+            "$ref" : "#/components/schemas/StructureElement"
+          },
+          "Columns" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/StructureElement"
+            }
+          },
+          "Rows" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/StructureElement"
+            }
+          },
+          "Subtitel" : {
+            "$ref" : "#/components/schemas/StructureElement"
+          },
+          "Subheading" : {
+            "$ref" : "#/components/schemas/StructureElement"
+          }
+        }
+      },
+      "TimeseriesData" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/TimeseriesDataParameter"
+          },
+          "Object" : {
+            "$ref" : "#/components/schemas/TimeseriesDataEntry"
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "TimeseriesDataEntry" : {
+        "type" : "object",
+        "properties" : {
+          "Content" : {
+            "type" : "string"
+          }
+        },
+        "nullable" : true
+      },
+      "TimeseriesDataParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          },
+          "compress" : {
+            "type" : "string"
+          },
+          "transpose" : {
+            "type" : "string"
+          },
+          "contents" : {
+            "type" : "string"
+          },
+          "startyear" : {
+            "type" : "string"
+          },
+          "endyear" : {
+            "type" : "string"
+          },
+          "timeslices" : {
+            "type" : "string"
+          },
+          "regionalvariable" : {
+            "type" : "string"
+          },
+          "regionalkey" : {
+            "type" : "string"
+          },
+          "classifyingvariable1" : {
+            "type" : "string"
+          },
+          "classifyingkey1" : {
+            "type" : "string"
+          },
+          "classifyingvariable2" : {
+            "type" : "string"
+          },
+          "classifyingkey2" : {
+            "type" : "string"
+          },
+          "classifyingvariable3" : {
+            "type" : "string"
+          },
+          "classifyingkey3" : {
+            "type" : "string"
+          },
+          "job" : {
+            "type" : "string"
+          },
+          "stand" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          },
+          "classifyingvariable4" : {
+            "type" : "string"
+          },
+          "classifyingkey4" : {
+            "type" : "string"
+          },
+          "classifyingvariable5" : {
+            "type" : "string"
+          },
+          "classifyingkey5" : {
+            "type" : "string"
+          }
+        }
+      },
+      "AbstractCatalogueEntry" : {
+        "type" : "object",
+        "properties" : {
+          "Code" : {
+            "type" : "string"
+          },
+          "Content" : {
+            "type" : "string",
+            "nullable" : true
+          }
+        }
+      },
+      "FindParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "term" : {
+            "type" : "string"
+          },
+          "category" : {
+            "type" : "string"
+          },
+          "pagelength" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Findings" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/FindParameter"
+          },
+          "Cubes" : {
+            "type" : "array",
+            "nullable" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/CubeCatalogueEntry"
+            }
+          },
+          "Statistics" : {
+            "type" : "array",
+            "nullable" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/StatisticCatalogueEntry"
+            }
+          },
+          "Tables" : {
+            "type" : "array",
+            "nullable" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/TableCatalogueEntry"
+            }
+          },
+          "Timeseries" : {
+            "type" : "array",
+            "nullable" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/TimeseriesCatalogueEntry"
+            }
+          },
+          "Variables" : {
+            "type" : "array",
+            "nullable" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/VariableCatalogueEntry"
+            }
+          },
+          "Copyright" : {
+            "type" : "string"
+          },
+          "list" : {
+            "type" : "array",
+            "writeOnly" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/AbstractCatalogueEntry"
+            }
+          }
+        }
+      },
+      "LoginCheck" : {
+        "type" : "object",
+        "properties" : {
+          "Status" : {
+            "type" : "string"
+          },
+          "Username" : {
+            "type" : "string"
+          }
+        }
+      },
+      "HelloWorldInformation" : {
+        "type" : "object",
+        "properties" : {
+          "User-Agent" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Frequency" : {
+        "type" : "object",
+        "properties" : {
+          "From" : {
+            "type" : "string"
+          },
+          "To" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "Type" : {
+            "type" : "string"
+          }
+        }
+      },
+      "StatisticMetadata" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/StatisticMetadataParameter"
+          },
+          "Object" : {
+            "$ref" : "#/components/schemas/StatisticMetadataEntry"
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "StatisticMetadataEntry" : {
+        "type" : "object",
+        "properties" : {
+          "Code" : {
+            "type" : "string"
+          },
+          "Content" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "Cubes" : {
+            "type" : "string"
+          },
+          "Variables" : {
+            "type" : "string"
+          },
+          "Frequency" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Frequency"
+            }
+          },
+          "Information" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "Updated" : {
+            "type" : "string"
+          }
+        },
+        "nullable" : true
+      },
+      "StatisticMetadataParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Period" : {
+        "type" : "object",
+        "properties" : {
+          "From" : {
+            "type" : "string"
+          },
+          "To" : {
+            "type" : "string",
+            "nullable" : true
+          }
+        }
+      },
+      "TableMetadata" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/TableMetadataParameter"
+          },
+          "Object" : {
+            "$ref" : "#/components/schemas/TableMetadataEntry"
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "TableMetadataEntry" : {
+        "type" : "object",
+        "properties" : {
+          "Code" : {
+            "type" : "string"
+          },
+          "Content" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "Time" : {
+            "$ref" : "#/components/schemas/Period"
+          },
+          "Valid" : {
+            "type" : "string"
+          },
+          "Structure" : {
+            "$ref" : "#/components/schemas/TableStructure"
+          },
+          "Updated" : {
+            "type" : "string"
+          }
+        },
+        "nullable" : true
+      },
+      "TableMetadataParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          }
+        }
+      },
+      "TimeseriesMetadata" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/TimeseriesMetadataParameter"
+          },
+          "Object" : {
+            "$ref" : "#/components/schemas/TimeseriesMetadataEntry"
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "TimeseriesMetadataEntry" : {
+        "type" : "object",
+        "properties" : {
+          "Code" : {
+            "type" : "string"
+          },
+          "Content" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "State" : {
+            "type" : "string"
+          },
+          "Timeslices" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "Values" : {
+            "type" : "string"
+          },
+          "Statistic" : {
+            "$ref" : "#/components/schemas/StatisticReference"
+          },
+          "Structure" : {
+            "$ref" : "#/components/schemas/Structure"
+          },
+          "Updated" : {
+            "type" : "string"
+          },
+          "Time" : {
+            "$ref" : "#/components/schemas/Period"
+          },
+          "Valid" : {
+            "type" : "string"
+          }
+        },
+        "nullable" : true
+      },
+      "TimeseriesMetadataParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ValueMetadata" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/ValueMetadataParameter"
+          },
+          "Object" : {
+            "$ref" : "#/components/schemas/ValueMetadataEntry"
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ValueMetadataEntry" : {
+        "type" : "object",
+        "properties" : {
+          "Code" : {
+            "type" : "string"
+          },
+          "Content" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "Variables" : {
+            "type" : "string"
+          },
+          "Information" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "Updated" : {
+            "type" : "string"
+          }
+        },
+        "nullable" : true
+      },
+      "ValueMetadataParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          }
+        }
+      },
+      "VariableMetadata" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/VariableMetadataParameter"
+          },
+          "Object" : {
+            "$ref" : "#/components/schemas/VariableMetadataEntry"
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "VariableMetadataEntry" : {
+        "type" : "object",
+        "properties" : {
+          "Code" : {
+            "type" : "string"
+          },
+          "Content" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "Type" : {
+            "type" : "string"
+          },
+          "Values" : {
+            "type" : "string"
+          },
+          "Validity" : {
+            "$ref" : "#/components/schemas/Period"
+          },
+          "Stock" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "Summable" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "SortOrder" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "BreakDownType" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "Information" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "Updated" : {
+            "type" : "string"
+          }
+        },
+        "nullable" : true
+      },
+      "VariableMetadataParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Password" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/PasswordParameter"
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "PasswordParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "new" : {
+            "type" : "string"
+          },
+          "repeat" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          }
+        }
+      },
+      "RemoveResult" : {
+        "type" : "object",
+        "properties" : {
+          "Ident" : {
+            "$ref" : "#/components/schemas/Ident"
+          },
+          "Status" : {
+            "$ref" : "#/components/schemas/Status"
+          },
+          "Parameter" : {
+            "$ref" : "#/components/schemas/RemoveResultParameter"
+          },
+          "Copyright" : {
+            "type" : "string"
+          }
+        }
+      },
+      "RemoveResultParameter" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,4 +1,4 @@
-"""Marimo demo: discover GovData datasets and read the three M1 example datasets.
+"""Marimo demo: discover GovData datasets, read the three M1 example datasets, run two Destatis recipes.
 
 Run with: marimo edit demos/govdata_demo.py (needs network access; install the
 "demo" extra for marimo itself).
@@ -24,9 +24,10 @@ def _(mo):
         # mloda-plugin-govdata demo
 
         German open government data as mloda features: search GovData via the
-        paginated CKAN API, then read the three M1 example datasets (population,
-        elections, environment) as typed Arrow tables. Every cell below talks to
-        the live endpoints; downloads are cached locally after the first run.
+        paginated CKAN API, read the three M1 example datasets (population,
+        elections, environment) as typed Arrow tables, then run two shipped
+        recipes over Destatis tables. Every cell below talks to the live
+        endpoints; downloads are cached locally after the first run.
 
         Part of the Prototype Fund project mloda-plugin-govdata (FKZ 16IS26S11).
         """
@@ -166,6 +167,159 @@ def _(
     )
     environment = _result[0].to_pandas()
     environment
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md("""## 5. Destatis through recipes (GENESIS-Online)""")
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        """
+        A recipe file under `recipes/` names the features of one run, the joins, and where the data
+        came from; `load_recipe` returns what `mloda.run_all` needs plus the compliance block. The
+        cells below need a GENESIS-Online registration in the environment before marimo starts:
+        `GENESIS_TOKEN`, or `GENESIS_USER` and `GENESIS_PASSWORD` (see `docs/credentials.md`).
+        """
+    )
+    return
+
+
+@app.cell
+def _():
+    from mloda_plugin_govdata.feature_groups.destatis import (
+        GENESIS_ONLINE,
+        DestatisCredentials,
+        MissingCredentialsError,
+    )
+    from mloda_plugin_govdata.feature_groups.govdata import CacheMissError, DownloadCache
+    from mloda_plugin_govdata.feature_groups.harmonization import KreisRebaseFeature
+    from mloda_plugin_govdata.harmonization.land_codes import check_land_names
+    from mloda_plugin_govdata.harmonization.reference.bbsr import load_bbsr_kreise
+    from mloda_plugin_govdata.recipes import load_recipe
+
+    return (
+        CacheMissError,
+        DestatisCredentials,
+        DownloadCache,
+        GENESIS_ONLINE,
+        KreisRebaseFeature,
+        MissingCredentialsError,
+        check_land_names,
+        load_bbsr_kreise,
+        load_recipe,
+    )
+
+
+@app.cell
+def _(DestatisCredentials, GENESIS_ONLINE, MissingCredentialsError, mo):
+    _why = None
+    try:
+        if DestatisCredentials.from_env(GENESIS_ONLINE) is None:
+            _why = "no GENESIS-Online credentials in the environment"
+    except MissingCredentialsError as exc:  # one half of the user plus password pair
+        _why = str(exc)
+    if mo.notebook_dir() is None:
+        _why = "the notebook has no file location, so `recipes/` cannot be found"
+    mo.stop(_why is not None, mo.md(f"Destatis cells skipped: {_why}"))
+    recipes = mo.notebook_dir().parent / "recipes"
+
+    def compliance_note(recipe):
+        sources = "\n".join(
+            f"- {s.attribution}, {s.license}, retrieved {s.retrieved_at:%Y-%m-%d}; "
+            f"changed: {'; '.join(s.modifications)}"
+            for s in recipe.compliance.sources
+        )
+        return mo.md(f"{sources}\n\n{recipe.compliance.notes or ''}")
+
+    return compliance_note, recipes
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        """
+        ### Population per eligible voter by Land (`land_population_voters.json`)
+
+        Both sides run without the recipe's links block (mloda does not honor discriminators on a
+        same-class link yet), so the two sources come back as two frames. `check_land_names` verifies
+        the AGS-2 codes and names on each side before they are combined by hand.
+        """
+    )
+    return
+
+
+@app.cell
+def _(check_land_names, load_recipe, mloda, recipes):
+    land_recipe = load_recipe(recipes / "land_population_voters.json")
+    _frames = mloda.run_all(land_recipe.features, compute_frameworks=["PyArrowTable"])
+    population_by_land = next(t for t in _frames if "value" in t.column_names).to_pandas()
+    _election = next(t for t in _frames if "Nr" in t.column_names).to_pandas()
+    voters_by_land = _election[_election["gehört zu"] == "99"]  # the Land rows; Bundesgebiet has no parent
+    check_land_names(
+        zip(population_by_land["1_variable_attribute_code"], population_by_land["1_variable_attribute_label"])
+    )
+    check_land_names(zip(voters_by_land["Nr"], voters_by_land["Gebiet"]))
+    return land_recipe, population_by_land, voters_by_land
+
+
+@app.cell
+def _(mo, population_by_land, voters_by_land):
+    mo.hstack([population_by_land, voters_by_land], gap=2)
+    return
+
+
+@app.cell
+def _(population_by_land, voters_by_land):
+    _voters = "Wahlberechtigte Erststimmen Endgültig"
+    per_voter = population_by_land.rename(
+        columns={"1_variable_attribute_code": "Nr", "1_variable_attribute_label": "Land", "value": "Bevölkerung"}
+    ).merge(voters_by_land[["Nr", _voters]].rename(columns={_voters: "Wahlberechtigte"}), on="Nr")
+    per_voter["Bevölkerung je Wahlberechtigte"] = per_voter["Bevölkerung"] / per_voter["Wahlberechtigte"]
+    per_voter.sort_values("Nr")[["Nr", "Land", "Bevölkerung", "Wahlberechtigte", "Bevölkerung je Wahlberechtigte"]]
+    return
+
+
+@app.cell
+def _(compliance_note, land_recipe):
+    compliance_note(land_recipe)
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        """
+        ### A Kreis series re-based across the Göttingen merger (`kreis_population_rebased.json`)
+
+        The BBSR key file must be in the download cache before the feature group runs: fetched once,
+        checked against its pinned sha256, read offline afterwards.
+        """
+    )
+    return
+
+
+@app.cell
+def _(CacheMissError, DownloadCache, KreisRebaseFeature, load_bbsr_kreise, load_recipe, mloda, recipes):
+    with DownloadCache(KreisRebaseFeature.cache_dir) as _cache:
+        try:
+            load_bbsr_kreise(_cache)
+        except CacheMissError:
+            load_bbsr_kreise(_cache, revalidate=True)
+    kreis_recipe = load_recipe(recipes / "kreis_population_rebased.json")
+    rebased = mloda.run_all(kreis_recipe.features, compute_frameworks=["PyArrowTable"])[0].to_pandas()
+    rebased.columns = [name.rpartition("~")[2] for name in rebased.columns]  # strip the feature-name prefix
+    rebased[["key", "year", "value", "flag", "sources", "marker", "issues"]]
+    return (kreis_recipe,)
+
+
+@app.cell
+def _(compliance_note, kreis_recipe):
+    compliance_note(kreis_recipe)
     return
 
 

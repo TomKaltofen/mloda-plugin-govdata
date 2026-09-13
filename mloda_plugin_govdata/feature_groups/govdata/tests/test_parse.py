@@ -102,7 +102,7 @@ def test_multi_header_flattens_and_types_kerg(fixtures_dir: Path) -> None:
         fixtures_dir / "kerg_sample.csv", skiprows=5, header_rows=3, label_columns=4, value_type=ColumnType.INTEGER
     )
     assert table.num_columns == 140  # 140 real columns; the trailing ';' phantom column is dropped
-    assert table.num_rows == 16  # 17 data lines minus one ';' separator row
+    assert table.num_rows == 31  # 32 data lines minus one ';' separator row
     assert table.schema.names[:4] == ["Nr", "Gebiet", "gehört zu", "Gewählt"]
     # the 3 merged header rows flatten into one combined name
     assert "Wahlberechtigte Erststimmen Endgültig" in table.schema.names

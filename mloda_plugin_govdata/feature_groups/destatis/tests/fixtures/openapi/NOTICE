@@ -1,0 +1,16 @@
+Pinned OpenAPI 3.0.1 specifications of the GENESIS RESTful JSON API, used unchanged as contract-test fixtures.
+Re-pinning is manual: download, record the sha256, replace the file, run the contract test, write the diff up as a learning.
+
+GOJsonApi-2026-08-16.json
+Source: GENESIS-Online (Statistisches Bundesamt), served by the webservice itself.
+URL: https://genesis.destatis.de/genesisWS/rest/2020/GOJsonApi.json (Swagger UI: https://genesis.destatis.de/genesisWS/swagger-ui/index.html)
+Retrieved: 2026-08-16, without authentication.
+sha256: 1a0dc57a85e391b6c7c42de4120156f92a8b0f6a6e10d3e51b8be59536c1e8e6
+Terms: published API description; used here as an unchanged copy for testing the client against its declared contract.
+
+GOJsonApi-regionalstatistik-2026-08-16.json
+Source: Regionalstatistik (Regionaldatenbank Deutschland, Statistische Aemter des Bundes und der Laender, operated by IT.NRW).
+URL: https://www.regionalstatistik.de/genesisws/rest/2020/GOJsonApi.json
+Retrieved: 2026-08-16, without authentication.
+sha256: a9ce7944d21fc1a9f5330790d9dff939748320486bfb40eadc82608000cd684c
+Terms: as above.
