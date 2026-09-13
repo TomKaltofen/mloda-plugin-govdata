@@ -63,8 +63,12 @@ class HarmonizationFeature(FeatureChainParserMixin, FeatureGroup):
 
     @classmethod
     def by_base(cls, features: FeatureSet) -> dict[str, Feature]:
-        """One feature per output base: parts of the same output in one set are computed once."""
-        return {cls.base_name(str(feature.name)): feature for feature in features.features}
+        """One feature per output base, computed once. Iterates in feature-name order (not base-name
+        order), so a base/part collision deterministically keeps the part (its full name, with the
+        trailing ``~part``, always sorts after the bare base name); the winner's Options are used,
+        the loser's are dropped.
+        """
+        return {cls.base_name(str(feature.name)): feature for feature in features.get_sorted_features()}
 
     @classmethod
     def declared(cls, feature: Feature, key: str) -> str:

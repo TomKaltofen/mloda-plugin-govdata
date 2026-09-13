@@ -10,6 +10,7 @@ import httpx
 import pyarrow as pa
 import pytest
 import respx
+from mloda.provider import FeatureSet
 from mloda.user import Feature, FeatureName, Options, mloda
 
 from mloda_plugin_govdata.feature_groups.destatis.reader import DestatisReader
@@ -112,3 +113,21 @@ def test_a_contradicting_explicit_freq_is_refused(genesis: Callable[[str], respx
     options = {DestatisReader.__name__: GOETTINGEN_LOCATOR, "period_freq": "quarter"}
     with pytest.raises(ValueError, match="'quarter' not found in mapping for 'period_freq'"):
         _run([Feature("time__year_period", options=options)])
+
+
+def test_five_outputs_append_in_a_stable_alphabetical_order() -> None:
+    # Five outputs, not two: an unfixed set-iteration order has only a 1-in-120 chance of
+    # coincidentally matching this expected order on a given run. Calls calculate_feature
+    # directly, bypassing run_all's own set-ordered final column selection.
+    sources = {
+        "Jahr": ["2015"],
+        "Stichtag": ["2016-12-31"],
+        "Bezugsjahr": ["2013"],
+        "Erhebungsjahr": ["2012-12-31"],
+        "Meldejahr": ["2011"],
+    }
+    table = pa.table(sources)
+    names = [f"{column}__year_period" for column in sources]
+    features = FeatureSet([Feature(name) for name in names])
+    result = AnnualPeriodFeature.calculate_feature(table, features)
+    assert result.schema.names == [*sources, *sorted(names)]
