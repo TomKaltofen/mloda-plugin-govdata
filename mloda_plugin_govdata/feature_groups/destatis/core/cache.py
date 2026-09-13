@@ -14,13 +14,13 @@ import json
 import logging
 import os
 import re
-import tempfile
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+from ...govdata.core.cache import write_atomic
 from .api import OPERATIONS
 from .hosts import GenesisHost, resolve_host
 from .redact import CREDENTIAL_KEYS
@@ -152,7 +152,7 @@ class ParameterCache:
         key = self.key(resolved, endpoint, canonical)
         digest = hashlib.sha256(body).hexdigest()
         data_path = self.cache_dir / f"{KEY_PREFIX}{digest}.bin"
-        self._write_atomic(data_path, body)
+        write_atomic(data_path, body)
         retrieved_at = self._now()
         meta: dict[str, Any] = {
             "host": resolved.name,
@@ -163,7 +163,7 @@ class ParameterCache:
             "data_file": data_path.name,
             "retrieved_at": retrieved_at.isoformat(),
         }
-        self._write_atomic(self._meta_path(key), _canonical_json(meta).encode("utf-8"))
+        write_atomic(self._meta_path(key), _canonical_json(meta).encode("utf-8"))
         return CachedPayload(
             path=data_path,
             sha256=digest,
@@ -259,17 +259,3 @@ class ParameterCache:
             age.days,
             cached.retrieved_at.isoformat(),
         )
-
-    def _write_atomic(self, path: Path, data: bytes) -> None:
-        tmp_name: str | None = None
-        try:
-            with tempfile.NamedTemporaryFile(
-                dir=self.cache_dir, prefix=f"{path.name}.", suffix=".tmp", delete=False
-            ) as tmp:
-                tmp_name = tmp.name
-                tmp.write(data)
-            os.replace(tmp_name, path)
-        except BaseException:
-            if tmp_name is not None:
-                Path(tmp_name).unlink(missing_ok=True)
-            raise
