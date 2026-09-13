@@ -115,3 +115,6 @@ source).
 
 `mloda_plugin_govdata/recipes/tests/shipped.py` holds the same recipes as Python; a test pins each file to
 the writer's output of its definition, so edit the definition and rewrite the file rather than the JSON.
+
+The demo notebook (`demos/govdata_demo.py`) runs the Land-level recipe and the re-based recipe live, with the
+attribution lines from their compliance blocks.

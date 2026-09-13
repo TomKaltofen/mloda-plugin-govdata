@@ -125,9 +125,17 @@ A recipe file bundles the features, joins, and provenance of one run as JSON; `l
 Recipes ship under `recipes/`: the Land table, the re-based Kreis series, a rate with its denominator, the
 Land-level join, and the three example datasets above. See [docs/recipes.md](docs/recipes.md).
 
+```python
+from mloda_plugin_govdata.recipes import load_recipe
+
+recipe = load_recipe("recipes/land_population.json")
+result = mloda.run_all(recipe.features, compute_frameworks=["PyArrowTable"], links=set(recipe.links))
+recipe.compliance.sources[0].attribution  # what to print next to the result
+```
+
 ## Demo
 
-An interactive [marimo](https://marimo.io) notebook walks through dataset discovery and all three example datasets. The notebook lives in the repository (not in the published package), so run it from a source checkout:
+An interactive [marimo](https://marimo.io) notebook walks through dataset discovery, all three example datasets, and two shipped recipes over Destatis tables (population per eligible voter by Land, a Kreis series re-based across a merger). The notebook lives in the repository (not in the published package), so run it from a source checkout:
 
 ```bash
 git clone https://github.com/mloda-ai/mloda-plugin-govdata.git
@@ -136,7 +144,7 @@ uv sync --all-extras
 uv run marimo edit demos/govdata_demo.py
 ```
 
-The notebook hits the live GovData, Bundeswahlleiterin, and UBA endpoints; downloads are cached locally after the first run.
+The notebook hits the live GovData, Bundeswahlleiterin, UBA, and GENESIS-Online endpoints; downloads are cached locally after the first run. The Destatis chapter needs `GENESIS_TOKEN` in the environment (see [docs/credentials.md](docs/credentials.md)) and skips itself without it.
 
 ## Related Repositories
 
