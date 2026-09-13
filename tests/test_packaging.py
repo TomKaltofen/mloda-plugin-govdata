@@ -29,9 +29,7 @@ def test_tests_packages_are_excluded_from_the_wheel() -> None:
     find = _find_config()
     tests_dirs = [path for path in DISTRIBUTION.rglob("tests") if path.is_dir()]
     assert tests_dirs, "no tests package under the distribution"
-    candidates = [tests_dir for tests_dir in tests_dirs] + [
-        path for tests_dir in tests_dirs for path in tests_dir.rglob("*") if path.is_dir()
-    ]
+    candidates = list(tests_dirs) + [path for tests_dir in tests_dirs for path in tests_dir.rglob("*") if path.is_dir()]
     shipped = sorted(
         _dotted(path)
         for path in candidates

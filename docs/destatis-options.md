@@ -13,9 +13,9 @@ shape a recipe file carries); all three coerce to the same locator:
 from mloda.user import Feature
 from mloda_plugin_govdata.feature_groups.destatis import DestatisLocator, DestatisReader
 
-Feature("value", options={DestatisReader: "12411-0010"})
-Feature("value", options={DestatisReader: DestatisLocator("12411-0015", regionalvariable="KREISE")})
-Feature("value", options={DestatisReader: {"name": "12411-0015", "regionalvariable": "KREISE"}})
+Feature("value", options={DestatisReader.__name__: "12411-0010"})
+Feature("value", options={DestatisReader.__name__: DestatisLocator("12411-0015", regionalvariable="KREISE")})
+Feature("value", options={DestatisReader.__name__: {"name": "12411-0015", "regionalvariable": "KREISE"}})
 ```
 
 Locator fields that are not `data/tablefile` parameters: `host` (`genesis`, the default, or
@@ -65,12 +65,12 @@ or a `value_q` flag letter (`p`, `r`, `s`) that never appears in the `value` cel
 
 ## Deferred
 
-Not built, so the reader neither sends nor accepts them:
+Not built. The reader sends only the pinned wire values above and accepts none of these as options:
 
 - The job path: `job=true`, polling the job list, downloading and removing the result. A table over the
   download limit raises `GenesisResultTooLarge` instead; see [credentials.md](credentials.md#result-too-large).
 - `area`, `stand`, and `timeslices` as locator fields; the server defaults apply.
 - `language=en`: the ffcsv parser reads German number formatting only.
-- Discovery: `catalogue/qualitysigns` is the only catalogue endpoint the client calls; the remaining
-  catalogue and find endpoints have no helper, and `metadata/table` is callable on `GenesisClient` but
-  neither typed nor used by the reader. Table codes and dimension codes come from the host's web portal.
+- Discovery: `catalogue/qualitysigns` is the only catalogue endpoint the client knows; `GenesisClient`
+  refuses every endpoint outside its registered operations, so the remaining catalogue and find endpoints
+  cannot be called, and `metadata/table` is callable but neither typed nor used by the reader. Table codes and dimension codes come from the host's web portal.

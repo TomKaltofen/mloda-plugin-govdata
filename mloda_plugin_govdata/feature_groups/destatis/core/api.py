@@ -306,12 +306,12 @@ def tablefile_parameters(
     quality: bool = False,
     language: str = DEFAULT_LANGUAGE,
 ) -> dict[str, object]:
-    """``data/tablefile`` fields for one selection, M2 wire policy applied.
+    """``data/tablefile`` fields for one selection, the wire policy applied.
 
     Pass the result as the ``fields`` argument of ``ParameterCache.get_or_fetch``, which
     canonicalizes it (sorts selection lists, stringifies ints) before keying and calling ``fetch``.
     ``format``, ``job``, ``compress``, and ``transpose`` are pinned; ``quality`` is sent as
-    ``on``/``off``. ``area``, ``stand``, and ``timeslices`` are not M2 locator fields (server
+    ``on``/``off``. ``area``, ``stand``, and ``timeslices`` are not locator fields (server
     defaults apply; see ``docs/destatis-options.md``) and never appear in the result.
 
     ``language`` is pinned to ``"de"``: ``parse_ffcsv_bytes`` assumes German decimal-comma

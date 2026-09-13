@@ -11,7 +11,7 @@ from typing import Any
 from .core.api import DEFAULT_LANGUAGE
 from .core.hosts import GENESIS_ONLINE, resolve_host
 
-# Both pinned M2 shapes: GENESIS-Online "12411-0015" (5 digits, one 1-4 digit segment) and
+# Both known shapes: GENESIS-Online "12411-0015" (5 digits, one 1-4 digit segment) and
 # Regionalstatistik "13211-02-05-4" (5 digits, up to three further 1-4 digit segments);
 # docs/destatis-options.md documents the 15-char spec limit.
 _TABLE_CODE = re.compile(r"^\d{5}(-\d{1,4}){1,3}$")
@@ -62,7 +62,7 @@ def _clean_year(value: int | None, field_name: str) -> int | None:
 
 @dataclass(frozen=True)
 class DestatisLocator:
-    """One GENESIS table selection: table code plus the optional M2 locator fields.
+    """One GENESIS table selection: table code plus the optional locator fields.
 
     ``area``, ``compress``, ``transpose``, ``timeslices``, ``job``, and ``stand`` are not locator
     fields (see ``docs/destatis-options.md``): they are pinned wire values or never sent, not
