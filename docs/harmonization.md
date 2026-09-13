@@ -4,6 +4,12 @@ Three derived FeatureGroups turn a reader's columns into comparable ones. Each i
 (`<column>__<operation>`) that sits on top of the reader features: the reader locator you set on the
 harmonized feature travels to the reader columns it needs, so one `Feature` describes the whole chain.
 
+`HarmonizationFeature.cache_dir` holds the reference-table cache (BBSR keys, NUTS/LAU crosswalk,
+GV-ISys changes) that `KreisRebaseFeature` and `AgsToNutsFeature` read; independent of
+`BaseGovDataReader.cache_dir` (the reader's download cache), though both default to the same
+location. `AnnualPeriodFeature` inherits the attribute but reads no reference table. Set
+`HarmonizationFeature.cache_dir` itself, not one subclass's, to move every group's cache at once.
+
 ```python
 from mloda.user import Feature, Options, mloda
 from mloda_plugin_govdata.feature_groups.destatis import DestatisReader

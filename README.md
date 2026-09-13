@@ -34,7 +34,8 @@ table = result[0]  # pyarrow.Table with the requested columns
 result.plan  # resolved execution steps: which FeatureGroup ran on which framework
 ```
 
-The options key is the reader class or its class-name string; both select the same reader. The option value is a GovData dataset slug or a direct distribution URL. The license is read from the CKAN distribution metadata. Set `BaseGovDataReader.cache_dir` to control where downloads are cached. For any other GovData CSV dataset, `GovDataReader` works out of the box and reads every column as a string; subclass it and set `schema` for typed columns.
+The options key is the reader class or its class-name string; both select the same reader. The option value is a GovData dataset slug or a direct distribution URL. The license is read from the CKAN distribution metadata. Set `BaseGovDataReader.cache_dir` to control where downloads are cached (harmonized features below use a
+separate `HarmonizationFeature.cache_dir`). For any other GovData CSV dataset, `GovDataReader` works out of the box and reads every column as a string; subclass it and set `schema` for typed columns.
 
 Don't know the slug yet? Search GovData with the paginated CKAN `package_search` API:
 
@@ -160,6 +161,9 @@ result = mloda.run_all(
 )
 result[0]  # value__rebased~key, ~year, ~value, ~flag, ~sources, ~marker, ~issues, ~edition
 ```
+
+`KreisRebaseFeature.cache_dir` above is independent of `BaseGovDataReader.cache_dir`; see
+[docs/harmonization.md](docs/harmonization.md) before moving either to a persistent volume.
 
 A recipe file bundles the features, joins, and provenance of one run as JSON; `load_recipe` returns what
 `mloda.run_all` needs plus the compliance block (license, attribution, payload sha256, credential env names).
