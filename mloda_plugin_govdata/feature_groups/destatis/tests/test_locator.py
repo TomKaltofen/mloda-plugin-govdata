@@ -98,6 +98,40 @@ def test_bytes_selection_field_is_rejected() -> None:
         DestatisLocator("12411-0015", regionalkey=b"03159")  # type: ignore[arg-type]
 
 
+def test_int_typed_regionalkey_element_is_rejected() -> None:
+    # An int loses the AGS leading zero; the caller must pass the padded str.
+    with pytest.raises(TypeError, match="regionalkey element 3152 must be a str: an int loses"):
+        DestatisLocator("12411-0015", regionalkey=[3152, "03156"])  # type: ignore[arg-type]
+
+
+def test_int_typed_classifyingkey_element_is_also_rejected() -> None:
+    with pytest.raises(TypeError, match="classifyingkey1 element 42 must be a str: an int loses"):
+        DestatisLocator("12411-0015", classifyingkey1=[42])  # type: ignore[arg-type]
+
+
+def test_int_typed_contents_element_is_also_rejected() -> None:
+    with pytest.raises(TypeError, match="contents element 1 must be a str: an int loses"):
+        DestatisLocator("12411-0015", contents=[1])  # type: ignore[arg-type]
+
+
+def test_int_typed_element_via_from_dict_is_rejected() -> None:
+    # from_dict is the JSON-native path a recipe file actually goes through.
+    with pytest.raises(TypeError, match="regionalkey element 3152 must be a str: an int loses"):
+        DestatisLocator.from_dict({"name": "12411-0015", "regionalkey": [3152]})
+
+
+def test_bool_selection_element_is_rejected() -> None:
+    # bool is an int subclass; True/False must not silently become the wire value "True".
+    with pytest.raises(TypeError, match="regionalkey element True must be a str, got bool"):
+        DestatisLocator("12411-0015", regionalkey=[True])  # type: ignore[arg-type]
+
+
+def test_non_str_non_int_element_is_also_rejected() -> None:
+    # Not just ints: any non-str element is rejected, not silently stringified.
+    with pytest.raises(TypeError, match=r"regionalkey element 3152\.0 must be a str, got float"):
+        DestatisLocator("12411-0015", regionalkey=[3152.0])  # type: ignore[arg-type]
+
+
 @pytest.mark.parametrize(
     ("startyear", "endyear"),
     [(1899, None), (2101, None), (None, 1899), (None, 2101), (2017, 2013)],
