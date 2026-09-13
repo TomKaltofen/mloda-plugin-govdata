@@ -7,12 +7,10 @@ data identity it was built from (source, URL, sha256, covered year range).
 
 from __future__ import annotations
 
-import os
 from collections.abc import Sequence
 from dataclasses import dataclass
-from pathlib import Path
 
-from mloda_plugin_govdata.feature_groups.govdata.core.cache import DEFAULT_CACHE_DIR, CacheMissError, DownloadCache
+from mloda_plugin_govdata.feature_groups.govdata.core.cache import DownloadCache
 
 from .reference.eurostat import LauNutsRow, load_lau_nuts_de
 from .reference.gv_isys import GvIsysChange
@@ -63,18 +61,3 @@ def load_edition(
         lau_rows=tuple(rows),
         gv_isys_changes=tuple(gv_isys_changes),
     )
-
-
-def default_edition(cache_dir: str | os.PathLike[str] = DEFAULT_CACHE_DIR) -> Edition:
-    """Loads the :class:`Edition` from whatever is already cached offline.
-
-    The default edition must raise with the fetch instruction on an empty
-    cache rather than silently fall back to a bundled subset (there is no bundled subset).
-    """
-    with DownloadCache(Path(cache_dir)) as cache:
-        try:
-            return load_edition(cache, revalidate=False)
-        except CacheMissError as exc:
-            raise CacheMissError(
-                f"{exc} Call load_edition(cache, revalidate=True) once to fetch and cache it."
-            ) from exc
