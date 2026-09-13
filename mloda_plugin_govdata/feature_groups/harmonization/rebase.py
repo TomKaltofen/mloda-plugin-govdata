@@ -99,11 +99,38 @@ class KreisRebaseFeature(HarmonizationFeature):
     def calculate_feature(cls, data: Any, features: FeatureSet) -> Any:
         table: pa.Table = data
         keys, source = cls.load_keys()
+        results = {
+            name: cls._rebase(table, cls.source_column(feature), feature.options, keys, source)
+            for name, feature in cls.by_base(features).items()
+        }
+        cls._check_aligned(results)
         columns: dict[str, pa.Array] = {}
-        for name, feature in cls.by_base(features).items():
-            result = cls._rebase(table, cls.source_column(feature), feature.options, keys, source)
+        for name, result in results.items():
             columns.update(cls._columns(name, result))
         return pa.table(columns)
+
+    @classmethod
+    def _check_aligned(cls, results: dict[str, RebaseResult]) -> None:
+        """Every output re-based in the same call must land on one (Kreis, year) row space.
+
+        ``pa.table`` only checks that column lengths match: two outputs independently re-based
+        to the same row count but different rows would still be stacked, silently pairing the
+        wrong Kreis/year. Different options (years, share, unmatched/incomplete policy) per
+        output can make their surviving rows diverge, so check the actual keys, not just counts.
+        """
+        names = iter(results)
+        first = next(names, None)
+        if first is None:
+            return
+        reference = [(row.key, row.year) for row in results[first].rows]
+        for name in names:
+            rows = [(row.key, row.year) for row in results[name].rows]
+            if rows != reference:
+                raise ValueError(
+                    f"{cls.__name__}: {name!r} and {first!r} re-base to different (Kreis, year) rows; "
+                    "requested together, they must share rebase_from_year, rebase_to_year, rebase_share, "
+                    "rebase_on_unmatched and rebase_on_incomplete"
+                )
 
     @classmethod
     def _rebase(

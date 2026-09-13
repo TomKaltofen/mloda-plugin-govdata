@@ -10,13 +10,14 @@ from typing import Any
 import pyarrow as pa
 import pytest
 import respx
+from mloda.provider import FeatureSet
 from mloda.user import Feature, FeatureName, Options, mloda
 
 from mloda_plugin_govdata.feature_groups.destatis.core.auth import OPTION_GENESIS_CREDENTIALS, DestatisCredentials
 from mloda_plugin_govdata.feature_groups.destatis.reader import DestatisReader
 from mloda_plugin_govdata.feature_groups.govdata.core.cache import CacheMissError
 from mloda_plugin_govdata.feature_groups.harmonization.rebase import PARTS, KreisRebaseFeature
-from mloda_plugin_govdata.harmonization.rebase import Flag, ShareKind, rebase
+from mloda_plugin_govdata.harmonization.rebase import Flag, KeyEdition, RebasedRow, RebaseResult, ShareKind, rebase
 from mloda_plugin_govdata.recipes import Compliance, SourceCompliance, build_recipe, parse_recipe, recipe_to_json
 
 from .conftest import COCHEM_ZELL_ZIP, EXTRACT, GOETTINGEN_LOCATOR, GOETTINGEN_ZIP, LAND_ZIP, ffcsv_zip_with_rows
@@ -165,6 +166,42 @@ def test_two_parts_of_one_output_in_one_request(genesis: Callable[[str], respx.R
     table = _run([Feature("value__rebased~key", options=options), Feature("value__rebased~value", options=options)])[0]
     assert sorted(table.schema.names) == ["value__rebased~key", "value__rebased~value"]
     assert table.num_rows == 5
+
+
+def _stub_result(*pairs: tuple[str, int]) -> RebaseResult:
+    edition = KeyEdition("src", "https://example.test/src", None, 2015, 2016, ShareKind.POPULATION)
+    rows = tuple(RebasedRow(key, year, 1.0, Flag.OBSERVED, ()) for key, year in pairs)
+    return RebaseResult(rows, edition, (), ())
+
+
+def _calculate_with_stubbed_rebase(monkeypatch: pytest.MonkeyPatch, results_by_column: dict[str, RebaseResult]) -> Any:
+    monkeypatch.setattr(KreisRebaseFeature, "load_keys", classmethod(lambda cls: ((), None)))
+    monkeypatch.setattr(
+        KreisRebaseFeature,
+        "_rebase",
+        classmethod(lambda cls, table, value_column, options, keys, source: results_by_column[value_column]),
+    )
+    features = FeatureSet([Feature("value1__rebased"), Feature("value2__rebased")])
+    return KreisRebaseFeature.calculate_feature(pa.table({}), features)
+
+
+def test_two_outputs_re_based_to_the_same_rows_combine(monkeypatch: pytest.MonkeyPatch) -> None:
+    aligned = _stub_result(("03101", 2016), ("03159", 2016))
+    table = _calculate_with_stubbed_rebase(monkeypatch, {"value1": aligned, "value2": aligned})
+    assert table.num_rows == 2
+    assert table.column("value1__rebased~key").to_pylist() == table.column("value2__rebased~key").to_pylist()
+
+
+def test_two_outputs_re_based_to_different_rows_raise(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Same row count, different (Kreis, year) pairs: pa.table would otherwise stack them silently.
+    with pytest.raises(ValueError, match="different \\(Kreis, year\\) rows"):
+        _calculate_with_stubbed_rebase(
+            monkeypatch,
+            {
+                "value1": _stub_result(("03101", 2016)),
+                "value2": _stub_result(("03159", 2016)),
+            },
+        )
 
 
 @respx.mock
