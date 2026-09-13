@@ -53,7 +53,7 @@ def _kreis_index(lau_rows: Sequence[LauNutsRow]) -> dict[str, str]:
     """Groups LAU rows by their 5-digit Kreis prefix; each group's NUTS-3 must be unique.
 
     A Kreis spanning two NUTS-3 codes means it sits mid a boundary-reform lag window
-    (a Kreis merger that predates the next NUTS revision picking it up, the
+    (a Kreis merger that predates the next NUTS revision picking it up, see the
     Eisenach/Wartburgkreis case): raise rather than silently pick either one.
     """
     grouped: dict[str, set[str]] = defaultdict(set)

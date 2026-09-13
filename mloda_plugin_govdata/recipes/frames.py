@@ -20,11 +20,9 @@ class _FramesByColumn(dict[str, Any]):
 
 
 def frames_by_column(result: Iterable[Any]) -> dict[str, Any]:
-    """One frame per feature group and locator from a `mloda.run_all` result, indexed by column name.
+    """Indexes a `mloda.run_all` result by column name, since mloda frames carry no feature-set identity.
 
-    mloda frames carry no feature-set identity, so a two-frame recipe (mloda does not honor
-    discriminators on a same-class link yet) is told apart by column name instead. A column shared
-    by two frames raises only when that column itself is looked up, not for every other column.
+    A column shared by two frames raises only when looked up.
     """
     frames: dict[str, Any] = {}
     ambiguous: set[str] = set()
