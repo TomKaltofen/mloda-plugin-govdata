@@ -144,7 +144,7 @@ uv sync --all-extras
 uv run marimo edit demos/govdata_demo.py
 ```
 
-The notebook hits the live GovData, Bundeswahlleiterin, UBA, and GENESIS-Online endpoints; downloads are cached locally after the first run. The Destatis chapter needs `GENESIS_TOKEN` in the environment (see [docs/credentials.md](docs/credentials.md)) and skips itself without it.
+The notebook hits the live GovData, Bundeswahlleiterin, UBA, and GENESIS-Online endpoints and fetches the BBSR key file; downloads are cached locally after the first run. The Destatis chapter needs GENESIS-Online credentials in the environment (`GENESIS_TOKEN`, or `GENESIS_USER` and `GENESIS_PASSWORD`; see [docs/credentials.md](docs/credentials.md)) and skips itself without them.
 
 ## Related Repositories
 
