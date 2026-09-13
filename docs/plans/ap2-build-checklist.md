@@ -5,7 +5,7 @@ Companion to [ap2-destatis-harmonization.md](ap2-destatis-harmonization.md)
 Tick items in the PR that lands them. If a slice moves, a checkpoint slips, or
 a cut line is pulled, edit both files in the same PR.
 
-Status: draft v2.13, 2026-09-13 (slice 12 docs and packaging ticked, PR #28; the demo chapter merged as PR #27). v1 was reviewed by three independent advisors
+Status: draft v2.14, 2026-09-13 (slice 12 follow-ups ticked, PR #31: the public frames-by-column helper, the milestone-label sweep, the `from_env` half-set-pair edge case; docs and packaging ticked earlier, PR #28; the demo chapter merged as PR #27). v1 was reviewed by three independent advisors
 (two Claude models, one Codex run) against the M1 code and mloda 0.10.0; the
 findings are folded in below. Slice 0 step 0 (OpenAPI assessment) was done
 2026-08-16, reviewed by one Claude Sonnet run and one Codex run against the
@@ -1207,15 +1207,19 @@ Checkpoint C2 target (Sep 20). Week 5 is three working days (SciCAR).
       with a half-set user plus password pair. Live run as a script green
       with a warm and a cold cache; `tests/test_demo_definition.py` pins the
       recipe files the `load_recipe` calls name.)
-- [ ] Follow-up from the demo chapter: a public helper that indexes the
+- [x] Follow-up from the demo chapter: a public helper that indexes the
       `run_all` frames by column (the recipe tests' `frames_by_column`), so a
       consumer of a two-frame recipe does not re-implement the pick; the
       demo and the tests each pick a frame by a column only one side carries
-      because mloda frames carry no feature-set identity.
+      because mloda frames carry no feature-set identity. (Done 2026-09-13,
+      PR #31: `mloda_plugin_govdata/recipes/frames.py`, exported from
+      `recipes/__init__.py`; a shared column raises on every lookup form,
+      subscript, `in`, `.get()`, not only eager construction. The demo's
+      recipe-3 cell rewired onto it. Retired if os-054 lands upstream.)
 - [x] `pyproject.toml` description: "GENESIS API v3" becomes "GENESIS API
       v5.0" (or drop the version). (Done 2026-09-13, PR #28: dropped; the
       description names the GENESIS webservice and the recipes.)
-- [ ] Follow-ups from the docs and packaging pass (PR #28): README docs
+- [x] Follow-ups from the docs and packaging pass (PR #28): README docs
       links to absolute upstream URLs once upstream main carries the docs
       (PyPI renders relative links dead); milestone labels (`WP-D`, `M1`,
       ADR numbers) in the other shipped module docstrings; a token set
@@ -1223,7 +1227,14 @@ Checkpoint C2 target (Sep 20). Week 5 is three working days (SciCAR).
       `DestatisCredentials.from_env` raise `ValueError` from
       `__post_init__` instead of `MissingCredentialsError`, which the demo
       gate does not catch; the same wheel fix filed upstream as
-      mloda-plugin-template #138 and mloda-registry #594.
+      mloda-plugin-template #138 and mloda-registry #594. (Milestone labels
+      and the `from_env` edge case done 2026-09-13, PR #31: swept `WP-D`,
+      `WP-E`, `M1`, `D2`, `D4`-stretch and ADR numbers from shipped module
+      docstrings and one error message; `from_env`'s guard now fires
+      regardless of token presence, which also fixes `GenesisClient`'s
+      guest-mode fallback for the same combination. Wheel fix already filed.
+      Absolute README links still open, owner, blocked on the upstream
+      sync.)
 - [ ] Planning repo: ADRs 0002 (slice 1), 0003 (slice 3), 0004 (slice 2),
       0005 (slice 9), 0006 (slice 8), 0007 (pystatis considered and not
       adopted, written from execution notes section 5, no code slice), 0008
