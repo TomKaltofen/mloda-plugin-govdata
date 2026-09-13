@@ -1,4 +1,4 @@
-"""Destatis GV-ISys change-file loader (Gebietsstand history, ADR 0006).
+"""Destatis GV-ISys change-file loader (Gebietsstand history).
 
 Each year's "Namens-Grenz-Aenderung" workbook uses a two-level merged-cell header
 whose row offset is not something a single sample year can pin reliably across the

@@ -1,4 +1,4 @@
-"""The 16 Laender by AGS-2 code: a name check for Land rows (D2), never the join key."""
+"""The 16 Laender by AGS-2 code: a name check for Land rows, never the join key."""
 
 from __future__ import annotations
 

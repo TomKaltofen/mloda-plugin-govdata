@@ -1,4 +1,4 @@
-"""Bundeswahlleiterin federal election results (M1 elections theme, kerg.csv)."""
+"""Bundeswahlleiterin federal election results (elections theme, kerg.csv)."""
 
 from __future__ import annotations
 

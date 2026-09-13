@@ -1,8 +1,8 @@
-"""AGS-to-NUTS mapping (WP-D).
+"""AGS-to-NUTS mapping.
 
 Kreis- and Gemeinde-level exact lookup against an :class:`Edition`'s LAU-to-NUTS
-crosswalk. Land (2-digit) and ARS (12-digit) keys are out of scope this slice (D4
-stretch) and are reported unmatched, not rejected: string keys keep the door open.
+crosswalk. Land (2-digit) and ARS (12-digit) keys are out of scope for now
+and are reported unmatched, not rejected: string keys keep the door open.
 """
 
 from __future__ import annotations
@@ -53,7 +53,7 @@ def _kreis_index(lau_rows: Sequence[LauNutsRow]) -> dict[str, str]:
     """Groups LAU rows by their 5-digit Kreis prefix; each group's NUTS-3 must be unique.
 
     A Kreis spanning two NUTS-3 codes means it sits mid a boundary-reform lag window
-    (a Kreis merger that predates the next NUTS revision picking it up, see ADR 0006's
+    (a Kreis merger that predates the next NUTS revision picking it up, the
     Eisenach/Wartburgkreis case): raise rather than silently pick either one.
     """
     grouped: dict[str, set[str]] = defaultdict(set)
@@ -64,7 +64,7 @@ def _kreis_index(lau_rows: Sequence[LauNutsRow]) -> dict[str, str]:
         if len(nuts3_values) > 1:
             raise ValueError(
                 f"Kreis {kreis} maps to multiple NUTS-3 codes in this edition: {sorted(nuts3_values)}; "
-                "likely a boundary-reform lag window (ADR 0006), not resolvable without an edition split"
+                "likely a boundary-reform lag window, not resolvable without an edition split"
             )
         index[kreis] = next(iter(nuts3_values))
     return index
@@ -107,7 +107,7 @@ def _resolve_one(
     if level == AgsLevel.LAND:
         return None, f"Land-level key {key}: Land mapping is out of scope for this slice"
 
-    return None, f"ARS key {key}: Gemeinde/ARS mapping is out of scope for this slice (D4 stretch)"
+    return None, f"ARS key {key}: Gemeinde/ARS mapping is out of scope for now"
 
 
 def map_ags_to_nuts(
@@ -179,7 +179,7 @@ def map_ags_to_nuts(
 def combine_mapping_results(results: Sequence[MappingResult]) -> MappingResult:
     """Concatenates results built from the same NUTS version; raises on a mismatch.
 
-    Joining results across NUTS versions is not a valid operation (WP-D): a NUTS-3
+    Joining results across NUTS versions is not a valid operation: a NUTS-3
     code is only comparable within one edition of the NUTS classification.
     """
     if not results:

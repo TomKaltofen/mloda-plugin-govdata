@@ -1,4 +1,4 @@
-"""Re-basing Kreis-level values across a Gebietsstand change with BBSR proportional keys (WP-E).
+"""Re-basing Kreis-level values across a Gebietsstand change with BBSR proportional keys.
 
 One explicit key sheet per call, ``from_year`` to ``to_year``, forward as the BBSR file is built.
 Observations at or before ``from_year`` are taken to be on the ``from_year`` Gebietsstand and are

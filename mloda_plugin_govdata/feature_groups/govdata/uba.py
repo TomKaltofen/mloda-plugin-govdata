@@ -1,6 +1,6 @@
 """Umweltbundesamt (UBA) Air Data v4 ``measures`` endpoint: reader, URL builder, JSON flatten.
 
-The environment dataset (M1 environment theme) is publisher-direct REST JSON, not a CSV
+The dataset (environment theme) is publisher-direct REST JSON, not a CSV
 distribution, so it has a distinct shape from the GovData / Bundeswahlleiterin CSV readers.
 The response is ``{request, indices, data}`` where ``data`` is keyed by station then by
 measurement start datetime, and each leaf is ``[component id, scope id, value, date end, index]``.

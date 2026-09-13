@@ -168,7 +168,7 @@ def test_land_and_ars_keys_are_unmatched_not_raised(real_edition: Edition) -> No
     assert result.matched == ()
     reasons = {u.key: u.reason for u in result.unmatched}
     assert "out of scope" in reasons["03"]
-    assert "D4 stretch" in reasons["031599501501"]
+    assert "out of scope" in reasons["031599501501"]
 
 
 # --- Kreis spanning two NUTS-3 codes (edition-boundary lag window) -----------------------

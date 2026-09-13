@@ -29,7 +29,7 @@ __all__ = [
     "parse_ffcsv_zip",
 ]
 
-# GENESIS tables in AP2 scope are small; this is a zip-bomb guard, not a real ceiling.
+# GENESIS tables in scope here are small; this is a zip-bomb guard, not a real ceiling.
 MAX_DECOMPRESSED_BYTES = 32 * 1024 * 1024
 
 FFCSV_PREFIX: tuple[str, ...] = ("statistics_code", "statistics_label", "time_code", "time_label", "time")
