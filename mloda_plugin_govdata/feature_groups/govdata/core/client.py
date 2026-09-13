@@ -24,14 +24,14 @@ _T = TypeVar("_T", bound="OwnedHttpClient")
 class OwnedHttpClient:
     """Closes ``self._client`` on exit, but only when this instance built it rather than received it.
 
-    ``__enter__`` returns ``Self`` via a bound TypeVar: the package floor is Python 3.10, one release
-    before ``typing.Self``, and neither subclass is ever itself subclassed.
+    ``__enter__`` returns the subclass via a bound TypeVar rather than ``Self``: the package floor
+    is Python 3.10, one release before ``typing.Self``, and typing_extensions is not a dependency.
     """
 
     _owns_client: bool
     _client: httpx.Client
 
-    def __enter__(self: _T) -> _T:
+    def __enter__(self: _T) -> _T:  # noqa: PYI019  (see class docstring)
         return self
 
     def __exit__(
