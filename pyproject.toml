@@ -44,16 +44,18 @@ dev = [
     "hypothesis",
     "respx",
     "pandas-stubs",
+    "tomli; python_version < '3.11'",
 ]
 
 [tool.setuptools]
 # Code only: no package data, so a stale egg-info manifest cannot pull test modules back in as data.
+# A future data file (a py.typed marker, say) needs an explicit package-data entry.
 include-package-data = false
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["mloda_plugin_govdata*"]
-# Tests and their fixtures stay out of the wheel and the sdist; the recipe tests read repo-root files anyway.
+# Tests stay out of the wheel (and out of the sdist from a clean checkout); the recipe tests read repo-root files anyway.
 exclude = ["*.tests", "*.tests.*"]
 
 [tool.pytest.ini_options]

@@ -2,9 +2,9 @@
 
 Overrides ``_read_table`` rather than ``_fetch``: the inherited ``_fetch(locator, client)`` seam
 (built for a GET-based CKAN reader) never receives ``Options``, but a POST fetch here needs
-explicit credentials read from ``Options.context``. ``match_subclass_data_access`` and
-``_coerce_locator`` need no override: the generic base already derives them from
-``locator_type()`` (see ``BaseGovDataReader``).
+explicit credentials read from ``Options.context``. ``_coerce_locator`` needs no override: the
+generic base derives it from ``locator_type()`` (see ``BaseGovDataReader``);
+``match_subclass_data_access`` is overridden only to decline chained names.
 """
 
 from __future__ import annotations

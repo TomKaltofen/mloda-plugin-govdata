@@ -26,4 +26,4 @@ To connect a new dataset:
 
 **Matching.** `match_subclass_data_access` declines any feature name containing mloda's chain separator (`value__rebased`), so the harmonization groups own chained names and the request stays unambiguous.
 
-Tests live in `feature_groups/destatis/tests/`: replies are `respx` mocks over fixtures that `scripts/capture_genesis_fixtures.py` captured from the live hosts with every secret redacted, and one test marked `live` and `genesis_live` runs the real endpoint and skips with a visible reason when no credentials are set (see [credentials.md](credentials.md)).
+Tests live in `feature_groups/destatis/tests/`: replies are `respx` mocks over fixtures (live captures made with `scripts/capture_genesis_fixtures.py`, every secret redacted, plus documented and synthetic replies; the `NOTICE` there names each source), and the tests marked `live` and `genesis_live` run the real endpoints and skip with a visible reason when no credentials are set (see [credentials.md](credentials.md)).

@@ -87,9 +87,9 @@ see [credentials.md](credentials.md).
 
 ## Where recipe files live
 
-Repo-root `recipes/`, outside the wheel: the package ships code only (no tests, no recipe files), the same policy as the reference
-tables in the harmonization package. `recipes/land_population.json` is the first one. Test recipes sit
-next to their tests.
+Repo-root `recipes/`, outside the wheel: the package ships code only (no tests, no recipe files), the same
+policy as the reference tables in the harmonization package. The shipped files are listed below. Test
+recipes sit next to their tests.
 
 ## Shipped recipes
 

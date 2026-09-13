@@ -5,7 +5,7 @@ GENESIS annual tables carry two labels for the same annual granularity: JAHR
 or ``"31.12.2015"``). Both normalize to the same annual :class:`Period`; only
 the year matters, not which label produced it. kerg has no time column, the
 election date comes from the locator or recipe (:func:`from_snapshot`).
-Quarter and month parsing are cut from M2 (plan cut line 2, 2026-08-16):
+Quarter and month parsing are not built:
 :class:`Frequency` keeps all three values for forward compatibility, but only
 ``year`` has a working parser.
 """
