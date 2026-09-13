@@ -10,7 +10,7 @@ import httpx
 import pyarrow as pa
 import pytest
 import respx
-from mloda.provider import FeatureSet
+from mloda.provider import FeatureChainParser, FeatureSet
 from mloda.user import Feature, FeatureName, Options, mloda
 
 from mloda_plugin_govdata.feature_groups.destatis.reader import DestatisReader
@@ -40,6 +40,22 @@ def test_matches_the_year_period_name_and_the_configured_form() -> None:
     )
     (child,) = AnnualPeriodFeature().input_features(Options({}), FeatureName("time__year_period")) or set()
     assert str(child.name) == "time"
+
+
+def test_the_named_capture_binds_period_freq_by_name() -> None:
+    # Regression guard on the actual production pattern (fails against the old unnamed capture,
+    # whose parsed value is positional only, not a name -> value binding).
+    parsed = FeatureChainParser.parse_name("time__year_period", [AnnualPeriodFeature.PREFIX_PATTERN])
+    assert parsed.named_captures == {"period_freq": "year"}
+
+
+def test_a_second_overlapping_period_freq_would_still_bind_by_name() -> None:
+    # A pattern with two alternatives, as a real second frequency would add, still binds each value
+    # by name unconditionally. No FeatureGroup involved: this exercises the parser directly, so it
+    # can't leak a test-local subclass into mloda's global FeatureGroup discovery.
+    pattern = r".*__(?P<period_freq>year|quarter)_period$"
+    assert FeatureChainParser.parse_name("time__year_period", [pattern]).named_captures == {"period_freq": "year"}
+    assert FeatureChainParser.parse_name("time__quarter_period", [pattern]).named_captures == {"period_freq": "quarter"}
 
 
 @respx.mock
