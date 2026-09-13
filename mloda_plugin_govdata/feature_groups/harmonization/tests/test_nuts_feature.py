@@ -6,11 +6,13 @@ from typing import Any
 
 import pytest
 import respx
+from mloda.provider import FeatureChainParser
 from mloda.user import Feature, FeatureName, Options, mloda
 
 from mloda_plugin_govdata.feature_groups.destatis.core.auth import OPTION_GENESIS_CREDENTIALS
 from mloda_plugin_govdata.feature_groups.destatis.reader import DestatisReader
 from mloda_plugin_govdata.feature_groups.govdata.core.cache import CacheMissError
+from mloda_plugin_govdata.feature_groups.harmonization.base import PART_PATTERN
 from mloda_plugin_govdata.feature_groups.harmonization.nuts import NULL_KEY, PARTS, AgsToNutsFeature
 from mloda_plugin_govdata.harmonization.edition import Edition
 from mloda_plugin_govdata.harmonization.nuts import UnmatchedKeysError
@@ -44,6 +46,22 @@ def test_matches_only_the_pinned_edition() -> None:
         "kreis_nuts", Options(group={"nuts_version": "2021"}, context={"in_features": KEY})
     )
     assert not AgsToNutsFeature.match_feature_group_criteria("kreis_nuts", Options(context={"in_features": KEY}))
+
+
+def test_the_named_capture_binds_nuts_version_by_name() -> None:
+    # Regression guard on the actual production pattern (fails against the old unnamed capture,
+    # whose parsed value is positional only, not a name -> value binding).
+    parsed = FeatureChainParser.parse_name(NAME, [AgsToNutsFeature.PREFIX_PATTERN])
+    assert parsed.named_captures == {"nuts_version": "2024"}
+
+
+def test_a_second_overlapping_nuts_version_would_still_bind_by_name() -> None:
+    # A pattern with two alternatives, as a real second edition would add, still binds each value
+    # by name unconditionally. No FeatureGroup involved: this exercises the parser directly, so it
+    # can't leak a test-local subclass into mloda's global FeatureGroup discovery.
+    pattern = rf".*__nuts(?P<nuts_version>2024|2021)(?:~{PART_PATTERN})?$"
+    assert FeatureChainParser.parse_name(f"{KEY}__nuts2024", [pattern]).named_captures == {"nuts_version": "2024"}
+    assert FeatureChainParser.parse_name(f"{KEY}__nuts2021", [pattern]).named_captures == {"nuts_version": "2021"}
 
 
 def test_the_child_is_the_key_column_with_the_locator_forwarded() -> None:

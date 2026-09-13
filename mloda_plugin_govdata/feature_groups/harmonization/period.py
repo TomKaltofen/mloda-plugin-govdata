@@ -21,7 +21,7 @@ class AnnualPeriodFeature(HarmonizationFeature):
     snapshot-to-annual policy, not a conversion this group makes.
     """
 
-    PREFIX_PATTERN = rf".*__({Frequency.YEAR.value})_period$"
+    PREFIX_PATTERN = rf".*__(?P<period_freq>{Frequency.YEAR.value})_period$"
     MIN_IN_FEATURES = 1
     MAX_IN_FEATURES = 1
     PROPERTY_MAPPING: ClassVar = {

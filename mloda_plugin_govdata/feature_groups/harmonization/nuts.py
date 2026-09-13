@@ -28,7 +28,7 @@ class AgsToNutsFeature(HarmonizationFeature):
     (or ``nuts_version``) must be the one the cache holds, so a result names what it was mapped with.
     """
 
-    PREFIX_PATTERN = rf".*__nuts({NUTS_VERSION})(?:~{PART_PATTERN})?$"
+    PREFIX_PATTERN = rf".*__nuts(?P<nuts_version>{NUTS_VERSION})(?:~{PART_PATTERN})?$"
     MIN_IN_FEATURES = 1
     MAX_IN_FEATURES = 1
     PROPERTY_MAPPING: ClassVar = {
