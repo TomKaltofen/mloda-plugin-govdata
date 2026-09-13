@@ -5,7 +5,7 @@ Companion to [ap2-destatis-harmonization.md](ap2-destatis-harmonization.md)
 Tick items in the PR that lands them. If a slice moves, a checkpoint slips, or
 a cut line is pulled, edit both files in the same PR.
 
-Status: draft v2.12, 2026-09-13 (slice 12 demo chapter ticked, PR #27; slice 11 merged as PR #26). v1 was reviewed by three independent advisors
+Status: draft v2.13, 2026-09-13 (slice 12 docs and packaging ticked, PR #28; the demo chapter merged as PR #27). v1 was reviewed by three independent advisors
 (two Claude models, one Codex run) against the M1 code and mloda 0.10.0; the
 findings are folded in below. Slice 0 step 0 (OpenAPI assessment) was done
 2026-08-16, reviewed by one Claude Sonnet run and one Codex run against the
@@ -1158,29 +1158,42 @@ Checkpoint C2 target (Sep 20). Week 5 is three working days (SciCAR).
 - [x] Commit series `feat(recipes): destatis recipes`, `feat(recipes): M1
       retrofits`. (Done as one `feat(recipes): six shipped recipes and the
       Land code check` plus a `fix(recipes)` commit, PR #26.)
-- [ ] Follow-ups from slice 11: `[tool.setuptools.packages.find]` ships every
+- [x] Follow-ups from slice 11: `[tool.setuptools.packages.find]` ships every
       `*.tests` package and its fixtures in the wheel while the recipe tests
       read repo-root `recipes/`; exclude the tests from the wheel (slice 12
       packaging pass). `credential_env` names the token path only; the
       user plus password pair is documented as equivalent in
       `docs/recipes.md`. Regionalstatistik account still open (recipe 2
-      swap).
+      swap). (Wheel exclusion done 2026-09-13, PR #28: `exclude =
+      ["*.tests", "*.tests.*"]` plus `include-package-data = false`, pinned
+      by `tests/test_packaging.py`, the wheel checked from a stale and a
+      clean tree; the `credential_env` note landed in PR #26; the account
+      stays with the owner.)
 
 ## Slice 12: docs, demo, handoff (WP-G, woven through, about 20 h)
 
-- [ ] README: Destatis section (auth, one table, one harmonized example,
+- [x] README: Destatis section (auth, one table, one harmonized example,
       recipes). (Recipes part done 2026-09-13, PR #27: a `load_recipe`
       snippet and the demo section naming the chapter and its credentials;
       auth, one table, and the harmonized paragraph were already there, a
       code sample for the harmonized example and the destatis-options link
-      check stay with the rest of the slice.)
-- [ ] `docs/adding-a-reader.md`: the Destatis path (POST reader over the
-      fetch seam).
-- [ ] `docs/credentials.md`: env names per host, both registration URLs
+      check stay with the rest of the slice. Done 2026-09-13, PR #28: a
+      `value__rebased` code sample, the connector in the intro and status
+      line, the recipe files named as repository-only; the docs links stay
+      relative, upstream main lacks the docs, flip them in the sync PR.)
+- [x] `docs/adding-a-reader.md`: the Destatis path (POST reader over the
+      fetch seam). (Done 2026-09-13, PR #28: a section on the locator, the
+      `_read_table` override, matching and tests; the generic steps no
+      longer hardcode the GovData package.)
+- [x] `docs/credentials.md`: env names per host, both registration URLs
       (GENESIS-Online, Regionalstatistik), dual-path explanation, too-large
-      guidance.
-- [ ] `docs/destatis-options.md` (from slice 4): polish, link from the
+      guidance. (Done 2026-09-13, PR #28: the table, paths and redaction
+      were current; added the half-set pair, credentials on a cache miss
+      only, the ways out of a too-large result, the demo skip.)
+- [x] `docs/destatis-options.md` (from slice 4): polish, link from the
       README Destatis section, mark stretch endpoint options as deferred.
+      (Done 2026-09-13, PR #28: option forms, the locator-only fields, a
+      deferred section; the README link exists and stays relative.)
 - [x] `demos/govdata_demo.py`: Destatis chapter (recipe 3 as the story).
       (Done 2026-09-13, PR #27,
       https://github.com/TomKaltofen/mloda-plugin-govdata/pull/27: chapter 5
@@ -1199,8 +1212,18 @@ Checkpoint C2 target (Sep 20). Week 5 is three working days (SciCAR).
       consumer of a two-frame recipe does not re-implement the pick; the
       demo and the tests each pick a frame by a column only one side carries
       because mloda frames carry no feature-set identity.
-- [ ] `pyproject.toml` description: "GENESIS API v3" becomes "GENESIS API
-      v5.0" (or drop the version).
+- [x] `pyproject.toml` description: "GENESIS API v3" becomes "GENESIS API
+      v5.0" (or drop the version). (Done 2026-09-13, PR #28: dropped; the
+      description names the GENESIS webservice and the recipes.)
+- [ ] Follow-ups from the docs and packaging pass (PR #28): README docs
+      links to absolute upstream URLs once upstream main carries the docs
+      (PyPI renders relative links dead); milestone labels (`WP-D`, `M1`,
+      ADR numbers) in the other shipped module docstrings; a token set
+      beside a half-set user plus password pair makes
+      `DestatisCredentials.from_env` raise `ValueError` from
+      `__post_init__` instead of `MissingCredentialsError`, which the demo
+      gate does not catch; the same wheel fix filed upstream as
+      mloda-plugin-template #138 and mloda-registry #594.
 - [ ] Planning repo: ADRs 0002 (slice 1), 0003 (slice 3), 0004 (slice 2),
       0005 (slice 9), 0006 (slice 8), 0007 (pystatis considered and not
       adopted, written from execution notes section 5, no code slice), 0008
