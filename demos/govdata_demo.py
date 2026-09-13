@@ -167,54 +167,71 @@ def _(mo):
 
 @app.cell
 def _():
-    from mloda_plugin_govdata.feature_groups.destatis import GENESIS_ONLINE, DestatisCredentials
-    from mloda_plugin_govdata.feature_groups.govdata.core.cache import DownloadCache
+    from mloda_plugin_govdata.feature_groups.destatis import (
+        GENESIS_ONLINE,
+        DestatisCredentials,
+        MissingCredentialsError,
+    )
+    from mloda_plugin_govdata.feature_groups.govdata import CacheMissError, DownloadCache
     from mloda_plugin_govdata.feature_groups.harmonization import KreisRebaseFeature
     from mloda_plugin_govdata.harmonization.land_codes import check_land_names
-    from mloda_plugin_govdata.harmonization.reference.download import fetch_pinned
-    from mloda_plugin_govdata.harmonization.reference.sources import BBSR_KREISE
+    from mloda_plugin_govdata.harmonization.reference.bbsr import load_bbsr_kreise
     from mloda_plugin_govdata.recipes import load_recipe
 
     return (
-        BBSR_KREISE,
+        CacheMissError,
         DestatisCredentials,
         DownloadCache,
         GENESIS_ONLINE,
         KreisRebaseFeature,
+        MissingCredentialsError,
         check_land_names,
-        fetch_pinned,
+        load_bbsr_kreise,
         load_recipe,
     )
 
 
 @app.cell
-def _(DestatisCredentials, GENESIS_ONLINE, mo):
-    mo.stop(
-        DestatisCredentials.from_env(GENESIS_ONLINE) is None,
-        mo.md("No GENESIS-Online credentials in the environment; the Destatis cells are skipped."),
-    )
+def _(DestatisCredentials, GENESIS_ONLINE, MissingCredentialsError, mo):
+    _why = None
+    try:
+        if DestatisCredentials.from_env(GENESIS_ONLINE) is None:
+            _why = "no GENESIS-Online credentials in the environment"
+    except MissingCredentialsError as exc:  # one half of the user plus password pair
+        _why = str(exc)
+    if mo.notebook_dir() is None:
+        _why = "the notebook has no file location, so `recipes/` cannot be found"
+    mo.stop(_why is not None, mo.md(f"Destatis cells skipped: {_why}"))
     recipes = mo.notebook_dir().parent / "recipes"
 
     def compliance_note(recipe):
         sources = "\n".join(
-            f"- {s.attribution}, {s.license}, retrieved {s.retrieved_at:%Y-%m-%d}" for s in recipe.compliance.sources
+            f"- {s.attribution}, {s.license}, retrieved {s.retrieved_at:%Y-%m-%d}; "
+            f"changed: {'; '.join(s.modifications)}"
+            for s in recipe.compliance.sources
         )
-        return mo.md(f"{sources}\n\n{recipe.compliance.notes}")
+        return mo.md(f"{sources}\n\n{recipe.compliance.notes or ''}")
 
     return compliance_note, recipes
 
 
 @app.cell
 def _(mo):
-    mo.md("""### Recipe 3: population per eligible voter by Land (`12411-0010` and `kerg.csv`)""")
+    mo.md(
+        """
+        ### Population per eligible voter by Land (`land_population_voters.json`)
+
+        Both sides run without the recipe's links block (mloda does not honor discriminators on a
+        same-class link yet), so the two sources come back as two frames. `check_land_names` verifies
+        the AGS-2 codes and names on each side before they are combined by hand.
+        """
+    )
     return
 
 
 @app.cell
 def _(check_land_names, load_recipe, mloda, recipes):
     land_recipe = load_recipe(recipes / "land_population_voters.json")
-    # Without the links block: mloda does not honor discriminators on a same-class link yet, so the
-    # two sources come back as two frames, checked here and combined by hand below.
     _frames = mloda.run_all(land_recipe.features, compute_frameworks=["PyArrowTable"])
     population_by_land = next(t for t in _frames if "value" in t.column_names).to_pandas()
     _election = next(t for t in _frames if "Nr" in t.column_names).to_pandas()
@@ -251,17 +268,27 @@ def _(compliance_note, land_recipe):
 
 @app.cell
 def _(mo):
-    mo.md("""### Recipe 1: a Kreis series re-based across the Göttingen merger (`12411-0015`, BBSR keys)""")
+    mo.md(
+        """
+        ### A Kreis series re-based across the Göttingen merger (`kreis_population_rebased.json`)
+
+        The BBSR key file must be in the download cache before the feature group runs: fetched once,
+        checked against its pinned sha256, read offline afterwards.
+        """
+    )
     return
 
 
 @app.cell
-def _(BBSR_KREISE, DownloadCache, KreisRebaseFeature, fetch_pinned, load_recipe, mloda, recipes):
+def _(CacheMissError, DownloadCache, KreisRebaseFeature, load_bbsr_kreise, load_recipe, mloda, recipes):
     with DownloadCache(KreisRebaseFeature.cache_dir) as _cache:
-        fetch_pinned(_cache, BBSR_KREISE, revalidate=True)  # the key file once into the cache, offline afterwards
+        try:
+            load_bbsr_kreise(_cache)
+        except CacheMissError:
+            load_bbsr_kreise(_cache, revalidate=True)
     kreis_recipe = load_recipe(recipes / "kreis_population_rebased.json")
     rebased = mloda.run_all(kreis_recipe.features, compute_frameworks=["PyArrowTable"])[0].to_pandas()
-    rebased.columns = [name.split("~")[1] for name in rebased.columns]  # destatis__bevoelkerung__kreise~key to key
+    rebased.columns = [name.rpartition("~")[2] for name in rebased.columns]  # strip the feature-name prefix
     rebased[["key", "year", "value", "flag", "sources", "marker", "issues"]]
     return (kreis_recipe,)
 

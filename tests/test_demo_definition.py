@@ -21,12 +21,22 @@ def test_demo_defines_marimo_app() -> None:
     assert isinstance(module.app, marimo.App)
 
 
-def test_every_recipe_file_the_demo_names_is_shipped() -> None:
+def _recipe_files_the_demo_loads() -> set[str]:
     tree = ast.parse(DEMO_PATH.read_text(encoding="utf-8"))
-    names = {
-        node.value
+    calls = [
+        node
         for node in ast.walk(tree)
-        if isinstance(node, ast.Constant) and isinstance(node.value, str) and node.value.endswith(".json")
+        if isinstance(node, ast.Call) and getattr(node.func, "id", None) == "load_recipe"
+    ]
+    return {
+        leaf.value
+        for call in calls
+        for leaf in ast.walk(call)
+        if isinstance(leaf, ast.Constant) and isinstance(leaf.value, str)
     }
+
+
+def test_every_recipe_file_the_demo_loads_is_shipped() -> None:
+    names = _recipe_files_the_demo_loads()
     assert names, "the Destatis chapter loads recipe files"
-    assert all((RECIPES_DIR / name).is_file() for name in names), names
+    assert [name for name in sorted(names) if not (RECIPES_DIR / name).is_file()] == []
