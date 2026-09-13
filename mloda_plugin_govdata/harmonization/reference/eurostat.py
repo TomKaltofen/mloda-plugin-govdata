@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from mloda_plugin_govdata.feature_groups.govdata.core.cache import DownloadCache
 
 from .download import fetch_pinned, load_workbook
-from .sources import EUROSTAT_LAU_NUTS, EUROSTAT_NUTS_CORRESPONDENCE
+from .sources import EUROSTAT_LAU_NUTS
 
 _LAST_UPDATE = re.compile(r"last update (\d{2}/\d{2}/\d{4}).*based on (NUTS \d+ and LAU \d+)")
 
@@ -58,12 +58,6 @@ def parse_nuts_correspondence_workbook(path: str | os.PathLike[str]) -> NutsCorr
     )
 
 
-def load_nuts_correspondence_overview(cache: DownloadCache, *, revalidate: bool = False) -> NutsCorrespondenceOverview:
-    """Fetches (offline-cache-first) and parses the Eurostat NUTS correspondence overview."""
-    path = fetch_pinned(cache, EUROSTAT_NUTS_CORRESPONDENCE, revalidate=revalidate)
-    return parse_nuts_correspondence_workbook(path)
-
-
 @dataclass(frozen=True)
 class LauNutsRow:
     period: int
@@ -81,7 +75,7 @@ def parse_lau_nuts_de_workbook(path: str | os.PathLike[str]) -> list[LauNutsRow]
     """Parses the Eurostat LAU-to-NUTS correspondence workbook, Germany sheet only.
 
     NUTS 2024 / LAU 2025 edition (not the newer-labelled "2027" summary
-    table from :func:`load_nuts_correspondence_overview`). Germany's row in the
+    table from :func:`parse_nuts_correspondence_workbook`). Germany's row in the
     source file's own Overview sheet (not loaded here) is marked fully validated
     across every column; among all EU-27 countries only Cyprus carries a
     partial-validation caveat there (2018 FUA commuting data), so this DE-only
