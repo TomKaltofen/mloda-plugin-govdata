@@ -1,4 +1,4 @@
-"""BBSR Umsteigeschluessel Kreise loader (proportional re-basing keys, ADR 0006)."""
+"""BBSR Umsteigeschluessel Kreise loader (proportional re-basing keys)."""
 
 from __future__ import annotations
 

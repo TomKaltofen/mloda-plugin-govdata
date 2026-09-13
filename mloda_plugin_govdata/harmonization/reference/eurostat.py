@@ -1,4 +1,4 @@
-"""Eurostat NUTS/LAU reference-table loaders (ADR 0006)."""
+"""Eurostat NUTS/LAU reference-table loaders."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ _LAST_UPDATE = re.compile(r"last update (\d{2}/\d{2}/\d{4}).*based on (NUTS \d+ 
 class NutsCorrespondenceOverview:
     """The small DE summary row of Eurostat's "Correspondence table" (edition overview only).
 
-    Not the crosswalk used for mapping: see ADR 0006, Edition identity. This table's own
+    Not the crosswalk used for mapping: see :class:`Edition`. This table's own
     ``edition_label`` names the NUTS/LAU edition it was drawn from, which lags the one
     :func:`load_lau_nuts_de` uses (``nuts_version="2024"``); mismatch is expected, not a bug.
     """
@@ -80,7 +80,7 @@ class LauNutsRow:
 def parse_lau_nuts_de_workbook(path: str | os.PathLike[str]) -> list[LauNutsRow]:
     """Parses the Eurostat LAU-to-NUTS correspondence workbook, Germany sheet only.
 
-    NUTS 2024 / LAU 2025 edition (ADR 0006, not the newer-labelled "2027" summary
+    NUTS 2024 / LAU 2025 edition (not the newer-labelled "2027" summary
     table from :func:`load_nuts_correspondence_overview`). Germany's row in the
     source file's own Overview sheet (not loaded here) is marked fully validated
     across every column; among all EU-27 countries only Cyprus carries a

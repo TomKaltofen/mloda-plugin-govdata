@@ -10,9 +10,9 @@ import respx
 from mloda.user import Feature
 
 from mloda_plugin_govdata.harmonization.land_codes import LAND_NAMES, check_land_names
-from mloda_plugin_govdata.recipes import LoadedRecipe, load_recipe
+from mloda_plugin_govdata.recipes import LoadedRecipe, frames_by_column, load_recipe
 
-from .conftest import FFCSV_FIXTURES, GOVDATA_FIXTURES, LAND_ZIP, Mock, frames_by_column, run
+from .conftest import FFCSV_FIXTURES, GOVDATA_FIXTURES, LAND_ZIP, Mock, run
 from .shipped import CSU_ZWEITSTIMMEN, KEY, LAND_POPULATION_VOTERS, VOTERS
 
 Genesis = Callable[[Mapping[str, str | bytes]], respx.Route]

@@ -1,1 +1,1 @@
-"""Loaders for the WP-D reference tables (ADR 0006): BBSR, GV-ISys, Eurostat NUTS/LAU."""
+"""Loaders for the reference tables: BBSR, GV-ISys, Eurostat NUTS/LAU."""

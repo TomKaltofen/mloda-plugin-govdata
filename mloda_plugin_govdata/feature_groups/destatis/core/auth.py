@@ -95,7 +95,7 @@ class DestatisCredentials:
         token, user, password = (_clean(env.get(host.env_var(suffix))) for suffix in ENV_SUFFIXES)
         if token is None and user is None and password is None:
             return None
-        if token is None and (user is None) != (password is None):
+        if (user is None) != (password is None):
             missing = host.env_var("PASSWORD" if password is None else "USER")
             raise MissingCredentialsError(f"{missing} is not set; the password path needs both user and password.")
         return cls(host=host.name, token=token, user=user, password=password)

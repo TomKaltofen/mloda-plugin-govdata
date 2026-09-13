@@ -1,4 +1,4 @@
-"""Marimo demo: discover GovData datasets, read the three M1 example datasets, run two Destatis recipes.
+"""Marimo demo: discover GovData datasets, read three example datasets, run two Destatis recipes.
 
 Run with: marimo edit demos/govdata_demo.py (needs network access; install the
 "demo" extra for marimo itself).
@@ -24,7 +24,7 @@ def _(mo):
         # mloda-plugin-govdata demo
 
         German open government data as mloda features: search GovData via the
-        paginated CKAN API, read the three M1 example datasets (population,
+        paginated CKAN API, read three example datasets (population,
         elections, environment) as typed Arrow tables, then run two shipped
         recipes over Destatis tables. Every cell below talks to the live
         endpoints; downloads are cached locally after the first run.
@@ -200,7 +200,7 @@ def _():
     from mloda_plugin_govdata.feature_groups.harmonization import KreisRebaseFeature
     from mloda_plugin_govdata.harmonization.land_codes import check_land_names
     from mloda_plugin_govdata.harmonization.reference.bbsr import load_bbsr_kreise
-    from mloda_plugin_govdata.recipes import load_recipe
+    from mloda_plugin_govdata.recipes import frames_by_column, load_recipe
 
     return (
         CacheMissError,
@@ -210,6 +210,7 @@ def _():
         KreisRebaseFeature,
         MissingCredentialsError,
         check_land_names,
+        frames_by_column,
         load_bbsr_kreise,
         load_recipe,
     )
@@ -254,11 +255,11 @@ def _(mo):
 
 
 @app.cell
-def _(check_land_names, load_recipe, mloda, recipes):
+def _(check_land_names, frames_by_column, load_recipe, mloda, recipes):
     land_recipe = load_recipe(recipes / "land_population_voters.json")
-    _frames = mloda.run_all(land_recipe.features, compute_frameworks=["PyArrowTable"])
-    population_by_land = next(t for t in _frames if "value" in t.column_names).to_pandas()
-    _election = next(t for t in _frames if "Nr" in t.column_names).to_pandas()
+    _frames = frames_by_column(mloda.run_all(land_recipe.features, compute_frameworks=["PyArrowTable"]))
+    population_by_land = _frames["value"].to_pandas()
+    _election = _frames["Nr"].to_pandas()
     voters_by_land = _election[_election["gehört zu"] == "99"]  # the Land rows; Bundesgebiet has no parent
     check_land_names(
         zip(population_by_land["1_variable_attribute_code"], population_by_land["1_variable_attribute_label"])

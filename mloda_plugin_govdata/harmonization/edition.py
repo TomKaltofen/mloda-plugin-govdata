@@ -1,4 +1,4 @@
-"""Edition identity for the WP-D reference data (ADR 0006).
+"""Edition identity for the reference data.
 
 An ``Edition`` names which Gebietsstand and NUTS revision a ``map_ags_to_nuts()``
 call resolves keys against, and carries the loaded crosswalk itself: the reference-
@@ -20,7 +20,7 @@ from .reference.sources import EUROSTAT_LAU_NUTS
 
 # The pinned crosswalk is a single-year snapshot; this is the NUTS edition it represents,
 # not to be confused with the differently-labelled Eurostat "Correspondence table" edition
-# (see reference/eurostat.py:NutsCorrespondenceOverview and ADR 0006, Edition identity).
+# (see reference/eurostat.py:NutsCorrespondenceOverview).
 NUTS_VERSION = "2024"
 
 
@@ -68,7 +68,7 @@ def load_edition(
 def default_edition(cache_dir: str | os.PathLike[str] = DEFAULT_CACHE_DIR) -> Edition:
     """Loads the :class:`Edition` from whatever is already cached offline.
 
-    ADR 0006: the default edition must raise with the fetch instruction on an empty
+    The default edition must raise with the fetch instruction on an empty
     cache rather than silently fall back to a bundled subset (there is no bundled subset).
     """
     with DownloadCache(Path(cache_dir)) as cache:

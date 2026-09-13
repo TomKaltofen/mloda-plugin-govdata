@@ -1,4 +1,4 @@
-"""Parameter-keyed cache for POST replies (``data/tablefile``); a sibling of the M1 ``DownloadCache``.
+"""Parameter-keyed cache for POST replies (``data/tablefile``); a sibling of ``DownloadCache``.
 
 A GET reply is keyed by URL and revalidated conditionally; a POST reply is keyed by host, endpoint,
 and the form fields as sent, with no revalidation. Freshness rule: a hit wins with no request,

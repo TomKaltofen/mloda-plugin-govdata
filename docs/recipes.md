@@ -106,8 +106,9 @@ recipes sit next to their tests.
 
 The re-based recipe needs the BBSR key file in the cache (`load_bbsr_kreise(cache, revalidate=True)`
 once). The Land join waits on mloda honoring link discriminators for same-class links; until then run
-its features without the links block and combine the two frames yourself, checking the Land names with
-`harmonization.land_codes.check_land_names`. A `-` in a GENESIS cell arrives as 0 with the sign kept in
+its features without the links block and combine the two frames yourself, picking each one with
+`recipes.frames_by_column` and checking the Land names with `harmonization.land_codes.check_land_names`.
+A `-` in a GENESIS cell arrives as 0 with the sign kept in
 `value_marker`; only the harmonization step, which knows the validity windows, turns it into not applicable,
 so a consumer of raw columns reads the marker before taking a 0 as a count. Each recipe except the first
 has a test pinning its zero-versus-missing case, and each pins the sha256 of the payload it was run against

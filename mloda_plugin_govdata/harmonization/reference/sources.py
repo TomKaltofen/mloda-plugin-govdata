@@ -1,6 +1,6 @@
-"""Pinned reference-table sources for the WP-D harmonization mapper (ADR 0006).
+"""Pinned reference-table sources for the harmonization mapper.
 
-All four sources are redistributable (ADR 0006, Context): BBSR and Destatis under
+All four sources are redistributable: BBSR and Destatis under
 Datenlizenz Deutschland - Namensnennung - Version 2.0 (dl-de/by-2-0), Eurostat under
 CC BY 4.0. Hashes below are the *original* published file's sha256, fetched and pinned
 2026-08-17 (see the fixtures' own ``NOTICE`` for the matching extract hashes).
