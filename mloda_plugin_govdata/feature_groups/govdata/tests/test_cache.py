@@ -2,13 +2,14 @@
 
 import hashlib
 import json
+import os
 from pathlib import Path
 
 import httpx
 import pytest
 import respx
 
-from mloda_plugin_govdata.feature_groups.govdata.core.cache import CacheMissError, DownloadCache
+from mloda_plugin_govdata.feature_groups.govdata.core.cache import CacheMissError, DownloadCache, write_atomic
 
 URL = "https://example.org/data.csv"
 BODY = b"Stichtag;Wert\r\n30.06.2020;1\r\n"
@@ -148,6 +149,62 @@ def test_meta_data_file_is_not_trusted(tmp_path: Path) -> None:
         with pytest.raises(CacheMissError):
             cache.get_or_download(URL, revalidate=False)
     assert respx.calls.call_count == 1  # only the initial download; no extra HTTP calls
+
+
+def test_write_atomic_replaces_an_existing_file_in_place(tmp_path: Path) -> None:
+    path = tmp_path / "target.bin"
+    write_atomic(path, b"first")
+    write_atomic(path, b"second")
+    assert path.read_bytes() == b"second"
+    assert not list(tmp_path.glob("*.tmp"))
+
+
+@respx.mock
+def test_a_failed_blob_replace_leaves_no_partial_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    respx.get(URL).mock(return_value=httpx.Response(200, content=BODY, headers={"ETag": ETAG}))
+    real_replace = os.replace
+
+    def fail_on_blob(src: str | os.PathLike[str], dst: str | os.PathLike[str]) -> None:
+        if str(dst).endswith(".bin"):
+            raise OSError("simulated replace failure")
+        real_replace(src, dst)
+
+    monkeypatch.setattr(os, "replace", fail_on_blob)
+    with DownloadCache(tmp_path) as cache, pytest.raises(OSError, match="simulated replace failure"):
+        cache.get_or_download(URL)
+    assert not list(tmp_path.glob("*.bin"))
+    assert not list(tmp_path.glob("*.meta.json"))
+    assert not list(tmp_path.glob("*.tmp"))
+
+    monkeypatch.setattr(os, "replace", real_replace)
+    with DownloadCache(tmp_path) as cache:
+        assert cache.get_or_download(URL).path.read_bytes() == BODY  # a retry still works
+
+
+@respx.mock
+def test_a_failed_meta_replace_leaves_no_partial_meta_and_reads_back_as_a_miss(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    respx.get(URL).mock(return_value=httpx.Response(200, content=BODY, headers={"ETag": ETAG}))
+    real_replace = os.replace
+
+    def fail_on_meta(src: str | os.PathLike[str], dst: str | os.PathLike[str]) -> None:
+        if str(dst).endswith(".meta.json"):
+            raise OSError("simulated replace failure")
+        real_replace(src, dst)
+
+    monkeypatch.setattr(os, "replace", fail_on_meta)
+    with DownloadCache(tmp_path) as cache, pytest.raises(OSError, match="simulated replace failure"):
+        cache.get_or_download(URL)
+    assert not list(tmp_path.glob("*.meta.json"))
+    assert not list(tmp_path.glob("*.tmp"))
+
+    monkeypatch.setattr(os, "replace", real_replace)
+    with DownloadCache(tmp_path) as cache:
+        # orphan blob, no meta: still a miss
+        with pytest.raises(CacheMissError):
+            cache.get_or_download(URL, revalidate=False)
+        assert cache.get_or_download(URL).path.read_bytes() == BODY  # a retry still works
 
 
 @respx.mock

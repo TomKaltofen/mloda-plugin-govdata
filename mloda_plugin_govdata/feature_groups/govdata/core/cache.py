@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import os
@@ -18,6 +19,22 @@ from .client import OwnedHttpClient, build_client, request_with_retry
 
 # Persistent cache location shared by the readers and the Destatis client's lock file.
 DEFAULT_CACHE_DIR = Path(tempfile.gettempdir()) / "mloda-govdata-cache"
+
+
+def write_atomic(path: Path, data: bytes) -> None:
+    """Writes ``data`` to ``path`` atomically; never leaves a partial file behind on failure.
+    ``path.parent`` must already exist."""
+    tmp_name: str | None = None
+    try:
+        with tempfile.NamedTemporaryFile(dir=path.parent, prefix=f"{path.name}.", suffix=".tmp", delete=False) as tmp:
+            tmp_name = tmp.name
+            tmp.write(data)
+        os.replace(tmp_name, path)
+    except BaseException:
+        if tmp_name is not None:
+            with contextlib.suppress(OSError):
+                Path(tmp_name).unlink(missing_ok=True)
+        raise
 
 
 class CacheMissError(RuntimeError):
@@ -113,7 +130,7 @@ class DownloadCache(OwnedHttpClient):
         body = response.content
         digest = hashlib.sha256(body).hexdigest()
         data_path = self.cache_dir / f"{digest}.bin"
-        data_path.write_bytes(body)
+        write_atomic(data_path, body)
         retrieved_at = datetime.now(timezone.utc)
         meta: dict[str, Any] = {
             "url": url,
@@ -123,5 +140,6 @@ class DownloadCache(OwnedHttpClient):
             "data_file": data_path.name,
             "retrieved_at": retrieved_at.isoformat(),
         }
-        self._meta_path(url).write_text(json.dumps(meta), encoding="utf-8")
+        # Meta last: an orphan blob reads back as a miss, never a truncated hit.
+        write_atomic(self._meta_path(url), json.dumps(meta).encode("utf-8"))
         return CachedFile(path=data_path, url=url, sha256=digest, etag=meta["etag"], retrieved_at=retrieved_at)
