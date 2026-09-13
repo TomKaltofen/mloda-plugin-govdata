@@ -2,28 +2,35 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator, Mapping
 from typing import Any
 
 
-class _FramesByColumn(dict[str, Any]):
-    """A dict of column name to frame; a column two frames share raises on lookup, not at build time."""
+class _FramesByColumn(Mapping[str, Any]):
+    """Read-only map of column name to frame; a column two frames share raises ValueError on lookup.
+
+    `in` and `.get()` raise the same way (neither silently reports a shared column as absent);
+    iteration and `len()` simply never surface it, since it resolves to no single frame.
+    """
 
     def __init__(self, frames: dict[str, Any], ambiguous: frozenset[str]) -> None:
-        super().__init__(frames)
+        self._frames = frames
         self._ambiguous = ambiguous
 
     def __getitem__(self, column: str) -> Any:
         if column in self._ambiguous:
             raise ValueError(f"column {column!r} is in two frames; pick the frame by another column")
-        return super().__getitem__(column)
+        return self._frames[column]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._frames)
+
+    def __len__(self) -> int:
+        return len(self._frames)
 
 
-def frames_by_column(result: Iterable[Any]) -> dict[str, Any]:
-    """Indexes a `mloda.run_all` result by column name, since mloda frames carry no feature-set identity.
-
-    A column shared by two frames raises only when looked up.
-    """
+def frames_by_column(result: Iterable[Any]) -> Mapping[str, Any]:
+    """Indexes a `mloda.run_all` result by column name, since mloda frames carry no feature-set identity."""
     frames: dict[str, Any] = {}
     ambiguous: set[str] = set()
     for table in result:

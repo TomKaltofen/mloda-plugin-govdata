@@ -105,7 +105,7 @@ def _resolve_one(
         return None, f"Gemeinde/Gemeindefreies Gebiet {key} not found in this edition's LAU-to-NUTS crosswalk"
 
     if level == AgsLevel.LAND:
-        return None, f"Land-level key {key}: Land mapping is out of scope for this slice"
+        return None, f"Land-level key {key}: Land mapping is out of scope for now"
 
     return None, f"ARS key {key}: Gemeinde/ARS mapping is out of scope for now"
 
