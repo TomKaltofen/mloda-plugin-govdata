@@ -16,6 +16,7 @@ from .sources import BBSR_KREISE
 
 _SHEET_NAME = re.compile(r"^(\d{4})-(\d{4})$")
 _KEY_HEADER = re.compile(r"^kreise31\.12\.(\d{4})")
+_NAME_HEADER = re.compile(r"^kreisname(\d{4})$")
 _UMLAUTS = str.maketrans({"ä": "a", "ö": "o", "ü": "u", "ß": "ss"})
 
 # Columns found by header text, not position: sheets before the SvB series began carry no employee columns.
@@ -69,10 +70,26 @@ def _columns(header: tuple[Any, ...], name: str, from_year: int, to_year: int) -
         raise ValueError(f"sheet {name}: header Stichtage {tuple(stichtage)} do not match the sheet name's year pair")
     if len(names) != 2:
         raise ValueError(f"sheet {name}: expected two Kreisname columns, got {len(names)}: {header!r}")
-    found["source_name"], found["target_name"] = names
     missing = [field for field in _REQUIRED if field not in found]
     if missing:
         raise ValueError(f"sheet {name}: header lacks {missing}: {header!r}")
+    # Each Kreisname column must sit right after its own key column (verified against every sheet
+    # of the real pinned file); this alone still accepts a header where two distinct-year labels
+    # are swapped between the two (still adjacent) slots, so cross-check the labels' own years too,
+    # skipping the check when they are equal: a real sheet (1996-1997) repeats one year on both.
+    if names != [found["source_key"] + 1, found["target_key"] + 1]:
+        raise ValueError(
+            f"sheet {name}: Kreisname columns {names} do not sit next to their key columns "
+            f"[{found['source_key']}, {found['target_key']}]: {header!r}"
+        )
+    label_years = [m.group(1) for cell in (header[i] for i in names) if (m := _NAME_HEADER.match(_normalize(cell)))]
+    labels_distinguish = len(label_years) == 2 and label_years[0] != label_years[1]
+    if labels_distinguish and (int(label_years[0]), int(label_years[1])) != (from_year, to_year):
+        raise ValueError(
+            f"sheet {name}: Kreisname labels {label_years} contradict the sheet's year pair "
+            f"{(from_year, to_year)}: {header!r}"
+        )
+    found["source_name"], found["target_name"] = names
     return found
 
 

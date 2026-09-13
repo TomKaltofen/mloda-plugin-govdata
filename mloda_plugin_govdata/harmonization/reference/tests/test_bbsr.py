@@ -100,6 +100,32 @@ def test_a_header_without_share_columns_is_refused_by_name(tmp_path: Path) -> No
         parse_bbsr_kreise_workbook(path)
 
 
+def test_same_year_kreisname_labels_still_parse_by_position(tmp_path: Path) -> None:
+    # The 1996-1997 shape: both Kreisname headers repeat one year; position, not label text, is trusted.
+    header = ["Kreise\n 31.12.2015", "Kreisname 2015", *SHARE_HEADERS, "Kreise\n 31.12.2016", "Kreisname 2015"]
+    data = [3152000, "Alt", 1.0, 0.5, 0.2, 1117.24, 255.7, 100.0, 3159000, "Neu"]
+    (row,) = parse_bbsr_kreise_workbook(_workbook(tmp_path, header, data))
+    assert (row.source_name, row.target_name) == ("Alt", "Neu")
+
+
+def test_kreisname_columns_outside_the_key_pair_are_refused(tmp_path: Path) -> None:
+    # Both Kreisname columns fall after both key columns, not next to their own key; refused.
+    header = ["Kreise\n 31.12.2015", "Kreise\n 31.12.2016", *SHARE_HEADERS, "Kreisname 2015", "Kreisname 2016"]
+    data = [3152000, 3159000, 1.0, 0.5, 0.2, 1117.24, 255.7, 100.0, "Alt", "Neu"]
+    with pytest.raises(ValueError, match=r"Kreisname columns \[8, 9\] do not sit next to their key columns"):
+        parse_bbsr_kreise_workbook(_workbook(tmp_path, header, data))
+
+
+def test_kreisname_labels_swapped_between_their_own_keys_are_refused(tmp_path: Path) -> None:
+    # Both Kreisname columns sit correctly next to their own key column, but the label text is
+    # swapped between them: position alone cannot catch this, only the labels' own years (when
+    # they differ from each other) can be cross-checked against the sheet's year pair.
+    header = ["Kreise\n 31.12.2015", "Kreisname 2016", *SHARE_HEADERS, "Kreise\n 31.12.2016", "Kreisname 2015"]
+    data = [3152000, "Neu", 1.0, 0.5, 0.2, 1117.24, 255.7, 100.0, 3159000, "Alt"]
+    with pytest.raises(ValueError, match=r"Kreisname labels \['2016', '2015'\] contradict"):
+        parse_bbsr_kreise_workbook(_workbook(tmp_path, header, data))
+
+
 def test_early_sheets_without_employee_columns_parse_with_none(tmp_path: Path) -> None:
     # The real file's 1990s sheets carry area and population only; columns are found by header text, not position.
     header = [
