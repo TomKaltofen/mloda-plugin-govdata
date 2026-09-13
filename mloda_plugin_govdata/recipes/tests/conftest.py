@@ -62,11 +62,6 @@ def ffcsv_zip_with_rows(zip_bytes: bytes, edit: Callable[[str], str]) -> bytes:
 
 
 @pytest.fixture
-def fixtures_dir() -> Path:
-    return Path(__file__).parent / "fixtures"
-
-
-@pytest.fixture
 def recipes_dir() -> Path:
     return RECIPES_DIR
 

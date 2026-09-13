@@ -6,11 +6,6 @@ _FEATURE_GROUPS = Path(__file__).parents[2] / "feature_groups"
 
 
 @pytest.fixture
-def fixtures_dir() -> Path:
-    return Path(__file__).parent / "fixtures"
-
-
-@pytest.fixture
 def reference_fixtures_dir() -> Path:
     return Path(__file__).parent.parent / "reference" / "tests" / "fixtures"
 

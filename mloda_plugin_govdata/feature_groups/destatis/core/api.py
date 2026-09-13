@@ -15,14 +15,13 @@ from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from types import TracebackType
 from typing import Any
 
 import httpx
 from filelock import FileLock, Timeout
 
 from ...govdata.core.cache import DEFAULT_CACHE_DIR
-from ...govdata.core.client import RetryableStatusError, build_client, send_with_retry
+from ...govdata.core.client import OwnedHttpClient, RetryableStatusError, build_client, send_with_retry
 from .auth import DestatisCredentials, resolve_credentials
 from .envelope import (
     GenesisEnvelope,
@@ -111,7 +110,7 @@ def _process_lock(host: GenesisHost) -> threading.Lock:
         return _process_locks.setdefault((host.name, host.base_url), threading.Lock())
 
 
-class GenesisClient:
+class GenesisClient(OwnedHttpClient):
     """Calls one GENESIS host. Credentials resolve lazily (explicit, then env) on the first call that needs them."""
 
     def __init__(
@@ -137,18 +136,6 @@ class GenesisClient:
         self._client = client if client is not None else build_client(follow_redirects=False)
         lock_root = Path(lock_dir) if lock_dir is not None else DEFAULT_CACHE_DIR
         self.lock_path = lock_root / LOCK_FILE_NAME.format(host=self.host.name)
-
-    def __enter__(self) -> GenesisClient:  # noqa: PYI034  (3.10 floor, class not subclassed)
-        return self
-
-    def __exit__(
-        self, exc_type: type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None
-    ) -> None:
-        self.close()
-
-    def close(self) -> None:
-        if self._owns_client:
-            self._client.close()
 
     @property
     def credentials(self) -> DestatisCredentials:

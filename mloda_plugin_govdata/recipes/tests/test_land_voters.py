@@ -10,15 +10,13 @@ import respx
 from mloda.user import Feature
 
 from mloda_plugin_govdata.harmonization.land_codes import LAND_NAMES, check_land_names
+from mloda_plugin_govdata.harmonization.tests.test_land_codes import BUNDESGEBIET, BUNDESGEBIET_ROW
 from mloda_plugin_govdata.recipes import LoadedRecipe, frames_by_column, load_recipe
 
 from .conftest import FFCSV_FIXTURES, GOVDATA_FIXTURES, LAND_ZIP, Mock, run
 from .shipped import CSU_ZWEITSTIMMEN, KEY, LAND_POPULATION_VOTERS, VOTERS
 
 Genesis = Callable[[Mapping[str, str | bytes]], respx.Route]
-BUNDESGEBIET = "99"
-# The full file's federal total row: Nr 99 with an empty "gehört zu"; the sample omits it.
-BUNDESGEBIET_ROW = b"99;Bundesgebiet;\n"
 
 
 def _load(recipes_dir: Path) -> LoadedRecipe:

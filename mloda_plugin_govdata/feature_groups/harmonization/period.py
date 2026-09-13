@@ -35,8 +35,7 @@ class AnnualPeriodFeature(HarmonizationFeature):
     }
 
     def input_features(self, options: Options, feature_name: FeatureName) -> set[Feature] | None:
-        parsed = super().input_features(options, feature_name) or set()
-        return {self.child(str(source.name)) for source in parsed}
+        return self.single_source_child(options, feature_name)
 
     @classmethod
     def calculate_feature(cls, data: Any, features: FeatureSet) -> Any:
