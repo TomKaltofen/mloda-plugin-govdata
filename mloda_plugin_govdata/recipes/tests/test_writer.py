@@ -24,10 +24,10 @@ from mloda_plugin_govdata.recipes import (
 )
 from mloda_plugin_govdata.recipes.writer import _UNSUPPORTED, SUPPORTED_FEATURE_PARAMETERS
 
-KERG_URL = "https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata/btw25/csv/kerg.csv"
+from .shipped import KERG_URL, LAND_LINK, LAND_SHA256
+from .shipped import LAND as LAND_LOCATOR
+
 BERLIN_URL = "https://www.wahlen-berlin.de/wahlen/BE2023/AFSPRAES/agh/Datenexport_AGH2023_Zweitstimme_W_BE.csv"
-LAND_LOCATOR = {"name": "12411-0010", "startyear": 2024, "endyear": 2024}
-LAND_SHA256 = "aba0f99e3b8eef1f4d975c0e2ed3d7323024dd8a798dbd875e35ae34447f3916"
 COMPLIANCE = Compliance(
     sources=[
         SourceCompliance(
@@ -39,12 +39,6 @@ COMPLIANCE = Compliance(
             credential_env=["GENESIS_TOKEN"],
         )
     ]
-)
-LAND_LINK = Link.inner(
-    JoinSpec(GovDataFeature, "1_variable_attribute_code"),
-    JoinSpec(GovDataFeature, "Nr"),
-    left_discriminator={DestatisReader.__name__: LAND_LOCATOR},
-    right_discriminator={BundeswahlleiterinReader.__name__: KERG_URL},
 )
 
 

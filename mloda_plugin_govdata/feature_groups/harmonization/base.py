@@ -6,7 +6,7 @@ import re
 from typing import ClassVar
 
 from mloda.provider import COLUMN_SEPARATOR, ComputeFramework, FeatureChainParserMixin, FeatureGroup, FeatureSet
-from mloda.user import Feature
+from mloda.user import Feature, FeatureName, Options
 from mloda.user.pyarrow import PyArrowTable
 
 from ..destatis.core.auth import OPTION_GENESIS_CREDENTIALS
@@ -40,6 +40,15 @@ class HarmonizationFeature(FeatureChainParserMixin, FeatureGroup):
             forward_group_exclude=cls.declared_option_keys(),
             inherit_context_keys=cls.inherited_context_keys,
         )
+
+    def single_source_child(self, options: Options, feature_name: FeatureName) -> set[Feature] | None:
+        """The one parsed source column, re-wrapped as this group's own child.
+
+        Shared by the groups whose ``input_features`` does nothing beyond that re-wrap; a group
+        with more to add (extra sibling children, for example) still parses its own way.
+        """
+        parsed = FeatureChainParserMixin.input_features(self, options, feature_name) or set()
+        return {self.child(str(source.name)) for source in parsed}
 
     @classmethod
     def source_column(cls, feature: Feature) -> str:

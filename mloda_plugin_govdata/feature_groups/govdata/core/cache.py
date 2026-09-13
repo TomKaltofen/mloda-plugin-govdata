@@ -10,12 +10,11 @@ import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from types import TracebackType
 from typing import Any
 
 import httpx
 
-from .client import build_client, request_with_retry
+from .client import OwnedHttpClient, build_client, request_with_retry
 
 # Persistent cache location shared by the readers and the Destatis client's lock file.
 DEFAULT_CACHE_DIR = Path(tempfile.gettempdir()) / "mloda-govdata-cache"
@@ -34,7 +33,7 @@ class CachedFile:
     retrieved_at: datetime  # when the bytes were downloaded; a 304 revalidation keeps it
 
 
-class DownloadCache:
+class DownloadCache(OwnedHttpClient):
     """Stores downloaded bodies addressed by content hash.
 
     Revalidates with ``If-None-Match`` / ``If-Modified-Since``; a ``304`` reuses
@@ -48,23 +47,6 @@ class DownloadCache:
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self._owns_client = client is None
         self._client = client if client is not None else build_client()
-
-    # PYI034/PYI019 want `Self`, which is 3.11+; the package floor is 3.10 and the class
-    # is never subclassed, so the concrete return type is accurate here.
-    def __enter__(self) -> DownloadCache:  # noqa: PYI034
-        return self
-
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc: BaseException | None,
-        tb: TracebackType | None,
-    ) -> None:
-        self.close()
-
-    def close(self) -> None:
-        if self._owns_client:
-            self._client.close()
 
     def _meta_path(self, url: str) -> Path:
         key = hashlib.sha256(url.encode("utf-8")).hexdigest()
