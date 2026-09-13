@@ -5,7 +5,7 @@ Companion to [ap2-destatis-harmonization.md](ap2-destatis-harmonization.md)
 Tick items in the PR that lands them. If a slice moves, a checkpoint slips, or
 a cut line is pulled, edit both files in the same PR.
 
-Status: draft v2.11, 2026-09-12 (slice 11 ticked: six recipes, PR #26; slice 10 merged as PR #25). v1 was reviewed by three independent advisors
+Status: draft v2.12, 2026-09-13 (slice 12 demo chapter ticked, PR #27; slice 11 merged as PR #26). v1 was reviewed by three independent advisors
 (two Claude models, one Codex run) against the M1 code and mloda 0.10.0; the
 findings are folded in below. Slice 0 step 0 (OpenAPI assessment) was done
 2026-08-16, reviewed by one Claude Sonnet run and one Codex run against the
@@ -1169,7 +1169,11 @@ Checkpoint C2 target (Sep 20). Week 5 is three working days (SciCAR).
 ## Slice 12: docs, demo, handoff (WP-G, woven through, about 20 h)
 
 - [ ] README: Destatis section (auth, one table, one harmonized example,
-      recipes).
+      recipes). (Recipes part done 2026-09-13, PR #27: a `load_recipe`
+      snippet and the demo section naming the chapter and its credentials;
+      auth, one table, and the harmonized paragraph were already there, a
+      code sample for the harmonized example and the destatis-options link
+      check stay with the rest of the slice.)
 - [ ] `docs/adding-a-reader.md`: the Destatis path (POST reader over the
       fetch seam).
 - [ ] `docs/credentials.md`: env names per host, both registration URLs
@@ -1177,7 +1181,24 @@ Checkpoint C2 target (Sep 20). Week 5 is three working days (SciCAR).
       guidance.
 - [ ] `docs/destatis-options.md` (from slice 4): polish, link from the
       README Destatis section, mark stretch endpoint options as deferred.
-- [ ] `demos/govdata_demo.py`: Destatis chapter (recipe 3 as the story).
+- [x] `demos/govdata_demo.py`: Destatis chapter (recipe 3 as the story).
+      (Done 2026-09-13, PR #27,
+      https://github.com/TomKaltofen/mloda-plugin-govdata/pull/27: chapter 5
+      loads `land_population_voters.json` without its links block, checks
+      both sides with `check_land_names`, shows the two frames side by side
+      and combines them by hand into residents per eligible voter; then
+      `kreis_population_rebased.json` through `load_recipe`, the BBSR key
+      file read from the cache and fetched only on a miss; attribution,
+      license, retrieval date and change markers from the compliance blocks;
+      the chapter skips itself, naming the reason, without credentials or
+      with a half-set user plus password pair. Live run as a script green
+      with a warm and a cold cache; `tests/test_demo_definition.py` pins the
+      recipe files the `load_recipe` calls name.)
+- [ ] Follow-up from the demo chapter: a public helper that indexes the
+      `run_all` frames by column (the recipe tests' `frames_by_column`), so a
+      consumer of a two-frame recipe does not re-implement the pick; the
+      demo and the tests each pick a frame by a column only one side carries
+      because mloda frames carry no feature-set identity.
 - [ ] `pyproject.toml` description: "GENESIS API v3" becomes "GENESIS API
       v5.0" (or drop the version).
 - [ ] Planning repo: ADRs 0002 (slice 1), 0003 (slice 3), 0004 (slice 2),
