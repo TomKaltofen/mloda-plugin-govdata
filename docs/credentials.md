@@ -19,10 +19,12 @@ Credentials never go into the URL or the form body: the server ignores body cred
 ## Resolution order
 
 1. Explicit: `DestatisCredentials(host="genesis", token=...)` (or `user=..., password=...`) passed to `GenesisClient`, or in mloda `Options(context={"genesis_credentials": DestatisCredentials(...)})`. Only the instance is accepted (its repr is redacted; a plain dict would print its values with the options), and only in `context`: the key is refused in `group`, which is hashed and printed with the feature.
-2. Env vars of the host, chosen by the host prefix. Whitespace is stripped.
+2. Env vars of the host, chosen by the host prefix. Whitespace is stripped. A half-set pair (`GENESIS_USER` without `GENESIS_PASSWORD`, or the reverse) is an error, never a fallback to the token or to the other host.
 3. Otherwise `MissingCredentialsError` names the env vars and the registration page for that host. Nothing is sent.
 
 Credentials scoped to one host are refused on the other (`WrongHostCredentialsError`), and env resolution never falls back across hosts.
+
+Credentials are needed on a cache miss only: a selection already in the parameter cache is served without them, so an offline rerun (and `peek` on a cached table) works with no env vars set.
 
 ```python
 from mloda_plugin_govdata.feature_groups.destatis import GenesisClient
@@ -33,7 +35,13 @@ with GenesisClient("genesis") as client:  # credentials from GENESIS_TOKEN
 
 ## Result too large
 
-A table over the size limit raises `GenesisResultTooLarge` (GENESIS status code 98) with an actionable message: shrink the selection, or fetch the table manually through the host's web portal above. `job=true` needs the user-plus-password path, but this connector does not fetch job results yet.
+A table over the host's download limit raises `GenesisResultTooLarge` (GENESIS status code 98, or the "too large" status text). Ways out:
+
+- Shrink the selection: fewer `regionalkey` entries, classifying keys, or years.
+- Split it into several selections, one feature per selection; each is cached under its own parameters.
+- Fetch the table by hand through the host's web portal (the registration page above).
+
+`job=true` (the host prepares the table for a later download) needs the user-plus-password path, but this connector does not submit or fetch jobs (deferred, see [destatis-options.md](destatis-options.md#deferred)); a host that queues a job on its own raises `GenesisJobAccepted`.
 
 ## Redaction
 
@@ -46,3 +54,7 @@ Tests marked `genesis_live` are deselected by default and skip with a visible re
 ```bash
 GENESIS_TOKEN=... pytest -m "live and genesis_live"
 ```
+
+## Demo
+
+The demo notebook's Destatis chapter resolves credentials the same way and skips itself, naming the reason, when none are set.

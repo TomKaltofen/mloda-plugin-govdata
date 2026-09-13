@@ -65,7 +65,7 @@ class DestatisLocator:
     """One GENESIS table selection: table code plus the optional M2 locator fields.
 
     ``area``, ``compress``, ``transpose``, ``timeslices``, ``job``, and ``stand`` are not locator
-    fields in M2 (see ``docs/destatis-options.md``): they are pinned wire values or never sent, not
+    fields (see ``docs/destatis-options.md``): they are pinned wire values or never sent, not
     caller-configurable. ``format`` is always ``ffcsv`` and likewise not a field. Frozen so it hashes
     natively inside ``Options.group``, like ``GovDataLocator``.
     """
@@ -124,7 +124,7 @@ class DestatisLocator:
             raise TypeError(f"DestatisLocator: quality must be a bool, got {type(self.quality).__name__}")
         object.__setattr__(self, "host", resolve_host(self.host).name)
         if self.language != DEFAULT_LANGUAGE:
-            raise ValueError(f"DestatisLocator: language must be {DEFAULT_LANGUAGE!r} in M2, got {self.language!r}")
+            raise ValueError(f"DestatisLocator: language must be {DEFAULT_LANGUAGE!r}, got {self.language!r}")
 
     @classmethod
     def from_string(cls, value: str) -> DestatisLocator:

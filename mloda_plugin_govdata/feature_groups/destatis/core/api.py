@@ -320,7 +320,7 @@ def tablefile_parameters(
     also handles English replies.
     """
     if language != DEFAULT_LANGUAGE:
-        raise ValueError(f"tablefile_parameters: language must be {DEFAULT_LANGUAGE!r} in M2, got {language!r}")
+        raise ValueError(f"tablefile_parameters: language must be {DEFAULT_LANGUAGE!r}, got {language!r}")
     selection: dict[str, object | None] = {
         "name": name,
         "regionalvariable": regionalvariable,

@@ -8,11 +8,11 @@
 
 Connectors for German open government data, built on [mloda](https://github.com/mloda-ai/mloda). Request the columns you want as mloda features; the plugin handles CKAN discovery, download with caching and retries, and parsing (German CSV or publisher JSON) into a typed Arrow table.
 
-Three example datasets cover the M1 themes: population (GovData CSV), elections (Bundeswahlleiterin `kerg.csv`), and environment (UBA Air Data JSON).
+Three example datasets cover population (GovData CSV), elections (Bundeswahlleiterin `kerg.csv`), and environment (UBA Air Data JSON); the Destatis connector adds GENESIS tables, with harmonization features and recipe files on top.
 
 ## Status
 
-Young but working. All three example readers run end to end, with paginated dataset search, cached downloads with retries, and unit plus property-based tests behind them. Every reader is a thin subclass of `BaseGovDataReader` that overrides the parse step (and the fetch step for a non-GovData source); new datasets follow the same path (see [docs/adding-a-reader.md](https://github.com/mloda-ai/mloda-plugin-govdata/blob/main/docs/adding-a-reader.md)). Development happens in a 6-month Prototype Fund stage (June to November 2026), so the API may still shift between releases.
+Young but working. The three example readers and the Destatis connector run end to end, with paginated dataset search, cached downloads with retries, and unit plus property-based tests behind them. Every reader is a thin subclass of `BaseGovDataReader` that overrides the parse step (and the fetch step for a non-GovData source); new datasets follow the same path (see [docs/adding-a-reader.md](https://github.com/mloda-ai/mloda-plugin-govdata/blob/main/docs/adding-a-reader.md)). Development happens in a 6-month Prototype Fund stage (June to November 2026), so the API may still shift between releases.
 
 ## Usage
 
@@ -119,6 +119,33 @@ Harmonized features sit on top of the reader columns: `value__rebased` re-bases 
 later Gebietsstand with the BBSR keys, `1_variable_attribute_code__nuts2024` adds NUTS codes, and
 `time__year_period` types the period. The re-based series carries its flags, sources, issues and key
 edition as columns; see [docs/harmonization.md](docs/harmonization.md).
+
+```python
+from mloda_plugin_govdata.feature_groups.govdata import DownloadCache
+from mloda_plugin_govdata.feature_groups.harmonization import KreisRebaseFeature  # registers the groups
+from mloda_plugin_govdata.harmonization.reference.bbsr import load_bbsr_kreise
+
+with DownloadCache(KreisRebaseFeature.cache_dir) as cache:
+    load_bbsr_kreise(cache, revalidate=True)  # the BBSR key file, fetched once and read offline afterwards
+
+goettingen = {
+    "name": "12411-0015",
+    "regionalvariable": "KREISE",
+    "regionalkey": ["03152", "03156", "03159"],
+    "startyear": 2013,
+    "endyear": 2017,
+}
+result = mloda.run_all(
+    [
+        Feature(
+            "value__rebased",
+            options={DestatisReader.__name__: goettingen, "rebase_from_year": 2015, "rebase_to_year": 2016},
+        )
+    ],
+    compute_frameworks=["PyArrowTable"],
+)
+result[0]  # value__rebased~key, ~year, ~value, ~flag, ~sources, ~marker, ~issues, ~edition
+```
 
 A recipe file bundles the features, joins, and provenance of one run as JSON; `load_recipe` returns what
 `mloda.run_all` needs plus the compliance block (license, attribution, payload sha256, credential env names).

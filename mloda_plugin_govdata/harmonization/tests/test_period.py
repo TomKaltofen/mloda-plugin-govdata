@@ -97,7 +97,7 @@ def test_from_snapshot_matches_genesis_annual_period_for_the_same_year(d: date) 
 
 @pytest.mark.parametrize("freq", [Frequency.QUARTER, Frequency.MONTH])
 def test_from_snapshot_rejects_unshipped_frequencies(freq: Frequency) -> None:
-    with pytest.raises(NotImplementedError, match="plan cut line 2"):
+    with pytest.raises(NotImplementedError, match="not built"):
         from_snapshot(date(2015, 6, 15), freq)
 
 

@@ -88,12 +88,12 @@ def from_snapshot(snapshot: date, freq: Frequency = Frequency.YEAR) -> Period:
     Floors to the calendar year containing ``snapshot``. This is not the
     snapshot-to-annual join policy (which Destatis reference year a snapshot
     joins to for cross-source analysis); that decision is deferred to the
-    join plumbing. Only ``Frequency.YEAR`` is implemented in M2; quarter and
-    month raise ``NotImplementedError`` (plan cut line 2).
+    join plumbing. Only ``Frequency.YEAR`` is implemented; quarter and
+    month raise ``NotImplementedError``.
     """
     freq = Frequency(freq)
     if freq is not Frequency.YEAR:
-        raise NotImplementedError(f"{freq.value} periods are not built in M2 (plan cut line 2)")
+        raise NotImplementedError(f"{freq.value} periods are not built; only year periods are")
     return Period(date(snapshot.year, 1, 1), freq)
 
 
