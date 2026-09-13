@@ -225,6 +225,13 @@ def test_guest_mode_sends_no_headers_only_when_allowed(tmp_path: Path) -> None:
     with half, pytest.raises(GenesisAuthError):
         half.logincheck()
     assert "username" not in route.calls.last.request.headers
+    # A token alongside a half-set pair still runs as guest too.
+    half_with_token = GenesisClient(
+        GENESIS_ONLINE, lock_dir=tmp_path, environ={"GENESIS_TOKEN": TOKEN, "GENESIS_USER": USER}, allow_guest=True
+    )
+    with half_with_token, pytest.raises(GenesisAuthError):
+        half_with_token.logincheck()
+    assert "username" not in route.calls.last.request.headers
 
 
 @respx.mock

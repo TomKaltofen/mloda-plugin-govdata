@@ -105,6 +105,12 @@ def test_env_half_password_path_is_an_error_naming_the_missing_var() -> None:
         resolve_credentials(GENESIS_ONLINE, environ={"GENESIS_USER": USER})
 
 
+def test_env_half_password_path_is_an_error_even_with_a_token() -> None:
+    with pytest.raises(MissingCredentialsError, match="GENESIS_PASSWORD") as info:
+        resolve_credentials(GENESIS_ONLINE, environ={"GENESIS_TOKEN": TOKEN, "GENESIS_USER": USER})
+    assert TOKEN not in str(info.value)
+
+
 def test_explicit_credentials_win_over_env_and_must_match_the_host() -> None:
     explicit = DestatisCredentials(host="genesis", token=TOKEN)
     assert resolve_credentials(GENESIS_ONLINE, explicit, environ={"GENESIS_TOKEN": "other"}) is explicit
