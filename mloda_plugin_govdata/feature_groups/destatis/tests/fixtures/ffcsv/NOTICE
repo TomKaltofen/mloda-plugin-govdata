@@ -1,0 +1,91 @@
+The six official example files Destatis ships to document the ffcsv format change, used unchanged as
+parser fixtures. All six extracted from one source archive:
+
+Source: Destatis, "Darstellung der Aenderung der Struktur des Flatfile-CSV-Formats" (Sept 2024).
+URL: https://genesis.destatis.de/datenbank/online/docs/Aenderung_Struktur_Flatfile-CSV.zip
+sha256 of the archive: 46c5bb2fd5ad3836a01d57efbd7b755d3d1670b1a42b167b47830c643fda1dc8
+Retrieved: 2026-08-28, without authentication (linked from the GENESIS-Online and Regionalstatistik web UIs).
+Terms: "Vervielfaeltigungen und Verbreitung, auch auszugsweise, mit Quellenangabe gestattet." (c) Statistisches
+Bundesamt (Destatis), 2024.
+
+New format (November 2024 onward, current), one CSV member per zip:
+
+21611-0002_de_flat.zip
+sha256: b82b9cecc6abbe9f650aacdf88ea5a011551fd3f12290763cd19579642439536
+Kulturstatistik, one variable block, no dash/dot value markers.
+
+61111-0001_de_flat.zip
+sha256: 976a2c5b3d2efcaa157673402332847aa13a9797f3081c77fade8931b5dde78e
+Verbraucherpreisindex, one variable block; the same value_variable_code (PREIS1) appears with two
+different value_unit values ("%" and "2020=100"), and one row's value is the "." (unknown/secret) marker.
+
+61111-0003_de_flat.zip
+sha256: 6ee98b44a395cf0aa5171277a99ef2430fff1e955d69873e4b89291a999cede7
+Verbraucherpreisindex, two variable blocks; carries 5 "-" (nichts vorhanden) and 8 "." value markers.
+
+Old format (until November 2024), German wide headers with a unit-suffixed column per content; the
+layout-drift negative fixture:
+
+21611-0002_de_flat.csv
+sha256: c4ed3ce78e9299fa4426efb28f09fcd89956f324b34389a67c72abe2420f548f
+
+61111-0001_de_flat.csv
+sha256: 457233ffc8fc3c52e93fa33ca07ba580c94c520cea4016871784cbee4d1a7476
+
+61111-0003_de_flat.csv
+sha256: e32568782cf1be5bb3f9cb16c76bc0cc2d939c6df89c5a6e77c9db407119af2b
+
+Live capture from GENESIS-Online (data/tablefile reply, one CSV member, unchanged), used for the
+Land-level join tests:
+
+12411-0010_2024_de_flat.zip
+sha256: aba0f99e3b8eef1f4d975c0e2ed3d7323024dd8a798dbd875e35ae34447f3916
+Source: Statistisches Bundesamt (Destatis), GENESIS-Online table 12411-0010 (Fortschreibung des
+Bevölkerungsstandes: Bundesländer, Stichtag), https://genesis.destatis.de/datenbank/online/statistic/12411/table/12411-0010
+Request: data/tablefile with name=12411-0010, startyear=2024, endyear=2024, language=de, format=ffcsv,
+quality=off, compress=false, transpose=false, job=false; 16 rows (DLAND 01 to 16, STAG 2024-12-31, BEVSTD).
+Retrieved: 2026-09-08 with a registered account; the zip member name carries the server's job id.
+License: Datenlizenz Deutschland Namensnennung 2.0 (dl-de/by-2-0), https://www.govdata.de/dl-de/by-2-0,
+the GENESIS-Online data license. Attribution: (c) Statistisches Bundesamt (Destatis), 2026.
+
+Live captures from GENESIS-Online (data/tablefile replies, one CSV member each, unchanged), used as the
+inputs of the re-basing expected-value tests (harmonization/tests/fixtures/):
+
+12411-0015_2013-2017_de_flat.zip
+sha256: 39e590f654fd92f20306ef5a52ed59ef04bb757b1331e5216df2cfafcddd7411
+Source: Statistisches Bundesamt (Destatis), GENESIS-Online table 12411-0015 (Fortschreibung des
+Bevölkerungsstandes: Kreise, Stichtag), https://genesis.destatis.de/datenbank/online/statistic/12411/table/12411-0015
+Request: data/tablefile with name=12411-0015, regionalvariable=KREISE, regionalkey=03152,03156,03159,
+startyear=2013, endyear=2017, language=de, format=ffcsv, quality=off, compress=false, transpose=false,
+job=false; 15 rows in server order (three Kreise, STAG 2013-12-31 to 2017-12-31, BEVSTD). The retired
+Kreise 03152 and 03156 carry "-" from 2016 on, the merged 03159 carries "-" before 2016: the
+Gebietsstand validity case, not zeros.
+Retrieved: 2026-09-12 with a registered account; the zip member name carries the server's job id.
+License: Datenlizenz Deutschland Namensnennung 2.0 (dl-de/by-2-0), https://www.govdata.de/dl-de/by-2-0,
+the GENESIS-Online data license. Attribution: (c) Statistisches Bundesamt (Destatis), 2026.
+
+12411-0015_2013-2014_de_flat.zip
+sha256: 397c83d6ff4a0dd8deecd1b84939fc17639edd9940d52a5b1fd2c6affc46263b
+Source: as above, table 12411-0015.
+Request: data/tablefile with name=12411-0015, regionalvariable=KREISE, regionalkey=07135,07140,
+startyear=2013, endyear=2014, language=de, format=ffcsv, quality=off, compress=false, transpose=false,
+job=false; 4 rows in server order (Cochem-Zell and Rhein-Hunsrück-Kreis, STAG 2013-12-31 and
+2014-12-31, BEVSTD): the fractional-share case.
+Retrieved: 2026-09-12 with a registered account; the zip member name carries the server's job id.
+License: as above. Attribution: (c) Statistisches Bundesamt (Destatis), 2026.
+
+Live capture from GENESIS-Online (data/tablefile reply, one CSV member, unchanged), the numerator of the
+foreigners-share recipe (recipes/kreis_foreigners_share.json):
+
+12521-0040_2013-2017_de_flat.zip
+sha256: d678a529575b6f550d44b403d260a25eeccdba8ca4178e465d1778dee35b4023
+Source: Statistisches Bundesamt (Destatis), GENESIS-Online table 12521-0040 (Ausländer: Kreise, Stichtag,
+Geschlecht), https://genesis.destatis.de/datenbank/online/statistic/12521/table/12521-0040
+Request: data/tablefile with name=12521-0040, regionalvariable=KREISE, regionalkey=03152,03156,03159,
+startyear=2013, endyear=2017, language=de, format=ffcsv, quality=off, compress=false, transpose=false,
+job=false; 45 rows in server order (three Kreise, STAG 2013-12-31 to 2017-12-31, BEV027, the sex breakdown
+as variable block 2: the total rows carry an empty 2_variable_attribute_code with the label Insgesamt, the
+parts GESM and GESW). The retired Kreise 03152 and 03156 carry "-" from 2016 on, the merged 03159 carries
+"-" before 2016, the same validity case as the 12411-0015 capture.
+Retrieved: 2026-09-12 with a registered account; the zip member name carries the server's job id.
+License: as above. Attribution: (c) Statistisches Bundesamt (Destatis), 2026.

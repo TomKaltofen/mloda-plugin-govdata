@@ -22,9 +22,9 @@ import pyarrow as pa
 from mloda.provider import PropertySpec, is_positive_int
 from mloda.user import Options
 
-from .core.discovery import ResolvedDistribution
 from .core.locator import GovDataLocator
 from .core.parse import ColumnType
+from .core.provenance import Provenance
 from .reader import BaseGovDataReader
 
 UBA_AIR_BASE = "https://luftdaten.umweltbundesamt.de/api/air-data/v4"
@@ -231,7 +231,7 @@ def parse_uba_measures(path: str | os.PathLike[str]) -> pa.Table:
     return parse_uba_measures_bytes(data)
 
 
-class UbaAirReader(BaseGovDataReader):
+class UbaAirReader(BaseGovDataReader[GovDataLocator]):
     """Reads the UBA Air Data v4 ``measures`` endpoint into a typed Arrow table.
 
     Query parameters are per-feature ``OPTION_UBA_*`` options, not a pre-built URL. The response
@@ -297,6 +297,6 @@ class UbaAirReader(BaseGovDataReader):
 
     @classmethod
     def _parse(
-        cls, path: Path, locator: GovDataLocator, distribution: ResolvedDistribution, options: Options | None = None
+        cls, path: Path, locator: GovDataLocator, provenance: Provenance, options: Options | None = None
     ) -> pa.Table:
         return parse_uba_measures(path)

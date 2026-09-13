@@ -1,0 +1,27 @@
+{
+  "Status": {
+    "Code": 98,
+    "Content": "Die Tabelle ist zu groß, um direkt abgerufen zu werden.",
+    "Type": "Error"
+  },
+  "Parameter": {
+    "username": "********************",
+    "password": "********************",
+    "name": "12411-0015",
+    "area": "Alle",
+    "compress": "false",
+    "transpose": "false",
+    "contents": "",
+    "startyear": "1995",
+    "endyear": "2025",
+    "timeslices": "",
+    "regionalvariable": "KREISE",
+    "regionalkey": "",
+    "format": "ffcsv",
+    "job": "false",
+    "stand": "01.01.1970",
+    "language": "de"
+  },
+  "Object": null,
+  "Copyright": "© Statistisches Bundesamt (Destatis), 2020; Datenlizenz Deutschland - Namensnennung - Version 2.0"
+}

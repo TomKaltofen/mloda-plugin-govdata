@@ -7,14 +7,16 @@ name = "mloda-plugin-govdata"
 # Always start at least at 0.2.0 to make semver work.
 # Initial release for semver needs also a manually pushed minimum tag (likely 0.2.0).
 version = "0.2.4"
-description = "mloda plugin providing connectors and harmonization for German government data (GovData.de CKAN API, Destatis GENESIS API v3)."
+description = "mloda plugin providing connectors, harmonization and recipes for German government data (GovData.de CKAN API, Destatis GENESIS webservice)."
 readme = "README.md"
 license = "Apache-2.0"
 authors = [{ name = "Tom Kaltofen", email = "tomkaltofen@mloda.ai" }]
 dependencies = [
     "mloda>=0.11.0,<0.12.0",
     "mloda-testing>=0.3.1",
+    "filelock>=3.12",
     "httpx>=0.27",
+    "openpyxl>=3.1",
     "pandas>=2.0",
     "pyarrow>=17.0",
     "pydantic>=2.0",
@@ -42,17 +44,28 @@ dev = [
     "hypothesis",
     "respx",
     "pandas-stubs",
+    "tomli; python_version < '3.11'",
 ]
+
+[tool.setuptools]
+# Code only: no package data, so a stale egg-info manifest cannot pull test modules back in as data.
+# A future data file (a py.typed marker, say) needs an explicit package-data entry.
+include-package-data = false
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["mloda_plugin_govdata*"]
+# Tests stay out of the wheel (and out of the sdist from a clean checkout); the recipe tests read repo-root files anyway.
+exclude = ["*.tests", "*.tests.*"]
 
 [tool.pytest.ini_options]
 testpaths = ["mloda_plugin_govdata", "tests"]
 python_files = ["test_*.py"]
-markers = ["live: tests that reach the live GovData / publisher network (deselected by default)"]
-addopts = "-m 'not live'"
+markers = [
+    "live: tests that reach the live GovData / publisher network (deselected by default)",
+    "genesis_live: tests that reach a live GENESIS host with credentials (deselected by default; skipped without GENESIS_TOKEN or user plus password)",
+]
+addopts = "-m 'not live and not genesis_live'"
 
 [tool.ruff]
 line-length = 120
@@ -68,8 +81,9 @@ strict = true
 ignore_missing_imports = true
 namespace_packages = true
 explicit_package_bases = true
-# Marimo notebooks are generated cell functions without annotations; not library code.
-exclude = ["^demos/"]
+# Marimo notebooks are generated cell functions without annotations; not library code. A local wheel
+# build leaves a copy of the package under build/, which would otherwise be checked twice.
+exclude = ["^demos/", "^build/"]
 
 [tool.bandit]
 exclude_dirs = [".tox", ".venv", "tests"]

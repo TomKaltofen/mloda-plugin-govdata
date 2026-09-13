@@ -10,9 +10,9 @@ import pyarrow as pa
 from mloda.provider import PropertySpec, is_positive_int
 from mloda.user import Options
 
-from .core.discovery import ResolvedDistribution
 from .core.locator import GovDataLocator
 from .core.parse import ColumnType, parse_multi_header_csv
+from .core.provenance import Provenance
 from .reader import BaseGovDataReader
 
 # Feature-option keys steering the multi-header election parse; defaults are the btw25 kerg.csv
@@ -35,7 +35,7 @@ def _is_non_negative_int(value: Any) -> bool:
     return isinstance(value, str) and value.isdecimal() and int(value) >= 0
 
 
-class BundeswahlleiterinReader(BaseGovDataReader):
+class BundeswahlleiterinReader(BaseGovDataReader[GovDataLocator]):
     """Reads German election-result CSVs with the Bundeswahlleiterin kerg.csv as the default geometry.
 
     The header geometry defaults to the btw25 kerg.csv layout (5-line preamble, 3-row merged
@@ -83,7 +83,7 @@ class BundeswahlleiterinReader(BaseGovDataReader):
 
     @classmethod
     def _parse(
-        cls, path: Path, locator: GovDataLocator, distribution: ResolvedDistribution, options: Options | None = None
+        cls, path: Path, locator: GovDataLocator, provenance: Provenance, options: Options | None = None
     ) -> pa.Table:
         return parse_multi_header_csv(
             path,

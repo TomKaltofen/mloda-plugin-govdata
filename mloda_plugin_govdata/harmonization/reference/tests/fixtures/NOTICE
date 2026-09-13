@@ -1,0 +1,76 @@
+Reference-data extracts for the AGS-to-NUTS mapper (harmonization). Each file is a small
+row/sheet subset of a much larger published table: same rows and columns as the source, but
+xlsx round-tripping through openpyxl can shift numeric cells in their trailing (13th+
+significant) digit and can turn an empty-string cell into an absent one; no cell was hand-
+typed or otherwise altered in value.
+
+bbsr-ref-kreise-extract.xlsx
+Source: BBSR Umsteigeschluessel Kreise, ref-kreise-1990-2024.xlsx, sheets 2013-2014,
+2015-2016, 2020-2021 (of 34), rows for Goettingen 03152, Osterode am Harz 03156,
+Goettingen (merged) 03159, Cochem-Zell 07135, Mayen-Koblenz 07137, Rhein-Huensrueck-Kreis
+07140, Eisenach 16056, Wartburgkreis 16063.
+Known upstream defect, reproduced faithfully (not introduced by this extract): sheets
+2014-2015 and 2015-2016 carry the 2013-2014 Cochem-Zell to Rhein-Huensrueck split shares
+(0.9617 / 0.9828 / 0.9961 and 0.0383 / 0.0172 / 0.0039) on identity rows (07135 to 07135,
+07137 to 07137) instead of a transfer row; per-source shares on those two keys do not sum to
+1 on this sheet. A re-basing loader must assert per-key share sums and raise, not silently
+trust them.
+Original: https://www.bbsr.bund.de/BBSR/DE/forschung/raumbeobachtung/Raumabgrenzungen/umstiegsschluessel/ref-kreise-1990-2024.xlsx?__blob=publicationFile&v=2
+Original sha256: 68c4d001cc450115938d37c42aa8cc090fb9e6381e7e29d00f049cffdbcc8f1f (fetched 2026-08-17,
+matches the 2026-08-16 week-0 pin)
+Extract sha256: 5784d7da0cffc2f0643529531bafa34a764753202955c3b35dbf5335a3e47fb0
+License: Datenlizenz Deutschland - Namensnennung - Version 2.0 (dl-de/by-2-0). Redistribution
+confirmed by BBSR Referat RS 6, 2026-06-17: BBSR grants the Umsteigeschluessel tables the same
+license as INKAR and permits reuse in any application, including bundling in an open-source
+package. Attribution: "Laufende Raumbeobachtung des BBSR".
+
+gv-isys-2016-extract.xlsx
+Source: Destatis Gemeindeverzeichnis-Informationssystem (GV-ISys), Namens-Grenz-Aenderung
+2016.xlsx, sheet "Gebietsaenderungen 2016": header block plus change 03/2016/0006-R, the two
+Kreis-level rows (03152 Goettingen and 03156 Osterode am Harz merging into 03159 Goettingen,
+01.11.2016) and the Gemeinde row for the Gemeindefreies Gebiet Harz (03156501 -> 03159501).
+Original: https://www.destatis.de/DE/Themen/Laender-Regionen/Regionales/Gemeindeverzeichnis/Namens-Grenz-Aenderung/2016.xlsx?__blob=publicationFile&v=5
+Original sha256: 301a0b72381d78ece5b3fe811fd29e7739258da55ebda9dacb1a0d2651f2b0b7 (fetched
+2026-08-17, matches the 2026-08-16 week-0 pin)
+Extract sha256: 5c5d86929fc01d7799264a749ad7a9fcbb0cb23600b48504581c47520ff14ec2
+License: Datenlizenz Deutschland - Namensnennung - Version 2.0 (dl-de/by-2-0), per Destatis'
+site-wide open-data policy (https://www.destatis.de/DE/Service/OpenData/_inhalt.html: "Die
+statistischen Daten koennen unter den Bedingungen der Datenlizenz Deutschland 2.0
+weiterverwendet werden"). Attribution: (c) Statistisches Bundesamt (Destatis), 2026.
+
+eurostat-nuts-correspondence-extract.xlsx
+Source: Eurostat "Correspondence table 2024" (NUTS levels to national administrative units),
+last updated 2026-04-27; cover block, column header, and the DE row only (16 Laender / 38
+Regierungsbezirke / 401 Kreise-kreisfreie Staedte / 10957 Gemeinden, as printed in that table).
+This file labels itself "based on NUTS 2027 and LAU 2025"; that is a different, not yet
+current, edition from the LAU-to-NUTS crosswalk below (NUTS 2024), so its 401-Kreise count is
+not the count the five hand-mapped keys were derived against.
+Original: https://ec.europa.eu/eurostat/documents/345175/6742814/Correspondence-table-2024-NUTS-SR-EN-DE-FR.xlsx/4576becd-b6b9-c3e5-cb83-e4200aa43c3a
+Fetched: 2026-08-17
+Original sha256: 01ef6cd3a49374c94f5401b9cb2116bd735c02fa0469ed717708a2c0938519a5
+Extract sha256: d68247198143cef2ce6f6cb7170a7322190e0df906612ba9e9f77d426316eec3
+License: Creative Commons Attribution 4.0 International (CC BY 4.0), per Eurostat's
+copyright notice (https://ec.europa.eu/eurostat/web/main/help/copyright-notice): "Reuse of
+statistical data, metadata, publications, and other dissemination tools published on this
+website for commercial or non-commercial purposes is authorised provided the source is
+acknowledged." Attribution: Source: Eurostat.
+
+eurostat-lau-nuts-de-extract.xlsx
+Source: Eurostat LAU-NUTS correspondence, EU-27-LAU-2025-NUTS-2024.xlsx, sheet DE: header
+plus one row per hand-mapped key: 11000000 Berlin (the whole city as one LAU unit, direct
+match for AGS 11000), 03159501 Harz gemeindefreies Geb. (direct match for AGS 03159501), and
+one representative Gemeinde per remaining Kreis key (03159016 Goettingen Stadt for AGS 03159,
+07135020 Cochem Stadt for AGS 07135, 07140144 Simmern/Huensrueck Stadt for AGS 07140).
+Verified over the full DE sheet (11,268 rows, blank trailing rows excluded): 400 distinct
+5-digit Kreis prefixes and 400 distinct NUTS3 codes, in exact bijection (no Kreis maps to two
+NUTS3 codes or vice versa) for this NUTS 2024 / LAU 2025 edition specifically. Germany's own
+row is marked "validated" in the file's Overview sheet across every column (NUTS3, DEGURBA,
+coastal area, city, FUA); among all EU-27 countries only Cyprus carries a partial-validation
+caveat there (FUAs use 2018 commuting data), non-EU candidate countries are unvalidated, and
+every EU-27 country including DE is otherwise validated.
+Original: https://ec.europa.eu/eurostat/documents/345175/501971/EU-27-LAU-2025-NUTS-2024.xlsx/574c9e4a-2dae-99fe-5510-3fd18d8e90c2
+Fetched: 2026-08-17
+Original sha256: 983e75ed4ec38b716f9e3839a99cdc9a3e72e55c6473e24084ff13afee4e65e5
+Extract sha256: f2e0734283885f364e30f787b4e5fd78f42090218f50f297efdea505b8227576
+License: Creative Commons Attribution 4.0 International (CC BY 4.0), same Eurostat copyright
+notice as above. Attribution: Source: Eurostat.
