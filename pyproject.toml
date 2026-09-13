@@ -7,7 +7,7 @@ name = "mloda-plugin-govdata"
 # Always start at least at 0.2.0 to make semver work.
 # Initial release for semver needs also a manually pushed minimum tag (likely 0.2.0).
 version = "0.2.3"
-description = "mloda plugin providing connectors and harmonization for German government data (GovData.de CKAN API, Destatis GENESIS API v3)."
+description = "mloda plugin providing connectors, harmonization and recipes for German government data (GovData.de CKAN API, Destatis GENESIS webservice)."
 readme = "README.md"
 license = "Apache-2.0"
 authors = [{ name = "Tom Kaltofen", email = "tomkaltofen@mloda.ai" }]
@@ -46,9 +46,15 @@ dev = [
     "pandas-stubs",
 ]
 
+[tool.setuptools]
+# Code only: no package data, so a stale egg-info manifest cannot pull test modules back in as data.
+include-package-data = false
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["mloda_plugin_govdata*"]
+# Tests and their fixtures stay out of the wheel and the sdist; the recipe tests read repo-root files anyway.
+exclude = ["*.tests", "*.tests.*"]
 
 [tool.pytest.ini_options]
 testpaths = ["mloda_plugin_govdata", "tests"]
@@ -73,8 +79,9 @@ strict = true
 ignore_missing_imports = true
 namespace_packages = true
 explicit_package_bases = true
-# Marimo notebooks are generated cell functions without annotations; not library code.
-exclude = ["^demos/"]
+# Marimo notebooks are generated cell functions without annotations; not library code. A local wheel
+# build leaves a copy of the package under build/, which would otherwise be checked twice.
+exclude = ["^demos/", "^build/"]
 
 [tool.bandit]
 exclude_dirs = [".tox", ".venv", "tests"]
