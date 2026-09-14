@@ -5,7 +5,13 @@ Companion to [ap2-destatis-harmonization.md](ap2-destatis-harmonization.md)
 Tick items in the PR that lands them. If a slice moves, a checkpoint slips, or
 a cut line is pulled, edit both files in the same PR.
 
-Status: draft v2.14, 2026-09-13 (slice 12 follow-ups ticked, PR #31: the public frames-by-column helper, the milestone-label sweep, the `from_env` half-set-pair edge case; docs and packaging ticked earlier, PR #28; the demo chapter merged as PR #27). v1 was reviewed by three independent advisors
+Status: draft v2.15, 2026-09-14 (slice 7 join plumbing and recipe 3 ticked,
+`chore/bump-mloda-0-13-0`: mloda 0.13.0 fixed same-class link discriminator
+handling, the Land-level join runs for real through the new
+`LandPopulationPerVoter` consumer; slice 12 follow-ups ticked, PR #31: the
+public frames-by-column helper, the milestone-label sweep, the `from_env`
+half-set-pair edge case; docs and packaging ticked earlier, PR #28; the demo
+chapter merged as PR #27). v1 was reviewed by three independent advisors
 (two Claude models, one Codex run) against the M1 code and mloda 0.10.0; the
 findings are folded in below. Slice 0 step 0 (OpenAPI assessment) was done
 2026-08-16, reviewed by one Claude Sonnet run and one Codex run against the
@@ -776,7 +782,7 @@ tested here, three weeks before it is needed.
 - [-] Quarter and month parsing: dropped, cut line 2 was pre-pulled in slice
       0 (2026-08-16); the freed hours are banked buffer. Comes back only if
       a live payload forces it (decided at C1).
-- [ ] Join plumbing (verified against mloda 0.10: `Link.inner_on` reads
+- [x] Join plumbing (verified against mloda 0.10: `Link.inner_on` reads
       `index_columns()`, which `GovDataFeature` does not define; a
       `DestatisReader` feature and a `BundeswahlleiterinReader` feature both
       resolve to `GovDataFeature`, so discriminators are mandatory):
@@ -790,27 +796,26 @@ tested here, three weeks before it is needed.
       all 16 Land rows on the right; the committed sample has one Land row,
       `01;Schleswig-Holstein;99`, so the fixture is extended, not created).
       2026-09-08, https://github.com/TomKaltofen/mloda-plugin-govdata/pull/22:
-      blocked in mloda core, not in this plugin. mloda 0.10 (unchanged on main,
-      0.11.3) injects the key columns of both link sides into every feature set
-      of the same class (`Engine._add_index_feature_from_links` and
-      `_process_index_feature` never consult the discriminators), so the kerg
-      key `Nr` reaches `DestatisReader` and fails there before any join. Two
-      more findings: mloda executes a link only for a consumer FeatureGroup that
-      needs one column from each side (two root requests come back as two
-      tables), and with discriminator-aware injection plus such a consumer,
-      exactly this link returns 16 Land rows through one inner join step
-      (verified by a monkeypatched experiment). Landed: the kerg fixture with all
-      16 Land rows, the real `12411-0010` fixture, a test proving `Nr` and the
-      DLAND attribute code line up with no name mapping, and the join test as a
-      strict xfail that flips the day mloda changes. `index_columns()` on
-      `GovDataFeature` is deliberately not added: with one root class for both
-      readers it can only carry both key names, which triggers the same double
-      injection. Owner decision: (a) fix mloda core (recommended, small, filed
-      on the engineering board), (b) one root FeatureGroup subclass per reader
-      with its own `index_columns()`, reversing the slice 4 root decision, or
-      (c) a shared key column name produced by both readers.
-- [ ] Commit series `feat(harmonization): period model`,
-      `feat(govdata): Land-level join plumbing`.
+      found blocked in mloda core, not in this plugin (mloda 0.10, unchanged
+      on 0.11.3, injected the key columns of both link sides into every
+      feature set of the same class, so the kerg key `Nr` reached
+      `DestatisReader` and failed there before any join) and landed as a
+      strict xfail plus the kerg and `12411-0010` fixtures. mloda executes a
+      link only for a consumer FeatureGroup that needs one column from each
+      side; two root requests plus `links=` still come back as two separate
+      tables even once the injection bug is fixed. `index_columns()` on
+      `GovDataFeature` stays undefined: with one root class for both readers
+      it can only carry both key names, triggering the same double
+      injection. Done 2026-09-14: mloda 0.13.0 fixed discriminator-aware
+      index-feature injection and included discriminators in `Link`
+      equality/hash. `LandPopulationPerVoter`
+      (`mloda_plugin_govdata/feature_groups/land_join.py`) is the production
+      consumer; `run_all([Feature("land_population_per_voter")],
+      links={LAND_LINK}, ...)` returns one joined table with 16 Land rows
+      through one inner join step, both xfails dropped and passing for real.
+- [x] Commit series `feat(harmonization): period model`,
+      `feat(govdata): Land-level join plumbing`. (Period model done in PR
+      #19/#20; join plumbing done 2026-09-14, `chore/bump-mloda-0-13-0`.)
 
 ## Slice 8: AGS-to-NUTS mapper (WP-D, weeks 1 and 4, about 45 h)
 
@@ -1123,15 +1128,18 @@ Checkpoint C2 target (Sep 20). Week 5 is three working days (SciCAR).
       consumer's job; zero-vs-missing pins `-` as 0 plus `value_marker` `-`
       on both sides against counted cells. Swap to `13211-02-05-4` once the
       account exists.)
-- [ ] Recipe 3: Destatis population by Land (GENESIS-Online `12411-0010`)
+- [x] Recipe 3: Destatis population by Land (GENESIS-Online `12411-0010`)
       joined with Bundestagswahl results by Land (D2, `Nr` = `DLAND`) through
       the slice 7 `links` block; the flagship integration test and the Demo
       Day story. (Filed 2026-09-12, PR #26, as
-      `recipes/land_population_voters.json` with the links block; the join
-      itself still waits on mloda honoring link discriminators (os-050) and
-      is a strict xfail in `recipes/tests/test_land_voters.py`; both sides
-      run without the links and their Land rows line up by AGS-2 and name.
-      The flagship integration test flips the day mloda changes.)
+      `recipes/land_population_voters.json` with the links block; both sides
+      ran without the links and their Land rows lined up by AGS-2 and name,
+      the join itself a strict xfail waiting on mloda. Done 2026-09-14,
+      `chore/bump-mloda-0-13-0`: mloda 0.13.0 fixed same-class link
+      discriminator handling; the flagship integration test
+      (`test_the_links_block_joins_the_two_sides`) now runs the recipe's own
+      `links` block for real through the production `LandPopulationPerVoter`
+      consumer and asserts the 16-row join, xfail dropped.)
 - [x] Retrofit 1: population (M1) as a recipe file. (Done 2026-09-12, PR
       #26: `recipes/stuttgart_population.json`, full CSV sha256 pinned, the
       offline test runs the 1000-row excerpt.)
@@ -1215,7 +1223,12 @@ Checkpoint C2 target (Sep 20). Week 5 is three working days (SciCAR).
       PR #31: `mloda_plugin_govdata/recipes/frames.py`, exported from
       `recipes/__init__.py`; a shared column raises on every lookup form,
       subscript, `in`, `.get()`, not only eager construction. The demo's
-      recipe-3 cell rewired onto it. Retired if os-054 lands upstream.)
+      recipe-3 cell rewired onto it. mloda 0.13.0 (2026-09-14) gave
+      `RunResult.frames()` a real feature-set identity; the recipe-2 pick
+      (two selections of one reader) moved onto it in
+      `chore/bump-mloda-0-13-0`, but `frames_by_column` stays: the demo and
+      the recipe-3 tests still request a recipe's raw features with no
+      consumer FeatureGroup, which mloda still returns as separate frames.)
 - [x] `pyproject.toml` description: "GENESIS API v3" becomes "GENESIS API
       v5.0" (or drop the version). (Done 2026-09-13, PR #28: dropped; the
       description names the GENESIS webservice and the recipes.)
@@ -1259,7 +1272,9 @@ have to reconstruct that under deadline pressure.
 - [ ] 3. Typed period representation joins Destatis annual data with one M1
       source at Land level. Cut line 1: reads "joins two Destatis tables at
       Land level; the cross-portal claim moves to AP3". Cut line 3: carried
-      by the slice 7 join test, not a recipe.
+      by the slice 7 join test, not a recipe. Underlying capability done
+      2026-09-14 (mloda 0.13.0, `chore/bump-mloda-0-13-0`): the join test
+      passes for real now; the walkthrough tick itself is still the owner's.
 - [ ] 4. Six recipe files with all compliance fields. Cut line 4: reads "four
       recipe files plus a documented retrofit template".
 - [ ] 5. `tox` green, no live network by default, README and demo updated.
