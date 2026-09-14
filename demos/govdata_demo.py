@@ -283,13 +283,15 @@ def _(mo, population_by_land, voters_by_land):
 
 @app.cell
 def _(Feature, GovDataFeature, LandPopulationPerVoter, PluginCollector, land_recipe, mloda):
-    per_voter = mloda.run_all(
+    _table = mloda.run_all(
         [Feature(LandPopulationPerVoter.NAME)],
         compute_frameworks=["PyArrowTable"],
         links=set(land_recipe.links),
         plugin_collector=PluginCollector.enabled_feature_groups({GovDataFeature, LandPopulationPerVoter}),
-    )[0].to_pandas()
-    per_voter  # Bevölkerung je Wahlberechtigte, one row per Land
+    )[0]
+    # ~code, ~land, ~population, ~voters, ~value: one labeled row per Land, sorted by AGS-2 code.
+    per_voter = _table.rename_columns([name.rpartition("~")[2] for name in _table.schema.names]).to_pandas()
+    per_voter  # Bevölkerung je Wahlberechtigte
     return
 
 

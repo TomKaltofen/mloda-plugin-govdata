@@ -69,7 +69,7 @@ def test_the_links_block_joins_the_two_sides(recipes_dir: Path, genesis: Genesis
     assert [step.step_kind for step in result.plan].count("join") == 1
     table = result[0]
     assert table.num_rows == 16
-    assert LandPopulationPerVoter.NAME in table.schema.names
+    assert f"{LandPopulationPerVoter.NAME}~value" in table.schema.names
 
 
 @respx.mock

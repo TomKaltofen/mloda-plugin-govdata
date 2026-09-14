@@ -18,7 +18,8 @@ from mloda_plugin_govdata.feature_groups.govdata import (
     GovDataLocator,
     Provenance,
 )
-from mloda_plugin_govdata.feature_groups.land_join import KERG_URL, LAND_LINK, VOTERS, LandPopulationPerVoter
+from mloda_plugin_govdata.feature_groups.land_join import KERG_URL, LAND_LINK, PARTS, VOTERS, LandPopulationPerVoter
+from mloda_plugin_govdata.harmonization.land_codes import check_land_names
 
 FEATURE_GROUPS = Path(__file__).resolve().parents[1] / "mloda_plugin_govdata" / "feature_groups"
 LAND_TABLE_ZIP = FEATURE_GROUPS / "destatis" / "tests" / "fixtures" / "ffcsv" / "12411-0010_2024_de_flat.zip"
@@ -70,7 +71,7 @@ def test_land_keys_line_up_without_name_mapping() -> None:
     assert others and LAND_CODES.isdisjoint(others)
 
 
-def _expected_ratios() -> list[float]:
+def _expected_ratios() -> dict[str, float]:
     """Population per voter per Land, computed independently of ``LandPopulationPerVoter``."""
     destatis = parse_ffcsv_zip(LAND_TABLE_ZIP.read_bytes())
     population = dict(
@@ -82,7 +83,7 @@ def _expected_ratios() -> list[float]:
     rows = zip(kerg.column("Nr").to_pylist(), kerg.column("gehört zu").to_pylist(), kerg.column(VOTERS).to_pylist())
     voters = {nr: count for nr, parent, count in rows if parent == "99"}
     assert set(population) == set(voters) == LAND_CODES
-    return [population[key] / voters[key] for key in LAND_CODES]
+    return {key: population[key] / voters[key] for key in LAND_CODES}
 
 
 @respx.mock
@@ -93,7 +94,10 @@ def test_land_join_through_mloda(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 
     table = result[0]
     assert table.num_rows == 16
-    assert set(table.schema.names) >= {LandPopulationPerVoter.NAME}
+    assert set(table.schema.names) == {f"{LandPopulationPerVoter.NAME}~{part}" for part in PARTS}
     assert [step.step_kind for step in result.plan].count("join") == 1
-    actual = sorted(table.column(LandPopulationPerVoter.NAME).to_pylist())
-    assert actual == pytest.approx(sorted(_expected_ratios()))
+    codes = table.column(f"{LandPopulationPerVoter.NAME}~code").to_pylist()
+    assert codes == sorted(codes)  # sorted by Land code, not join order
+    check_land_names(zip(codes, table.column(f"{LandPopulationPerVoter.NAME}~land").to_pylist()))
+    actual = dict(zip(codes, table.column(f"{LandPopulationPerVoter.NAME}~value").to_pylist()))
+    assert actual == pytest.approx(_expected_ratios())

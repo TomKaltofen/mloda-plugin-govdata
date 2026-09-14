@@ -5,11 +5,13 @@ from __future__ import annotations
 
 from typing import Any, ClassVar
 
+import pyarrow as pa
 import pyarrow.compute as pc
 from mloda.provider import ComputeFramework, FeatureGroup, FeatureSet
 from mloda.user import Feature, FeatureName, JoinSpec, Link, Options
 from mloda.user.pyarrow import PyArrowTable
 
+from ..harmonization.land_codes import land_name
 from .destatis.reader import DestatisReader
 from .govdata.bundeswahlleiterin import BundeswahlleiterinReader
 from .govdata.feature import GovDataFeature
@@ -18,6 +20,7 @@ from .govdata.feature import GovDataFeature
 LAND_LOCATOR = {"name": "12411-0010", "startyear": 2024, "endyear": 2024}
 KERG_URL = "https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata/btw25/csv/kerg.csv"
 VOTERS = "Wahlberechtigte Erststimmen Endgültig"
+PARTS: tuple[str, ...] = ("code", "land", "population", "voters", "value")
 
 LAND_LINK = Link.inner(
     JoinSpec(GovDataFeature, "1_variable_attribute_code"),
@@ -31,7 +34,9 @@ class LandPopulationPerVoter(FeatureGroup):
     """Population per eligible voter by Land, joined on the DLAND / ``Nr`` Land codes.
 
     Pinned to one GENESIS-Online table and one kerg file (``LAND_LOCATOR``, ``KERG_URL``); not
-    parameterized by year or election.
+    parameterized by year or election. One row per Land, sorted by AGS-2 code: ``~code``, ``~land``
+    (the name, from ``harmonization.land_codes``), ``~population``, ``~voters``, and the computed
+    ``~value``.
     """
 
     NAME: ClassVar[str] = "land_population_per_voter"
@@ -52,6 +57,17 @@ class LandPopulationPerVoter(FeatureGroup):
 
     @classmethod
     def calculate_feature(cls, data: Any, features: FeatureSet) -> Any:
-        population = pc.cast(data.column("value"), "float64")
-        voters = pc.cast(data.column(VOTERS), "float64")
-        return data.append_column(cls.NAME, pc.divide(population, voters))
+        order = pc.sort_indices(data.column("1_variable_attribute_code"))
+        codes = data.column("1_variable_attribute_code").take(order)
+        population = pc.cast(data.column("value"), "float64").take(order)
+        voters = pc.cast(data.column(VOTERS), "float64").take(order)
+        land = pa.array([land_name(code) for code in codes.to_pylist()], pa.string())
+        return pa.table(
+            {
+                f"{cls.NAME}~code": codes,
+                f"{cls.NAME}~land": land,
+                f"{cls.NAME}~population": population,
+                f"{cls.NAME}~voters": voters,
+                f"{cls.NAME}~value": pc.divide(population, voters),
+            }
+        )
