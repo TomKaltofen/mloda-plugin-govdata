@@ -43,6 +43,11 @@ def _mock_both_sources(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _run_land_join() -> Any:
+    # links= is required despite LandPopulationPerVoter.input_features() already attaching LAND_LINK
+    # to its own Feature: input_features() returns a set, so whether the linked Feature or its
+    # sibling is added to the engine first is hash-order dependent; when the sibling goes first, its
+    # same-class index injection runs before mloda's own link auto-registration takes effect, and the
+    # join fails a fraction of the time depending on PYTHONHASHSEED. Confirmed by 100+ direct runs.
     return mloda.run_all(
         [Feature(LandPopulationPerVoter.NAME)],
         compute_frameworks=["PyArrowTable"],

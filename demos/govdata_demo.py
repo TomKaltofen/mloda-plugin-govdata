@@ -283,6 +283,7 @@ def _(mo, population_by_land, voters_by_land):
 
 @app.cell
 def _(Feature, GovDataFeature, LandPopulationPerVoter, PluginCollector, land_recipe, mloda):
+    # links= is required here, not optional: tests/test_land_join.py's _run_land_join() explains why.
     _table = mloda.run_all(
         [Feature(LandPopulationPerVoter.NAME)],
         compute_frameworks=["PyArrowTable"],
