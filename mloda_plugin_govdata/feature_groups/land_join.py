@@ -5,14 +5,16 @@ from __future__ import annotations
 
 from typing import Any, ClassVar
 
-import pyarrow as pa
-from mloda.provider import FeatureGroup, FeatureSet
+import pyarrow.compute as pc
+from mloda.provider import ComputeFramework, FeatureGroup, FeatureSet
 from mloda.user import Feature, FeatureName, JoinSpec, Link, Options
+from mloda.user.pyarrow import PyArrowTable
 
 from .destatis.reader import DestatisReader
 from .govdata.bundeswahlleiterin import BundeswahlleiterinReader
 from .govdata.feature import GovDataFeature
 
+# GENESIS-Online 12411-0010 (Bevölkerung nach Ländern), 2024; Bundestagswahl 2025 (btw25) kerg.csv.
 LAND_LOCATOR = {"name": "12411-0010", "startyear": 2024, "endyear": 2024}
 KERG_URL = "https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata/btw25/csv/kerg.csv"
 VOTERS = "Wahlberechtigte Erststimmen Endgültig"
@@ -26,9 +28,17 @@ LAND_LINK = Link.inner(
 
 
 class LandPopulationPerVoter(FeatureGroup):
-    """Population per eligible voter by Land, joined on the DLAND / ``Nr`` Land codes."""
+    """Population per eligible voter by Land, joined on the DLAND / ``Nr`` Land codes.
+
+    Pinned to one GENESIS-Online table and one kerg file (``LAND_LOCATOR``, ``KERG_URL``); not
+    parameterized by year or election.
+    """
 
     NAME: ClassVar[str] = "land_population_per_voter"
+
+    @classmethod
+    def compute_framework_rule(cls) -> set[type[ComputeFramework]] | None:
+        return {PyArrowTable}
 
     @classmethod
     def feature_names_supported(cls) -> set[str]:
@@ -42,6 +52,6 @@ class LandPopulationPerVoter(FeatureGroup):
 
     @classmethod
     def calculate_feature(cls, data: Any, features: FeatureSet) -> Any:
-        pairs = zip(data.column("value").to_pylist(), data.column(VOTERS).to_pylist())
-        ratio = pa.array([population / voters for population, voters in pairs], type=pa.float64())
-        return data.append_column(cls.NAME, ratio)
+        population = pc.cast(data.column("value"), "float64")
+        voters = pc.cast(data.column(VOTERS), "float64")
+        return data.append_column(cls.NAME, pc.divide(population, voters))

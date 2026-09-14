@@ -155,7 +155,7 @@ def test_links_that_differ_only_by_discriminator_are_accepted() -> None:
         _link({"BundeswahlleiterinReader": "https://a/kerg.csv"}),
         _link({"BundeswahlleiterinReader": "https://b/kerg.csv"}),
     ]
-    Recipe.model_validate(_recipe(links=same_shape))
+    assert len(Recipe.model_validate(_recipe(links=same_shape)).links) == 2
 
 
 def test_an_exact_duplicate_link_is_rejected() -> None:

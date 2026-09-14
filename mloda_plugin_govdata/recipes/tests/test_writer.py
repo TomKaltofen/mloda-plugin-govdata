@@ -189,6 +189,20 @@ def test_links_that_differ_only_by_discriminator_stay_distinct() -> None:
     assert set(loaded.links) == {LAND_LINK, other}
 
 
+def test_two_feature_level_links_differing_only_by_discriminator_both_hoist() -> None:
+    other = Link.inner(
+        JoinSpec(GovDataFeature, "1_variable_attribute_code"),
+        JoinSpec(GovDataFeature, "Nr"),
+        left_discriminator={DestatisReader.__name__: LAND_LOCATOR},
+        right_discriminator={BundeswahlleiterinReader.__name__: BERLIN_URL},
+    )
+    features: list[Feature | str] = [Feature("value", link=LAND_LINK), Feature("Nr", link=other)]
+    recipe = build_recipe(features, COMPLIANCE)
+    assert len(recipe.links) == 2
+    loaded = parse_recipe(recipe_to_json(recipe))
+    assert set(loaded.links) == {LAND_LINK, other}
+
+
 def test_an_unknown_feature_group_in_the_links_block_is_named() -> None:
     text = recipe_to_json(build_recipe(["Nr"], COMPLIANCE, [LAND_LINK])).replace("GovDataFeature", "NoSuchFeature", 1)
     with pytest.raises(RecipeError, match=r"links\[0\].left: no FeatureGroup named 'NoSuchFeature' is loaded"):

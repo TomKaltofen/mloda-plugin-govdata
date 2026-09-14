@@ -27,11 +27,11 @@ def _by_key_and_year(table: Any, *, only: Callable[[dict[str, Any]], bool] = lam
 def _frames(recipes_dir: Path) -> tuple[Rows, Rows]:
     """The total rows of the foreigners table and the population rows, keyed by Kreis and year."""
     result = run(load_recipe(recipes_dir / KREIS_FOREIGNERS_SHARE.file).features)
-    by_table = {
-        step.feature_set_options.group[DestatisReader.__name__]["name"]: frame
-        for step, frame in result.frames()
-        if step.feature_set_options is not None
-    }
+    by_table = {}
+    for step, frame in result.frames():
+        assert step.feature_set_options is not None, step
+        by_table[step.feature_set_options.group[DestatisReader.__name__]["name"]] = frame
+    assert len(by_table) == 2, by_table
     foreigners, population = by_table[FOREIGNERS["name"]], by_table[GOETTINGEN["name"]]
     assert (foreigners.num_rows, population.num_rows) == (45, 15)
     totals = _by_key_and_year(foreigners, only=lambda row: row[SEX_LABEL] == "Insgesamt")

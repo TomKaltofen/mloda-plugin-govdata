@@ -18,7 +18,7 @@ from mloda_plugin_govdata.feature_groups.govdata import (
     GovDataLocator,
     Provenance,
 )
-from mloda_plugin_govdata.feature_groups.land_join import KERG_URL, LAND_LINK, LandPopulationPerVoter
+from mloda_plugin_govdata.feature_groups.land_join import KERG_URL, LAND_LINK, VOTERS, LandPopulationPerVoter
 
 FEATURE_GROUPS = Path(__file__).resolve().parents[1] / "mloda_plugin_govdata" / "feature_groups"
 LAND_TABLE_ZIP = FEATURE_GROUPS / "destatis" / "tests" / "fixtures" / "ffcsv" / "12411-0010_2024_de_flat.zip"
@@ -70,6 +70,21 @@ def test_land_keys_line_up_without_name_mapping() -> None:
     assert others and LAND_CODES.isdisjoint(others)
 
 
+def _expected_ratios() -> list[float]:
+    """Population per voter per Land, computed independently of ``LandPopulationPerVoter``."""
+    destatis = parse_ffcsv_zip(LAND_TABLE_ZIP.read_bytes())
+    population = dict(
+        zip(destatis.column("1_variable_attribute_code").to_pylist(), destatis.column("value").to_pylist())
+    )
+    kerg = BundeswahlleiterinReader._parse(
+        KERG_SAMPLE, GovDataLocator.from_string(KERG_URL), Provenance(source="url", url=KERG_URL)
+    )
+    rows = zip(kerg.column("Nr").to_pylist(), kerg.column("gehört zu").to_pylist(), kerg.column(VOTERS).to_pylist())
+    voters = {nr: count for nr, parent, count in rows if parent == "99"}
+    assert set(population) == set(voters) == LAND_CODES
+    return [population[key] / voters[key] for key in LAND_CODES]
+
+
 @respx.mock
 def test_land_join_through_mloda(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _mock_both_sources(tmp_path, monkeypatch)
@@ -80,3 +95,5 @@ def test_land_join_through_mloda(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     assert table.num_rows == 16
     assert set(table.schema.names) >= {LandPopulationPerVoter.NAME}
     assert [step.step_kind for step in result.plan].count("join") == 1
+    actual = sorted(table.column(LandPopulationPerVoter.NAME).to_pylist())
+    assert actual == pytest.approx(sorted(_expected_ratios()))
