@@ -1,14 +1,15 @@
-"""Recipe 3: both sides run, their Land rows line up by AGS-2, and the join itself waits on mloda."""
+"""Recipe 3: both sides run unjoined by default; the links block lets a consumer join them."""
 
 import hashlib
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 
-import pytest
 import respx
-from mloda.user import Feature
+from mloda.user import Feature, PluginCollector, mloda
 
+from mloda_plugin_govdata.feature_groups.govdata import GovDataFeature
+from mloda_plugin_govdata.feature_groups.land_join import LandPopulationPerVoter
 from mloda_plugin_govdata.harmonization.land_codes import LAND_NAMES, check_land_names
 from mloda_plugin_govdata.harmonization.tests.test_land_codes import BUNDESGEBIET, BUNDESGEBIET_ROW
 from mloda_plugin_govdata.recipes import LoadedRecipe, frames_by_column, load_recipe
@@ -44,7 +45,7 @@ def test_the_recipe_pins_both_payloads_and_carries_the_link(recipes_dir: Path) -
 def test_both_sides_run_and_the_land_rows_line_up_by_name(recipes_dir: Path, genesis: Genesis, kerg: Mock) -> None:
     genesis({"12411-0010": LAND_ZIP})
     kerg((GOVDATA_FIXTURES / "kerg_sample.csv").read_bytes() + BUNDESGEBIET_ROW)
-    frames = frames_by_column(run(_load(recipes_dir).features))  # without the links: the join waits on mloda
+    frames = frames_by_column(run(_load(recipes_dir).features))  # no consumer requested: two frames, unjoined
     destatis, election = frames["value"], frames["Nr"]
     assert destatis.num_rows == 16
     check_land_names(zip(destatis.column(KEY).to_pylist(), destatis.column("1_variable_attribute_label").to_pylist()))
@@ -54,18 +55,21 @@ def test_both_sides_run_and_the_land_rows_line_up_by_name(recipes_dir: Path, gen
     assert all(row[VOTERS] > 0 for row in land_rows.values())
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=ValueError,
-    reason="mloda 0.10: same-class link keys are injected into both sides, so each reader is asked for the other's key",
-)
 @respx.mock
 def test_the_links_block_joins_the_two_sides(recipes_dir: Path, genesis: Genesis, kerg: Mock) -> None:
     genesis({"12411-0010": LAND_ZIP})
     kerg()
     recipe = _load(recipes_dir)
-    result = run(recipe.features, recipe.links)
+    result = mloda.run_all(
+        [Feature(LandPopulationPerVoter.NAME)],
+        compute_frameworks=["PyArrowTable"],
+        links=set(recipe.links),
+        plugin_collector=PluginCollector.enabled_feature_groups({GovDataFeature, LandPopulationPerVoter}),
+    )
     assert [step.step_kind for step in result.plan].count("join") == 1
+    table = result[0]
+    assert table.num_rows == 16
+    assert f"{LandPopulationPerVoter.NAME}~value" in table.schema.names
 
 
 @respx.mock

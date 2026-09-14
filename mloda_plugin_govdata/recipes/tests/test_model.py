@@ -149,13 +149,16 @@ def test_link_index_needs_a_column_name() -> None:
     _rejects(_recipe(links=[{"join": "inner", "left": side, "right": side}]), "non-empty strings")
 
 
-def test_links_equal_under_mloda_link_equality_are_rejected() -> None:
-    # mloda's Link equality and hash ignore discriminators, so run_all's links set would keep one of the two.
+def test_links_that_differ_only_by_discriminator_are_accepted() -> None:
+    # mloda's Link equality and hash include discriminators, so both survive run_all's links set.
     same_shape = [
         _link({"BundeswahlleiterinReader": "https://a/kerg.csv"}),
         _link({"BundeswahlleiterinReader": "https://b/kerg.csv"}),
     ]
-    _rejects(_recipe(links=same_shape), r"links\[1\] repeats links\[0\]")
+    assert len(Recipe.model_validate(_recipe(links=same_shape)).links) == 2
+
+
+def test_an_exact_duplicate_link_is_rejected() -> None:
     _rejects(_recipe(links=[_link(), _link()]), r"links\[1\] repeats links\[0\]")
     Recipe.model_validate(_recipe(links=[_link(), _link(join="left")]))
 
