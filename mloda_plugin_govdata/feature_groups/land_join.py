@@ -1,8 +1,5 @@
-"""Population per eligible voter by Land: joins the Destatis DLAND table to the Bundeswahlleiterin kerg file.
-
-A same-class link between two ``GovDataFeature`` nodes: mloda executes the join only for a consumer
-FeatureGroup that needs a column from each side, so this class is that consumer.
-"""
+"""The consumer FeatureGroup a same-class ``GovDataFeature`` link needs: mloda executes such a join
+only when a consumer needs a column from each side."""
 
 from __future__ import annotations
 

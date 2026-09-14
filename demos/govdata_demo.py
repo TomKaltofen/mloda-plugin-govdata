@@ -289,7 +289,7 @@ def _(Feature, GovDataFeature, LandPopulationPerVoter, PluginCollector, land_rec
         links=set(land_recipe.links),
         plugin_collector=PluginCollector.enabled_feature_groups({GovDataFeature, LandPopulationPerVoter}),
     )[0].to_pandas()
-    per_voter  # Bevölkerung je Wahlberechtigte, one row per Land, from mloda's own join via the recipe's links
+    per_voter  # Bevölkerung je Wahlberechtigte, one row per Land
     return
 
 

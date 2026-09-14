@@ -1,9 +1,5 @@
-"""Land-level join of a Destatis table (DLAND) with Bundeswahlleiterin results (Nr).
-
-The key columns line up on real data without any name mapping. ``LandPopulationPerVoter`` is the
-consumer FeatureGroup mloda's join fires for: a same-class link between two ``GovDataFeature`` nodes
-merges only when a consumer needs a column from each side.
-"""
+"""Land-level join of Destatis DLAND with Bundeswahlleiterin results (Nr); key columns line up without
+name mapping. ``LandPopulationPerVoter`` is the consumer FeatureGroup mloda's join fires for."""
 
 from pathlib import Path
 from typing import Any
