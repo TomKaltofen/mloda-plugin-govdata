@@ -54,9 +54,8 @@ recipe.compliance.sources[0].attribution  # what to print next to the result
 - `links`: joins the feature array cannot express. `join` is `inner`, `left`, `right`, `outer`, `append`,
   or `union`; each side names the FeatureGroup class, its key columns, and, when both sides share a class,
   a `discriminator` of option key/value pairs picking the node. mloda matches a discriminator by exact
-  equality with the feature's option value, so use the same locator form on both sides. Two links with the
-  same join type, classes, and key columns are rejected even when their discriminators differ: mloda's
-  `Link` equality ignores discriminators, so `run_all` would keep only one of them.
+  equality with the feature's option value, so use the same locator form on both sides. Two links that
+  differ only by their discriminators stay distinct, so both can be in one recipe's `links` block.
 - `compliance.sources`: one entry per data source with `license`, `attribution`, `dataset_uri`,
   `retrieved_at` (timezone-aware), the payload `sha256`, `modifications` (what the reader changes; dl-de/by-2-0
   requires marking changes), and `credential_env` (the env-var names of the source's default credential path,
@@ -105,9 +104,10 @@ recipes sit next to their tests.
 | `uba_ozone_station_143.json` | UBA Air Data JSON | hourly ozone at one station |
 
 The re-based recipe needs the BBSR key file in the cache (`load_bbsr_kreise(cache, revalidate=True)`
-once). The Land join waits on mloda honoring link discriminators for same-class links; until then run
-its features without the links block and combine the two frames yourself, picking each one with
-`recipes.frames_by_column` and checking the Land names with `harmonization.land_codes.check_land_names`.
+once). Running the Land recipe's own features returns them unjoined, one frame per source; check the
+Land names on each side with `harmonization.land_codes.check_land_names`. The links block lets a consumer
+FeatureGroup that needs a column from each side join them instead (mloda executes a join only for such a
+consumer); `feature_groups.land_join.LandPopulationPerVoter` is one, computing population per voter.
 A `-` in a GENESIS cell arrives as 0 with the sign kept in
 `value_marker`; only the harmonization step, which knows the validity windows, turns it into not applicable,
 so a consumer of raw columns reads the marker before taking a 0 as a count. Each recipe except the first

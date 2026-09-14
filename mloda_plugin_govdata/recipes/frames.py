@@ -30,7 +30,8 @@ class _FramesByColumn(Mapping[str, Any]):
 
 
 def frames_by_column(result: Iterable[Any]) -> Mapping[str, Any]:
-    """Indexes a `mloda.run_all` result by column name, since mloda frames carry no feature-set identity."""
+    """Indexes a `mloda.run_all` result by column name; use `RunResult.frames()` when the options that split
+    the request (not just a distinguishing column) are what tell the frames apart."""
     frames: dict[str, Any] = {}
     ambiguous: set[str] = set()
     for table in result:

@@ -110,16 +110,6 @@ class LinkSpec(BaseModel):
     left: JoinSide
     right: JoinSide
 
-    def identity(self) -> tuple[str, str, tuple[str, ...], str, tuple[str, ...]]:
-        """What mloda's ``Link`` equality compares: join type, class names, key columns; not the discriminators."""
-        return (
-            self.join,
-            self.left.feature_group,
-            tuple(self.left.index),
-            self.right.feature_group,
-            tuple(self.right.index),
-        )
-
 
 class SourceCompliance(BaseModel):
     """Provenance and license of one data source a recipe reads."""
@@ -198,15 +188,11 @@ class Recipe(BaseModel):
 
     @field_validator("links")
     @classmethod
-    def _distinct_under_mloda_equality(cls, value: list[LinkSpec]) -> list[LinkSpec]:
-        seen: dict[tuple[str, str, tuple[str, ...], str, tuple[str, ...]], int] = {}
+    def _no_duplicate_links(cls, value: list[LinkSpec]) -> list[LinkSpec]:
         for position, spec in enumerate(value):
-            first = seen.setdefault(spec.identity(), position)
-            if first != position:
-                raise ValueError(
-                    f"links[{position}] repeats links[{first}] (same join type, feature groups, and key columns); "
-                    "mloda's Link equality ignores discriminators, so run_all would keep only one of them"
-                )
+            for earlier in range(position):
+                if value[earlier] == spec:
+                    raise ValueError(f"links[{position}] repeats links[{earlier}]")
         return value
 
     @model_validator(mode="after")

@@ -12,6 +12,7 @@ from mloda.user import Feature, Index, JoinSpec, Link, Options, load_features_fr
 
 from mloda_plugin_govdata.feature_groups.destatis import DestatisLocator, DestatisReader
 from mloda_plugin_govdata.feature_groups.govdata import BundeswahlleiterinReader, GovDataFeature, GovDataLocator
+from mloda_plugin_govdata.feature_groups.land_join import LAND_LINK
 from mloda_plugin_govdata.recipes import (
     Compliance,
     RecipeError,
@@ -24,7 +25,7 @@ from mloda_plugin_govdata.recipes import (
 )
 from mloda_plugin_govdata.recipes.writer import _UNSUPPORTED, SUPPORTED_FEATURE_PARAMETERS
 
-from .shipped import KERG_URL, LAND_LINK, LAND_SHA256
+from .shipped import KERG_URL, LAND_SHA256
 from .shipped import LAND as LAND_LOCATOR
 
 BERLIN_URL = "https://www.wahlen-berlin.de/wahlen/BE2023/AFSPRAES/agh/Datenexport_AGH2023_Zweitstimme_W_BE.csv"
@@ -174,18 +175,18 @@ def test_a_feature_level_link_is_hoisted_once() -> None:
     assert all(isinstance(feature, Feature) and feature.link is None for feature in loaded.features)
 
 
-def test_links_that_differ_only_by_discriminator_are_rejected() -> None:
-    # mloda's Link equality ignores discriminators, so run_all(links=set(...)) would silently keep one of them.
+def test_links_that_differ_only_by_discriminator_stay_distinct() -> None:
+    # mloda's Link equality includes discriminators, so both survive a recipe's links block and run_all(links=...).
     other = Link.inner(
         JoinSpec(GovDataFeature, "1_variable_attribute_code"),
         JoinSpec(GovDataFeature, "Nr"),
         left_discriminator={DestatisReader.__name__: LAND_LOCATOR},
         right_discriminator={BundeswahlleiterinReader.__name__: BERLIN_URL},
     )
-    assert len({LAND_LINK, other}) == 1
-    features: list[Feature | str] = [Feature("value", link=LAND_LINK), Feature("Nr", link=other)]
-    with pytest.raises(RecipeError, match=r"links\[1\] repeats links\[0\]"):
-        build_recipe(features, COMPLIANCE)
+    assert len({LAND_LINK, other}) == 2
+    recipe = build_recipe(["value", "Nr"], COMPLIANCE, [LAND_LINK, other])
+    loaded = parse_recipe(recipe_to_json(recipe))
+    assert set(loaded.links) == {LAND_LINK, other}
 
 
 def test_an_unknown_feature_group_in_the_links_block_is_named() -> None:

@@ -191,13 +191,16 @@ def _(mo):
 
 @app.cell
 def _():
+    from mloda.user import PluginCollector
+
     from mloda_plugin_govdata.feature_groups.destatis import (
         GENESIS_ONLINE,
         DestatisCredentials,
         MissingCredentialsError,
     )
-    from mloda_plugin_govdata.feature_groups.govdata import CacheMissError, DownloadCache
+    from mloda_plugin_govdata.feature_groups.govdata import CacheMissError, DownloadCache, GovDataFeature
     from mloda_plugin_govdata.feature_groups.harmonization import KreisRebaseFeature
+    from mloda_plugin_govdata.feature_groups.land_join import LandPopulationPerVoter
     from mloda_plugin_govdata.harmonization.land_codes import check_land_names
     from mloda_plugin_govdata.harmonization.reference.bbsr import load_bbsr_kreise
     from mloda_plugin_govdata.recipes import frames_by_column, load_recipe
@@ -207,8 +210,11 @@ def _():
         DestatisCredentials,
         DownloadCache,
         GENESIS_ONLINE,
+        GovDataFeature,
         KreisRebaseFeature,
+        LandPopulationPerVoter,
         MissingCredentialsError,
+        PluginCollector,
         check_land_names,
         frames_by_column,
         load_bbsr_kreise,
@@ -246,9 +252,10 @@ def _(mo):
         """
         ### Population per eligible voter by Land (`land_population_voters.json`)
 
-        Both sides run without the recipe's links block (mloda does not honor discriminators on a
-        same-class link yet), so the two sources come back as two frames. `check_land_names` verifies
-        the AGS-2 codes and names on each side before they are combined by hand.
+        Requesting the recipe's own features returns two frames, one per source. `check_land_names`
+        verifies the AGS-2 codes and names on each side. `LandPopulationPerVoter` is a consumer
+        FeatureGroup needing a column from each side, so mloda's join fires for it, using the
+        recipe's own links block: no manual merge.
         """
     )
     return
@@ -275,13 +282,14 @@ def _(mo, population_by_land, voters_by_land):
 
 
 @app.cell
-def _(population_by_land, voters_by_land):
-    _voters = "Wahlberechtigte Erststimmen Endgültig"
-    per_voter = population_by_land.rename(
-        columns={"1_variable_attribute_code": "Nr", "1_variable_attribute_label": "Land", "value": "Bevölkerung"}
-    ).merge(voters_by_land[["Nr", _voters]].rename(columns={_voters: "Wahlberechtigte"}), on="Nr")
-    per_voter["Bevölkerung je Wahlberechtigte"] = per_voter["Bevölkerung"] / per_voter["Wahlberechtigte"]
-    per_voter.sort_values("Nr")[["Nr", "Land", "Bevölkerung", "Wahlberechtigte", "Bevölkerung je Wahlberechtigte"]]
+def _(Feature, GovDataFeature, LandPopulationPerVoter, PluginCollector, land_recipe, mloda):
+    per_voter = mloda.run_all(
+        [Feature(LandPopulationPerVoter.NAME)],
+        compute_frameworks=["PyArrowTable"],
+        links=set(land_recipe.links),
+        plugin_collector=PluginCollector.enabled_feature_groups({GovDataFeature, LandPopulationPerVoter}),
+    )[0].to_pandas()
+    per_voter  # Bevölkerung je Wahlberechtigte, one row per Land, from mloda's own join via the recipe's links
     return
 
 
