@@ -77,8 +77,9 @@ the policy says otherwise.
 ## `<key>__nuts2024` (`AgsToNutsFeature`)
 
 Maps AGS keys through the pinned Eurostat LAU-to-NUTS crosswalk
-(`mloda_plugin_govdata/feature_groups/harmonization/core/nuts.py`). The edition is part of the name (or the `nuts_version` option) and must be the one the cache holds
-(`load_edition(cache, revalidate=True)` once). Kreis keys retired before the edition resolve through
+(`mloda_plugin_govdata/feature_groups/harmonization/core/nuts.py`). The edition is part of the name (or
+the `nuts_version` option) and must be the one the cache holds (`load_edition(cache, revalidate=True)`
+once). Kreis keys retired before the edition resolve through
 the GV-ISys change files named in `AgsToNutsFeature.history_years` (the pinned year, fetched once with
 `load_gv_isys_changes(year, cache, revalidate=True)`); Land keys are out of scope.
 

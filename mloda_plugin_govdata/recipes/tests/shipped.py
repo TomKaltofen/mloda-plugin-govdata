@@ -186,8 +186,9 @@ LAND_POPULATION_VOTERS = ShippedRecipe(
             "Population per eligible voter by Land. The kerg Land rows (gehört zu = 99) carry the AGS-2 in Nr, which "
             "equals the Destatis DLAND code, so the join needs no name mapping; check the names on both sides with "
             "mloda_plugin_govdata.feature_groups.harmonization.core.land_codes. A party column is empty where the "
-            "party was not on the ballot (the CSU outside Bayern), which is not a zero. The links block lets a consumer FeatureGroup needing a column from "
-            "each side join them (mloda_plugin_govdata.feature_groups.land_join.LandPopulationPerVoter is one); "
+            "party was not on the ballot (the CSU outside Bayern), which is not a zero. The links block lets a "
+            "consumer FeatureGroup needing a column from each side join them "
+            "(mloda_plugin_govdata.feature_groups.land_join.LandPopulationPerVoter is one); "
             "requesting this recipe's own raw features returns them unjoined, one frame per source. "
             "kerg.csv re-fetched on 2026-09-12: unchanged since the first capture."
         ),

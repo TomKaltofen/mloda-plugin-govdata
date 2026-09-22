@@ -1,1 +1,1 @@
-"""Harmonization logic and reference-table loaders that the FeatureGroups in the parent package wrap."""
+"""Harmonization logic (keys, NUTS mapping, re-basing, Land codes) and the reference-table loaders."""

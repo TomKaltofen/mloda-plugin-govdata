@@ -1,5 +1,5 @@
-Expected-value tables for the re-basing tests (feature_groups/harmonization/core/rebase.py). Both files are hand-computed,
-not payload captures: each cell is a BBSR share times a GENESIS population count, worked out on paper
+Expected-value tables for the re-basing tests (feature_groups/harmonization/core/rebase.py). Both files
+are hand-computed, not payload captures: each cell is a BBSR share times a GENESIS population count, worked out on paper
 2026-08-16 and re-checked 2026-09-12 against the captured inputs named below. Columns: key, year, value,
 flag (observed or rebased), sources (contributing Kreis keys, joined with "+", empty when observed).
 
