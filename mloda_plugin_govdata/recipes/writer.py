@@ -14,7 +14,7 @@ from mloda.user import Feature, Index, JoinSpec, Link, Options, load_features_fr
 from pydantic import ValidationError
 
 # Registration side effect: a fresh process loading a recipe must resolve GovDataFeature and the readers.
-from ..feature_groups import destatis, govdata, harmonization  # noqa: F401
+from ..feature_groups import destatis, govdata, harmonization, land_join  # noqa: F401
 from ..feature_groups.destatis.locator import DestatisLocator
 from ..feature_groups.govdata.core.locator import DEFAULT_CKAN_BASE, GovDataLocator
 from .model import Compliance, JoinSide, LinkSpec, Recipe, RecipeError, error_summary
@@ -53,7 +53,7 @@ def build_recipe(features: Iterable[Feature | str], compliance: Compliance, link
     feature_list = list(features)
     all_links = list(links)
     for feature in feature_list:
-        if isinstance(feature, Feature) and feature.link is not None and not _contains(all_links, feature.link):
+        if isinstance(feature, Feature) and feature.link is not None and feature.link not in all_links:
             all_links.append(feature.link)
     items = [
         feature if isinstance(feature, str) else _feature_item(feature, position)
@@ -245,13 +245,3 @@ def _subclasses(cls: type[FeatureGroup]) -> Iterator[type[FeatureGroup]]:
     for sub in cls.__subclasses__():
         yield sub
         yield from _subclasses(sub)
-
-
-def _contains(links: list[Link], link: Link) -> bool:
-    # Link equality ignores discriminators; the model rejects such near-duplicates, so compare fully here.
-    return any(
-        known == link
-        and known.left_discriminator == link.left_discriminator
-        and known.right_discriminator == link.right_discriminator
-        for known in links
-    )

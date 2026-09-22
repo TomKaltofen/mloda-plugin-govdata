@@ -7,10 +7,11 @@ from typing import Any
 
 import respx
 
+from mloda_plugin_govdata.feature_groups.destatis import DestatisReader
 from mloda_plugin_govdata.recipes import load_recipe
 
 from .conftest import FFCSV_FIXTURES, FOREIGNERS_ZIP, GOETTINGEN_ZIP, run
-from .shipped import KEY, KREIS_FOREIGNERS_SHARE
+from .shipped import FOREIGNERS, GOETTINGEN, KEY, KREIS_FOREIGNERS_SHARE
 
 Genesis = Callable[[Mapping[str, str | bytes]], respx.Route]
 SEX_LABEL = "2_variable_attribute_label"
@@ -26,8 +27,12 @@ def _by_key_and_year(table: Any, *, only: Callable[[dict[str, Any]], bool] = lam
 def _frames(recipes_dir: Path) -> tuple[Rows, Rows]:
     """The total rows of the foreigners table and the population rows, keyed by Kreis and year."""
     result = run(load_recipe(recipes_dir / KREIS_FOREIGNERS_SHARE.file).features)
-    (foreigners,) = [table for table in result if SEX_LABEL in table.schema.names]
-    (population,) = [table for table in result if SEX_LABEL not in table.schema.names]
+    by_table = {}
+    for step, frame in result.frames():
+        assert step.feature_set_options is not None, step
+        by_table[step.feature_set_options.group[DestatisReader.__name__]["name"]] = frame
+    assert len(by_table) == 2, by_table
+    foreigners, population = by_table[FOREIGNERS["name"]], by_table[GOETTINGEN["name"]]
     assert (foreigners.num_rows, population.num_rows) == (45, 15)
     totals = _by_key_and_year(foreigners, only=lambda row: row[SEX_LABEL] == "Insgesamt")
     assert len(totals) == 15 and all(row["2_variable_attribute_code"] is None for row in totals.values())

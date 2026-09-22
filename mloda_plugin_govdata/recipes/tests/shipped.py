@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
-from mloda.user import Feature, JoinSpec, Link, Options
+from mloda.user import Feature, Link, Options
 
 from mloda_plugin_govdata.feature_groups.destatis import DestatisReader
 from mloda_plugin_govdata.feature_groups.govdata import (
@@ -17,11 +17,11 @@ from mloda_plugin_govdata.feature_groups.govdata import (
     OPTION_UBA_STATION,
     POPULATION_SLUG,
     BundeswahlleiterinReader,
-    GovDataFeature,
     StuttgartPopulationReader,
     UbaAirReader,
     uba_measures_url,
 )
+from mloda_plugin_govdata.feature_groups.land_join import LAND_LINK
 from mloda_plugin_govdata.harmonization.reference.sources import BBSR_KREISE
 from mloda_plugin_govdata.recipes import Compliance, SourceCompliance
 
@@ -70,12 +70,6 @@ VOTERS = "Wahlberechtigte Erststimmen Endgültig"
 CSU_ZWEITSTIMMEN = "Christlich-Soziale Union in Bayern e.V. Zweitstimmen Endgültig"
 UEBRIGE_VORPERIODE = "Übrige Erststimmen Vorperiode"
 KEY = "1_variable_attribute_code"
-LAND_LINK = Link.inner(
-    JoinSpec(GovDataFeature, KEY),
-    JoinSpec(GovDataFeature, "Nr"),
-    left_discriminator={DestatisReader.__name__: LAND},
-    right_discriminator={BundeswahlleiterinReader.__name__: KERG_URL},
-)
 
 
 @dataclass(frozen=True)
@@ -192,8 +186,9 @@ LAND_POPULATION_VOTERS = ShippedRecipe(
             "Population per eligible voter by Land. The kerg Land rows (gehört zu = 99) carry the AGS-2 in Nr, which "
             "equals the Destatis DLAND code, so the join needs no name mapping; check the names on both sides with "
             "harmonization.land_codes. A party column is empty where the party was not on the ballot (the CSU outside "
-            "Bayern), which is not a zero. The join itself waits on mloda honoring link discriminators for "
-            "same-class links; until then run the features without the links block and combine the two frames. "
+            "Bayern), which is not a zero. The links block lets a consumer FeatureGroup needing a column from "
+            "each side join them (mloda_plugin_govdata.feature_groups.land_join.LandPopulationPerVoter is one); "
+            "requesting this recipe's own raw features returns them unjoined, one frame per source. "
             "kerg.csv re-fetched on 2026-09-12: unchanged since the first capture."
         ),
     ),
