@@ -14,8 +14,6 @@ contradicts the key file and raises. At earlier or later Stichtage the sheet can
 
 Rounding: none. A count re-based through a fractional share is fractional by construction; values
 stay float and totals are conserved up to float error. Round at presentation time.
-
-Standalone: usable without mloda.
 """
 
 from __future__ import annotations

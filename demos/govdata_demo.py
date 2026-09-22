@@ -201,8 +201,8 @@ def _():
     from mloda_plugin_govdata.feature_groups.govdata import CacheMissError, DownloadCache, GovDataFeature
     from mloda_plugin_govdata.feature_groups.harmonization import KreisRebaseFeature
     from mloda_plugin_govdata.feature_groups.land_join import LandPopulationPerVoter
-    from mloda_plugin_govdata.harmonization.land_codes import check_land_names
-    from mloda_plugin_govdata.harmonization.reference.bbsr import load_bbsr_kreise
+    from mloda_plugin_govdata.feature_groups.harmonization.core.land_codes import check_land_names
+    from mloda_plugin_govdata.feature_groups.harmonization.core.reference.bbsr import load_bbsr_kreise
     from mloda_plugin_govdata.recipes import frames_by_column, load_recipe
 
     return (

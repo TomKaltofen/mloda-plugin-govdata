@@ -18,8 +18,8 @@ from mloda_plugin_govdata.feature_groups.govdata import (
     GovDataLocator,
     Provenance,
 )
+from mloda_plugin_govdata.feature_groups.harmonization.core.land_codes import check_land_names
 from mloda_plugin_govdata.feature_groups.land_join import KERG_URL, LAND_LINK, PARTS, VOTERS, LandPopulationPerVoter
-from mloda_plugin_govdata.harmonization.land_codes import check_land_names
 
 FEATURE_GROUPS = Path(__file__).resolve().parents[1] / "mloda_plugin_govdata" / "feature_groups"
 LAND_TABLE_ZIP = FEATURE_GROUPS / "destatis" / "tests" / "fixtures" / "ffcsv" / "12411-0010_2024_de_flat.zip"

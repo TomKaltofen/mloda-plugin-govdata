@@ -9,7 +9,7 @@ import pyarrow as pa
 from mloda.provider import DefaultOptionKeys, FeatureSet, property_spec
 from mloda.user import Feature, FeatureName, Options
 
-from ...harmonization.period import Frequency, parse_genesis_time
+from ..destatis.core.period import Frequency, parse_genesis_time
 from .base import HarmonizationFeature
 
 

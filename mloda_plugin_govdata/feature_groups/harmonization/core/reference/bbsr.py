@@ -9,8 +9,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from mloda_plugin_govdata.feature_groups.govdata.core.cache import DownloadCache
-from mloda_plugin_govdata.harmonization.keys import repair_bbsr_kreis_key
 
+from ..keys import repair_bbsr_kreis_key
 from .download import fetch_pinned, load_workbook
 from .sources import BBSR_KREISE
 
@@ -134,7 +134,7 @@ def parse_bbsr_kreise_workbook(path: str | os.PathLike[str]) -> list[Umsteigesch
     cross-checked against the header's Stichtag cells. Does not validate per-key share
     sums: at least one sheet carries a known upstream defect where split shares land on
     identity rows instead of a transfer row (see the fixture ``NOTICE``); asserting and
-    raising on that is ``harmonization/rebase.py``'s job, not this one's.
+    raising on that is ``feature_groups/harmonization/core/rebase.py``'s job, not this one's.
     """
     workbook = load_workbook(path)
     rows: list[UmsteigeschluesselRow] = []

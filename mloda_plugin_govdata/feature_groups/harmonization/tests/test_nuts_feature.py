@@ -13,9 +13,9 @@ from mloda_plugin_govdata.feature_groups.destatis.core.auth import OPTION_GENESI
 from mloda_plugin_govdata.feature_groups.destatis.reader import DestatisReader
 from mloda_plugin_govdata.feature_groups.govdata.core.cache import CacheMissError
 from mloda_plugin_govdata.feature_groups.harmonization.base import PART_PATTERN
+from mloda_plugin_govdata.feature_groups.harmonization.core.edition import Edition
+from mloda_plugin_govdata.feature_groups.harmonization.core.nuts import UnmatchedKeysError
 from mloda_plugin_govdata.feature_groups.harmonization.nuts import NULL_KEY, PARTS, AgsToNutsFeature
-from mloda_plugin_govdata.harmonization.edition import Edition
-from mloda_plugin_govdata.harmonization.nuts import UnmatchedKeysError
 
 from .conftest import (
     GOETTINGEN_LOCATOR,
@@ -178,7 +178,10 @@ def test_the_real_edition_carries_the_pinned_history(
 ) -> None:
     # Only the two fetch-and-verify loaders are replaced, so edition() itself assembles the history.
     rows, changes = lau_rows(reference_fixtures_dir), gv_isys_changes(reference_fixtures_dir)
-    monkeypatch.setattr("mloda_plugin_govdata.harmonization.edition.load_lau_nuts_de", lambda cache, **kw: list(rows))
+    monkeypatch.setattr(
+        "mloda_plugin_govdata.feature_groups.harmonization.core.edition.load_lau_nuts_de",
+        lambda cache, **kw: list(rows),
+    )
     monkeypatch.setattr(
         "mloda_plugin_govdata.feature_groups.harmonization.nuts.load_gv_isys_changes",
         lambda year, cache, **kw: list(changes) if year == 2016 else [],

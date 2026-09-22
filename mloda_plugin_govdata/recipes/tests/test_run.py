@@ -62,8 +62,8 @@ _REBASE_SCRIPT = textwrap.dedent(
     from mloda_plugin_govdata.feature_groups.destatis import DestatisReader
     from mloda_plugin_govdata.feature_groups.destatis.core.hosts import GENESIS_ONLINE
     from mloda_plugin_govdata.feature_groups.harmonization import KreisRebaseFeature
-    from mloda_plugin_govdata.harmonization.reference.bbsr import parse_bbsr_kreise_workbook
-    from mloda_plugin_govdata.harmonization.reference.sources import BBSR_KREISE
+    from mloda_plugin_govdata.feature_groups.harmonization.core.reference.bbsr import parse_bbsr_kreise_workbook
+    from mloda_plugin_govdata.feature_groups.harmonization.core.reference.sources import BBSR_KREISE
 
     DestatisReader.cache_dir = cache_dir
     rows = parse_bbsr_kreise_workbook(keys_xlsx)

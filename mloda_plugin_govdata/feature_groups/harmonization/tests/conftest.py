@@ -12,13 +12,13 @@ import respx
 
 from mloda_plugin_govdata.feature_groups.destatis.core.hosts import GENESIS_ONLINE
 from mloda_plugin_govdata.feature_groups.destatis.reader import DestatisReader
+from mloda_plugin_govdata.feature_groups.harmonization.core.edition import Edition
+from mloda_plugin_govdata.feature_groups.harmonization.core.reference.bbsr import parse_bbsr_kreise_workbook
+from mloda_plugin_govdata.feature_groups.harmonization.core.reference.eurostat import parse_lau_nuts_de_workbook
+from mloda_plugin_govdata.feature_groups.harmonization.core.reference.gv_isys import parse_gv_isys_workbook
+from mloda_plugin_govdata.feature_groups.harmonization.core.tests.test_rebase import EXTRACT
 from mloda_plugin_govdata.feature_groups.harmonization.nuts import AgsToNutsFeature
 from mloda_plugin_govdata.feature_groups.harmonization.rebase import KreisRebaseFeature
-from mloda_plugin_govdata.harmonization.edition import Edition
-from mloda_plugin_govdata.harmonization.reference.bbsr import parse_bbsr_kreise_workbook
-from mloda_plugin_govdata.harmonization.reference.eurostat import parse_lau_nuts_de_workbook
-from mloda_plugin_govdata.harmonization.reference.gv_isys import parse_gv_isys_workbook
-from mloda_plugin_govdata.harmonization.tests.test_rebase import EXTRACT
 
 _PACKAGE = Path(__file__).resolve().parents[3]
 TOKEN = "test-token"
@@ -43,12 +43,12 @@ def ffcsv_fixtures_dir() -> Path:
 
 @pytest.fixture
 def reference_fixtures_dir() -> Path:
-    return _PACKAGE / "harmonization" / "reference" / "tests" / "fixtures"
+    return _PACKAGE / "feature_groups" / "harmonization" / "core" / "reference" / "tests" / "fixtures"
 
 
 @pytest.fixture
 def expected_dir() -> Path:
-    return _PACKAGE / "harmonization" / "tests" / "fixtures"
+    return _PACKAGE / "feature_groups" / "harmonization" / "core" / "tests" / "fixtures"
 
 
 @pytest.fixture

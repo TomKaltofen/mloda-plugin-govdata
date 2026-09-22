@@ -20,9 +20,9 @@ from mloda_plugin_govdata.feature_groups.govdata import (
     StuttgartPopulationReader,
     UbaAirReader,
 )
+from mloda_plugin_govdata.feature_groups.harmonization.core.reference.bbsr import parse_bbsr_kreise_workbook
+from mloda_plugin_govdata.feature_groups.harmonization.core.reference.sources import BBSR_KREISE
 from mloda_plugin_govdata.feature_groups.harmonization.rebase import KreisRebaseFeature
-from mloda_plugin_govdata.harmonization.reference.bbsr import parse_bbsr_kreise_workbook
-from mloda_plugin_govdata.harmonization.reference.sources import BBSR_KREISE
 
 from .shipped import KERG_URL, UBA_URL
 
@@ -31,8 +31,8 @@ RECIPES_DIR = REPO_ROOT / "recipes"
 _PACKAGE = REPO_ROOT / "mloda_plugin_govdata"
 FFCSV_FIXTURES = _PACKAGE / "feature_groups" / "destatis" / "tests" / "fixtures" / "ffcsv"
 GOVDATA_FIXTURES = _PACKAGE / "feature_groups" / "govdata" / "tests" / "fixtures"
-REFERENCE_FIXTURES = _PACKAGE / "harmonization" / "reference" / "tests" / "fixtures"
-EXPECTED_DIR = _PACKAGE / "harmonization" / "tests" / "fixtures"
+REFERENCE_FIXTURES = _PACKAGE / "feature_groups" / "harmonization" / "core" / "reference" / "tests" / "fixtures"
+EXPECTED_DIR = _PACKAGE / "feature_groups" / "harmonization" / "core" / "tests" / "fixtures"
 PACKAGE_SHOW = "https://ckan.govdata.de/api/3/action/package_show"
 TOKEN = "test-token"
 GOETTINGEN_ZIP = "12411-0015_2013-2017_de_flat.zip"

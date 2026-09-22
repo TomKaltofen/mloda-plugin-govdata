@@ -55,9 +55,10 @@ reader column requested next to a harmonized feature lands in its own frame.
 ## `value__rebased` (`KreisRebaseFeature`)
 
 Re-bases Kreis observations onto a later Gebietsstand with the BBSR Umsteigeschluessel
-(`harmonization/rebase.py`). Reads the ffcsv columns `1_variable_attribute_code` (variable block 1
-must be `KREISE`), `time`, the value column and `value_marker`; the key sheet comes from the BBSR file
-in the cache (`load_bbsr_kreise(cache, revalidate=True)` once, offline afterwards).
+(`mloda_plugin_govdata/feature_groups/harmonization/core/rebase.py`). Reads the ffcsv columns
+`1_variable_attribute_code` (variable block 1 must be `KREISE`), `time`, the value column and
+`value_marker`; the key sheet comes from the BBSR file in the cache
+(`load_bbsr_kreise(cache, revalidate=True)` once, offline afterwards).
 
 | Option | Meaning |
 | --- | --- |
@@ -75,8 +76,8 @@ the policy says otherwise.
 
 ## `<key>__nuts2024` (`AgsToNutsFeature`)
 
-Maps AGS keys through the pinned Eurostat LAU-to-NUTS crosswalk (`harmonization/nuts.py`). The edition
-is part of the name (or the `nuts_version` option) and must be the one the cache holds
+Maps AGS keys through the pinned Eurostat LAU-to-NUTS crosswalk
+(`mloda_plugin_govdata/feature_groups/harmonization/core/nuts.py`). The edition is part of the name (or the `nuts_version` option) and must be the one the cache holds
 (`load_edition(cache, revalidate=True)` once). Kreis keys retired before the edition resolve through
 the GV-ISys change files named in `AgsToNutsFeature.history_years` (the pinned year, fetched once with
 `load_gv_isys_changes(year, cache, revalidate=True)`); Land keys are out of scope.

@@ -138,7 +138,7 @@ edition as columns; see [docs/harmonization.md](docs/harmonization.md).
 ```python
 from mloda_plugin_govdata.feature_groups.govdata import DownloadCache
 from mloda_plugin_govdata.feature_groups.harmonization import KreisRebaseFeature  # registers the groups
-from mloda_plugin_govdata.harmonization.reference.bbsr import load_bbsr_kreise
+from mloda_plugin_govdata.feature_groups.harmonization.core.reference.bbsr import load_bbsr_kreise
 
 with DownloadCache(KreisRebaseFeature.cache_dir) as cache:
     load_bbsr_kreise(cache, revalidate=True)  # the BBSR key file, fetched once and read offline afterwards

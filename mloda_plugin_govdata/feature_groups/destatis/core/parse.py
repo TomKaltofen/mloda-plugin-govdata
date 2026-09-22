@@ -17,8 +17,8 @@ import zipfile
 import pandas as pd
 import pyarrow as pa
 
-from ....harmonization.period import parse_genesis_time
 from ...govdata.core.parse import NULL_MARKERS, ZERO_MARKERS, ColumnType, _typed_table, detect_encoding
+from .period import parse_genesis_time
 
 __all__ = [
     "MAX_DECOMPRESSED_BYTES",

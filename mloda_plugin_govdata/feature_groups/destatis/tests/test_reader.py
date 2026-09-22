@@ -206,6 +206,11 @@ _SUBPROCESS_SCRIPT = textwrap.dedent(
     from mloda_plugin_govdata.feature_groups.destatis import DestatisReader
     from mloda_plugin_govdata.feature_groups.destatis.core.hosts import GENESIS_ONLINE
 
+    # The reader layer imports nothing from the layers built on it.
+    upward = ("feature_groups.harmonization", "feature_groups.land_join", "recipes")
+    leaked = sorted(m for m in sys.modules if m.startswith(tuple(f"mloda_plugin_govdata.{u}" for u in upward)))
+    assert not leaked, leaked
+
     DestatisReader.cache_dir = cache_dir
     with open(fixture_zip, "rb") as handle:
         zip_bytes = handle.read()

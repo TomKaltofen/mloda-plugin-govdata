@@ -7,7 +7,7 @@ from hypothesis import assume, given
 from hypothesis import strategies as st
 
 from mloda_plugin_govdata.feature_groups.destatis.core.parse import parse_ffcsv_zip
-from mloda_plugin_govdata.harmonization.rebase import (
+from mloda_plugin_govdata.feature_groups.harmonization.core.rebase import (
     DEFAULT_TOLERANCE,
     Flag,
     IncompleteError,
@@ -23,8 +23,11 @@ from mloda_plugin_govdata.harmonization.rebase import (
     observations_from_columns,
     rebase,
 )
-from mloda_plugin_govdata.harmonization.reference.bbsr import UmsteigeschluesselRow, parse_bbsr_kreise_workbook
-from mloda_plugin_govdata.harmonization.reference.sources import BBSR_KREISE, ReferenceSource
+from mloda_plugin_govdata.feature_groups.harmonization.core.reference.bbsr import (
+    UmsteigeschluesselRow,
+    parse_bbsr_kreise_workbook,
+)
+from mloda_plugin_govdata.feature_groups.harmonization.core.reference.sources import BBSR_KREISE, ReferenceSource
 
 GOETTINGEN_ZIP = "12411-0015_2013-2017_de_flat.zip"
 COCHEM_ZELL_ZIP = "12411-0015_2013-2014_de_flat.zip"

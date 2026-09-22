@@ -11,10 +11,10 @@ from mloda.provider import ComputeFramework, FeatureGroup, FeatureSet
 from mloda.user import Feature, FeatureName, JoinSpec, Link, Options
 from mloda.user.pyarrow import PyArrowTable
 
-from ..harmonization.land_codes import land_name
 from .destatis.reader import DestatisReader
 from .govdata.bundeswahlleiterin import BundeswahlleiterinReader
 from .govdata.feature import GovDataFeature
+from .harmonization.core.land_codes import land_name
 
 # GENESIS-Online 12411-0010 (Bevölkerung nach Ländern), 2024; Bundestagswahl 2025 (btw25) kerg.csv.
 LAND_LOCATOR = {"name": "12411-0010", "startyear": 2024, "endyear": 2024}
@@ -35,7 +35,7 @@ class LandPopulationPerVoter(FeatureGroup):
 
     Pinned to one GENESIS-Online table and one kerg file (``LAND_LOCATOR``, ``KERG_URL``); not
     parameterized by year or election. One row per Land, sorted by AGS-2 code: ``~code``, ``~land``
-    (the name, from ``harmonization.land_codes``), ``~population``, ``~voters``, and the computed
+    (the name, from ``harmonization.core.land_codes``), ``~population``, ``~voters``, and the computed
     ``~value``.
     """
 

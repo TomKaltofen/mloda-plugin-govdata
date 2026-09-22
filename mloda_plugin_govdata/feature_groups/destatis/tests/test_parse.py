@@ -256,7 +256,7 @@ def test_parse_ffcsv_zip_rejects_over_the_size_cap(fixtures_dir: Path) -> None:
 
 def test_stag_time_label_parses_through_the_period_model() -> None:
     # Live-only finding (checklist): whether webservice STAG tables send "2015-12-31" or "31.12.2015".
-    # Both forms already work through harmonization.period.parse_genesis_time; pin the ffcsv wiring here.
+    # Both forms already work through core.period.parse_genesis_time; pin the ffcsv wiring here.
     header = ";".join(ONE_BLOCK_HEADER) + "\n"
     row_iso = "12411;Bevoelkerung;STAG;Stichtag;2015-12-31;DINSG;Deutschland insgesamt;DG;Deutschland;100;Anzahl;BEVSTD;Bevoelkerung\n"
     row_de = "12411;Bevoelkerung;STAG;Stichtag;31.12.2015;DINSG;Deutschland insgesamt;DG;Deutschland;100;Anzahl;BEVSTD;Bevoelkerung\n"

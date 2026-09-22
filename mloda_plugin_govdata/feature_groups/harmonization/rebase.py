@@ -12,7 +12,9 @@ import pyarrow as pa
 from mloda.provider import DefaultOptionKeys, FeatureSet, property_spec
 from mloda.user import Feature, FeatureName, Options
 
-from ...harmonization.rebase import (
+from ..govdata.core.cache import CacheMissError, DownloadCache
+from .base import PART_PATTERN, HarmonizationFeature
+from .core.rebase import (
     DEFAULT_TOLERANCE,
     KeyEdition,
     Policy,
@@ -23,10 +25,8 @@ from ...harmonization.rebase import (
     observations_from_columns,
     rebase,
 )
-from ...harmonization.reference.bbsr import UmsteigeschluesselRow, load_bbsr_kreise
-from ...harmonization.reference.sources import BBSR_KREISE, ReferenceSource
-from ..govdata.core.cache import CacheMissError, DownloadCache
-from .base import PART_PATTERN, HarmonizationFeature
+from .core.reference.bbsr import UmsteigeschluesselRow, load_bbsr_kreise
+from .core.reference.sources import BBSR_KREISE, ReferenceSource
 
 KREIS_VARIABLE = "KREISE"
 VARIABLE_COLUMN = "1_variable_code"
