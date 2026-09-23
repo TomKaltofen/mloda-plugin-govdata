@@ -95,7 +95,7 @@ recipes sit next to their tests.
 
 | File | Reads | Scenario |
 | --- | --- | --- |
-| `kreis_population_rebased.json` | GENESIS-Online `12411-0015`, Kreise 03152, 03156, 03159, 2013 to 2017, plus the BBSR key file | the re-based series as `destatis__bevoelkerung__kreise` (the D1 name with `in_features` and the re-basing options) |
+| `kreis_population_rebased.json` | GENESIS-Online `12411-0015`, Kreise 03152, 03156, 03159, 2013 to 2017, plus the BBSR key file | the re-based series as `destatis__bevoelkerung__kreise` (a configuration-based name with `in_features` and the re-basing options) |
 | `kreis_foreigners_share.json` | GENESIS-Online `12521-0040` and `12411-0015`, same keys and years | a rate with its denominator; two selections, two frames |
 | `land_population_voters.json` | GENESIS-Online `12411-0010` and the Bundeswahlleiterin `kerg.csv` | population per eligible voter by Land, the links block on `1_variable_attribute_code` = `Nr` |
 | `land_population.json` | GENESIS-Online `12411-0010` | the 16 Land rows, the first recipe |

@@ -29,7 +29,7 @@ def _run(features: list[Feature | str]) -> Any:
     return mloda.run_all(features, compute_frameworks=["PyArrowTable"])
 
 
-def test_matches_the_year_period_name_and_the_configured_form() -> None:
+def test_matches_the_year_period_name_and_the_configuration_based_form() -> None:
     assert AnnualPeriodFeature.match_feature_group_criteria("time__year_period", Options({}))
     assert not AnnualPeriodFeature.match_feature_group_criteria("time__quarter_period", Options({}))
     assert AnnualPeriodFeature.match_feature_group_criteria(

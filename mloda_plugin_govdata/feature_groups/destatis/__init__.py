@@ -1,6 +1,9 @@
 """Destatis GENESIS connector: ``DestatisReader`` reads the table selection a ``DestatisLocator`` names.
 
-Hosts: GENESIS-Online and Regionalstatistik.
+GENESIS is the database software and its REST API. ``genesis`` (GENESIS-Online, Destatis) and ``regionalstatistik``
+(Regionaldatenbank, run by IT.NRW) are two installations of it, each with its own registration. By convention
+``Destatis*`` classes face mloda and ``Genesis*`` classes speak the protocol; ``OPTION_GENESIS_CREDENTIALS`` is an
+mloda option despite its name.
 """
 
 from .core.api import (

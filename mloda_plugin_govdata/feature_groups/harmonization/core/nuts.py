@@ -1,8 +1,8 @@
 """AGS-to-NUTS mapping.
 
-Kreis- and Gemeinde-level exact lookup against an :class:`Edition`'s LAU-to-NUTS
-crosswalk. Land (2-digit) and ARS (12-digit) keys are out of scope for now
-and are reported unmatched, not rejected: string keys keep the door open.
+Kreis- and Gemeinde-level exact lookup against a :class:`NutsCrosswalk`. Land (2-digit) and
+ARS (12-digit) keys are out of scope for now and are reported unmatched, not rejected: string
+keys keep the door open.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal
 
-from .edition import Edition
+from .crosswalk import NutsCrosswalk
 from .keys import AgsLevel, detect_level
 from .reference.eurostat import LauNutsRow
 from .reference.gv_isys import GvIsysChange
@@ -38,7 +38,7 @@ class UnmatchedKey:
 class MappingResult:
     matched: tuple[MatchedMapping, ...]
     unmatched: tuple[UnmatchedKey, ...]
-    edition: Edition
+    crosswalk: NutsCrosswalk
     data_year_checked: bool
 
 
@@ -53,7 +53,7 @@ def _kreis_index(lau_rows: Sequence[LauNutsRow]) -> dict[str, str]:
     """Groups LAU rows by their 5-digit Kreis prefix; each group's NUTS-3 must be unique.
 
     A Kreis spanning two NUTS-3 codes means it sits mid a boundary-reform lag window
-    (a Kreis merger that predates the next NUTS revision picking it up, see the
+    (a Kreis merger that predates the next NUTS version picking it up, see the
     Eisenach/Wartburgkreis case): raise rather than silently pick either one.
     """
     grouped: dict[str, set[str]] = defaultdict(set)
@@ -63,8 +63,8 @@ def _kreis_index(lau_rows: Sequence[LauNutsRow]) -> dict[str, str]:
     for kreis, nuts3_values in grouped.items():
         if len(nuts3_values) > 1:
             raise ValueError(
-                f"Kreis {kreis} maps to multiple NUTS-3 codes in this edition: {sorted(nuts3_values)}; "
-                "likely a boundary-reform lag window, not resolvable without an edition split"
+                f"Kreis {kreis} maps to multiple NUTS-3 codes in the crosswalk: {sorted(nuts3_values)}; "
+                "likely a boundary-reform lag window, not resolvable within one NUTS version"
             )
         index[kreis] = next(iter(nuts3_values))
     return index
@@ -75,7 +75,7 @@ def _kreis_redirect_candidates(key: str, changes: Sequence[GvIsysChange]) -> set
 
 
 def _resolve_one(
-    key: str, edition: Edition, kreis_index: dict[str, str], gemeinde_index: dict[str, str]
+    key: str, crosswalk: NutsCrosswalk, kreis_index: dict[str, str], gemeinde_index: dict[str, str]
 ) -> tuple[str | None, str | None]:
     """Returns ``(nuts3, None)`` on a match, or ``(None, reason)`` when unmatched."""
     try:
@@ -86,7 +86,7 @@ def _resolve_one(
     if level == AgsLevel.KREIS:
         nuts3 = kreis_index.get(key)
         if nuts3 is None:
-            candidates = _kreis_redirect_candidates(key, edition.gv_isys_changes)
+            candidates = _kreis_redirect_candidates(key, crosswalk.gv_isys_changes)
             if len(candidates) > 1:
                 return None, (
                     f"Kreis {key} has {len(candidates)} ambiguous GV-ISys successors "
@@ -96,13 +96,13 @@ def _resolve_one(
                 nuts3 = kreis_index.get(next(iter(candidates)))
         if nuts3 is not None:
             return nuts3, None
-        return None, f"Kreis {key} not found in this edition's LAU-to-NUTS crosswalk (no GV-ISys redirect resolved it)"
+        return None, f"Kreis {key} not found in the LAU-to-NUTS crosswalk (no GV-ISys redirect resolved it)"
 
     if level == AgsLevel.GEMEINDE:
         nuts3 = gemeinde_index.get(key)
         if nuts3 is not None:
             return nuts3, None
-        return None, f"Gemeinde/Gemeindefreies Gebiet {key} not found in this edition's LAU-to-NUTS crosswalk"
+        return None, f"Gemeinde/Gemeindefreies Gebiet {key} not found in the LAU-to-NUTS crosswalk"
 
     if level == AgsLevel.LAND:
         return None, f"Land-level key {key}: Land mapping is out of scope for now"
@@ -113,20 +113,20 @@ def _resolve_one(
 def map_ags_to_nuts(
     keys: Sequence[str],
     *,
-    edition: Edition,
+    crosswalk: NutsCrosswalk,
     data_year: int | None = None,
     on_unmatched: Literal["raise", "drop", "flag"] = "raise",
 ) -> MappingResult:
-    """Maps AGS keys to NUTS-1/2/3 codes via ``edition``'s LAU-to-NUTS crosswalk.
+    """Maps AGS keys to NUTS-1/2/3 codes via the LAU-to-NUTS ``crosswalk``.
 
     Kreis (5-digit) keys resolve by grouping every Gemeinde under that Kreis and
     requiring one shared NUTS-3 code; a Kreis missing from the crosswalk is retried
-    once through ``edition.gv_isys_changes`` (its historical successor key). Gemeinde-
+    once through ``crosswalk.gv_isys_changes`` (its historical successor key). Gemeinde-
     level (8-digit) keys resolve by direct lookup. Land (2-digit) and ARS (12-digit)
     keys always come back unmatched, never raised.
 
-    ``data_year``, when given, warns if it diverges from the edition's own Gebietsstand
-    year and raises if it falls outside the edition's covered range; without it neither
+    ``data_year``, when given, warns if it diverges from the crosswalk's own Gebietsstand
+    year and raises if it falls outside the crosswalk's covered range; without it neither
     check runs (``MappingResult.data_year_checked`` records which happened).
 
     ``on_unmatched``: ``"raise"`` (default) raises :class:`UnmatchedKeysError` if anything
@@ -139,28 +139,28 @@ def map_ags_to_nuts(
 
     data_year_checked = data_year is not None
     if data_year is not None:
-        low, high = edition.year_range
+        low, high = crosswalk.year_range
         if data_year < low or data_year > high:
-            raise ValueError(f"data_year {data_year} is outside this edition's covered range {edition.year_range}")
-        edition_year = int(edition.gebietsstand)
-        if data_year != edition_year:
+            raise ValueError(f"data_year {data_year} is outside the crosswalk's covered range {crosswalk.year_range}")
+        crosswalk_year = int(crosswalk.gebietsstand)
+        if data_year != crosswalk_year:
             warnings.warn(
-                f"data_year {data_year} diverges from this edition's Gebietsstand year {edition_year}; "
-                "results reflect the edition's own Gebietsstand, not data_year",
+                f"data_year {data_year} diverges from the crosswalk's Gebietsstand year {crosswalk_year}; "
+                "results reflect the crosswalk's own Gebietsstand, not data_year",
                 stacklevel=2,
             )
 
-    kreis_index = _kreis_index(edition.lau_rows)
-    gemeinde_index = {row.lau_code: row.nuts3 for row in edition.lau_rows}
+    kreis_index = _kreis_index(crosswalk.lau_rows)
+    gemeinde_index = {row.lau_code: row.nuts3 for row in crosswalk.lau_rows}
 
     matched: list[MatchedMapping] = []
     unmatched: list[UnmatchedKey] = []
     for key in keys:
-        nuts3, reason = _resolve_one(key, edition, kreis_index, gemeinde_index)
+        nuts3, reason = _resolve_one(key, crosswalk, kreis_index, gemeinde_index)
         if nuts3 is not None:
             matched.append(
                 MatchedMapping(
-                    key=key, nuts1=nuts3[:3], nuts2=nuts3[:4], nuts3=nuts3, nuts_version=edition.nuts_version
+                    key=key, nuts1=nuts3[:3], nuts2=nuts3[:4], nuts3=nuts3, nuts_version=crosswalk.nuts_version
                 )
             )
         elif reason is not None:
@@ -172,7 +172,7 @@ def map_ags_to_nuts(
         unmatched = []
 
     return MappingResult(
-        matched=tuple(matched), unmatched=tuple(unmatched), edition=edition, data_year_checked=data_year_checked
+        matched=tuple(matched), unmatched=tuple(unmatched), crosswalk=crosswalk, data_year_checked=data_year_checked
     )
 
 
@@ -180,14 +180,16 @@ def combine_mapping_results(results: Sequence[MappingResult]) -> MappingResult:
     """Concatenates results built from the same NUTS version; raises on a mismatch.
 
     Joining results across NUTS versions is not a valid operation: a NUTS-3
-    code is only comparable within one edition of the NUTS classification.
+    code is only comparable within one NUTS version.
     """
     if not results:
         raise ValueError("no results to combine")
-    versions = {r.edition.nuts_version for r in results}
+    versions = {r.crosswalk.nuts_version for r in results}
     if len(versions) > 1:
         raise ValueError(f"cannot combine MappingResults across different NUTS versions: {sorted(versions)}")
     matched = tuple(m for r in results for m in r.matched)
     unmatched = tuple(u for r in results for u in r.unmatched)
     checked = any(r.data_year_checked for r in results)
-    return MappingResult(matched=matched, unmatched=unmatched, edition=results[0].edition, data_year_checked=checked)
+    return MappingResult(
+        matched=matched, unmatched=unmatched, crosswalk=results[0].crosswalk, data_year_checked=checked
+    )

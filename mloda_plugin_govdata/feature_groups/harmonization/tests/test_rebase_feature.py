@@ -18,7 +18,7 @@ from mloda_plugin_govdata.feature_groups.destatis.reader import DestatisReader
 from mloda_plugin_govdata.feature_groups.govdata.core.cache import CacheMissError
 from mloda_plugin_govdata.feature_groups.harmonization.core.rebase import (
     Flag,
-    KeyEdition,
+    KeySheet,
     RebasedRow,
     RebaseResult,
     ShareKind,
@@ -29,7 +29,7 @@ from mloda_plugin_govdata.recipes import Compliance, SourceCompliance, build_rec
 
 from .conftest import COCHEM_ZELL_ZIP, EXTRACT, GOETTINGEN_LOCATOR, GOETTINGEN_ZIP, LAND_ZIP, ffcsv_zip_with_rows
 
-D1_NAME = "destatis__bevoelkerung__kreise"
+CONFIGURATION_BASED_NAME = "destatis__bevoelkerung__kreise"
 YEARS = {"rebase_from_year": 2015, "rebase_to_year": 2016}
 
 
@@ -50,16 +50,18 @@ def _run(features: list[Feature | str]) -> Any:
 # --- Level 1: matching and input features -----------------------------------------------------
 
 
-def test_matches_the_chained_name_and_the_configured_d1_name() -> None:
+def test_matches_the_chained_and_the_configuration_based_name() -> None:
     years = Options(group=YEARS)
     assert KreisRebaseFeature.match_feature_group_criteria("value__rebased", years)
     assert KreisRebaseFeature.match_feature_group_criteria("value__rebased~flag", years)
     assert not KreisRebaseFeature.match_feature_group_criteria("value__rebased", Options({}))  # the years are required
     assert not KreisRebaseFeature.match_feature_group_criteria("value", years)
     configured = Options(group=YEARS, context={"in_features": "value"})
-    assert KreisRebaseFeature.match_feature_group_criteria(D1_NAME, configured)
-    assert not KreisRebaseFeature.match_feature_group_criteria(D1_NAME, Options(context={"in_features": "value"}))
-    assert not KreisRebaseFeature.match_feature_group_criteria(D1_NAME, Options(group=YEARS))
+    assert KreisRebaseFeature.match_feature_group_criteria(CONFIGURATION_BASED_NAME, configured)
+    assert not KreisRebaseFeature.match_feature_group_criteria(
+        CONFIGURATION_BASED_NAME, Options(context={"in_features": "value"})
+    )
+    assert not KreisRebaseFeature.match_feature_group_criteria(CONFIGURATION_BASED_NAME, Options(group=YEARS))
 
 
 def test_children_carry_the_locator_and_leave_the_group_keys_behind() -> None:
@@ -77,7 +79,10 @@ def test_children_carry_the_locator_and_leave_the_group_keys_behind() -> None:
         assert {"rebase_from_year", "rebase_to_year", "rebase_share"} <= child.forward_group_exclude
         assert child.inherit_context_keys == frozenset({OPTION_GENESIS_CREDENTIALS})
     configured = Options(group=YEARS, context={"in_features": "value"})
-    assert {str(c.name) for c in KreisRebaseFeature().input_features(configured, FeatureName(D1_NAME)) or set()} == {
+    assert {
+        str(c.name)
+        for c in KreisRebaseFeature().input_features(configured, FeatureName(CONFIGURATION_BASED_NAME)) or set()
+    } == {
         "value",
         "1_variable_code",
         "1_variable_attribute_code",
@@ -95,21 +100,27 @@ def test_the_destatis_reader_leaves_chained_names_to_the_derived_groups() -> Non
 
 
 @respx.mock
-def test_c2_goettingen_series_through_the_d1_name(
+def test_c2_goettingen_series_through_the_configuration_based_name(
     genesis: Callable[[str], respx.Route], extract_keys: None, expected_dir: Path
 ) -> None:
     route = genesis(GOETTINGEN_ZIP)
     feature = Feature(
-        D1_NAME,
+        CONFIGURATION_BASED_NAME,
         Options(group={DestatisReader.__name__: GOETTINGEN_LOCATOR, **YEARS}, context={"in_features": "value"}),
     )
     result = _run([feature])
     table = result[0]
 
-    assert sorted(table.schema.names) == sorted(f"{D1_NAME}~{part}" for part in PARTS)
-    assert _cells(table, D1_NAME) == _expected(expected_dir / "c2-goettingen-2016.csv")
-    assert table.column(f"{D1_NAME}~value").to_pylist() == [322616.0, 324013.0, 329538.0, 327065.0, 328036.0]
-    assert table.column(f"{D1_NAME}~marker").to_pylist() == [""] * 5
+    assert sorted(table.schema.names) == sorted(f"{CONFIGURATION_BASED_NAME}~{part}" for part in PARTS)
+    assert _cells(table, CONFIGURATION_BASED_NAME) == _expected(expected_dir / "c2-goettingen-2016.csv")
+    assert table.column(f"{CONFIGURATION_BASED_NAME}~value").to_pylist() == [
+        322616.0,
+        324013.0,
+        329538.0,
+        327065.0,
+        328036.0,
+    ]
+    assert table.column(f"{CONFIGURATION_BASED_NAME}~marker").to_pylist() == [""] * 5
     assert route.calls.call_count == 1
     steps = [step.feature_group_name for step in result.plan if step.step_kind == "compute"]
     assert steps == ["GovDataFeature", "KreisRebaseFeature"]
@@ -133,7 +144,7 @@ def test_one_sub_column_can_be_requested_alone(genesis: Callable[[str], respx.Ro
 
 
 @respx.mock
-def test_issues_sit_next_to_their_rows_and_the_edition_carries_the_rest(
+def test_issues_sit_next_to_their_rows_and_the_provenance_carries_the_rest(
     genesis: Callable[[str], respx.Route], extract_keys: None
 ) -> None:
     genesis(GOETTINGEN_ZIP)
@@ -147,14 +158,25 @@ def test_issues_sit_next_to_their_rows_and_the_edition_carries_the_rest(
     assert issues[2016] == ""
     assert issues[2017].startswith("unverified_year: no key sheet 2016-2017")
 
-    editions = set(table.column("value__rebased~edition").to_pylist())
-    assert len(editions) == 1
-    edition = json.loads(editions.pop())
-    assert edition["source"] == EXTRACT.name
-    assert edition["sha256"] == EXTRACT.sha256
-    assert (edition["sheet"], edition["share"], edition["census_breaks"]) == ("2015-2016", "population", [])
+    provenances = set(table.column("value__rebased~provenance").to_pylist())
+    assert len(provenances) == 1
+    provenance = json.loads(provenances.pop())
+    assert sorted(provenance) == [
+        "census_breaks",
+        "from_year",
+        "issues_elsewhere",
+        "sha256",
+        "share",
+        "sheet",
+        "source",
+        "to_year",
+        "url",
+    ]
+    assert provenance["source"] == EXTRACT.name
+    assert provenance["sha256"] == EXTRACT.sha256
+    assert (provenance["sheet"], provenance["share"], provenance["census_breaks"]) == ("2015-2016", "population", [])
     # Issues no output row carries keep their full record, never dropped.
-    elsewhere = {(i["kind"], i["key"], i["year"]) for i in edition["issues_elsewhere"]}
+    elsewhere = {(i["kind"], i["key"], i["year"]) for i in provenance["issues_elsewhere"]}
     assert elsewhere == {
         ("not_applicable", "03152", 2016),
         ("not_applicable", "03152", 2017),
@@ -163,7 +185,7 @@ def test_issues_sit_next_to_their_rows_and_the_edition_carries_the_rest(
         ("share_sum", "07135", None),
         ("share_sum", "07137", None),
     }
-    assert any("0.9828486" in i["detail"] for i in edition["issues_elsewhere"])
+    assert any("0.9828486" in i["detail"] for i in provenance["issues_elsewhere"])
 
 
 @respx.mock
@@ -176,9 +198,9 @@ def test_two_parts_of_one_output_in_one_request(genesis: Callable[[str], respx.R
 
 
 def _stub_result(*pairs: tuple[str, int]) -> RebaseResult:
-    edition = KeyEdition("src", "https://example.test/src", None, 2015, 2016, ShareKind.POPULATION)
+    key_sheet = KeySheet("src", "https://example.test/src", None, 2015, 2016, ShareKind.POPULATION)
     rows = tuple(RebasedRow(key, year, 1.0, Flag.OBSERVED, ()) for key, year in pairs)
-    return RebaseResult(rows, edition, (), ())
+    return RebaseResult(rows, key_sheet, (), ())
 
 
 def _calculate_with_stubbed_rebase(monkeypatch: pytest.MonkeyPatch, results_by_column: dict[str, RebaseResult]) -> Any:
@@ -242,12 +264,12 @@ def test_an_empty_selection_keeps_the_schema(
 
 
 @respx.mock
-def test_the_configured_name_round_trips_through_a_recipe(
+def test_the_configuration_based_name_round_trips_through_a_recipe(
     genesis: Callable[[str], respx.Route], extract_keys: None, expected_dir: Path
 ) -> None:
     genesis(GOETTINGEN_ZIP)
     feature = Feature(
-        D1_NAME,
+        CONFIGURATION_BASED_NAME,
         Options(group={DestatisReader.__name__: GOETTINGEN_LOCATOR, **YEARS}, context={"in_features": "value"}),
     )
     compliance = Compliance(
@@ -264,7 +286,7 @@ def test_the_configured_name_round_trips_through_a_recipe(
     )
     loaded = parse_recipe(recipe_to_json(build_recipe([feature], compliance)))
     table = _run(list(loaded.features))[0]
-    assert _cells(table, D1_NAME) == _expected(expected_dir / "c2-goettingen-2016.csv")
+    assert _cells(table, CONFIGURATION_BASED_NAME) == _expected(expected_dir / "c2-goettingen-2016.csv")
 
 
 @respx.mock

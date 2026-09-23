@@ -1,8 +1,7 @@
-"""Edition identity for the reference data.
+"""The NUTS crosswalk the AGS-to-NUTS mapping resolves keys against.
 
-An ``Edition`` names which Gebietsstand and NUTS revision a ``map_ags_to_nuts()``
-call resolves keys against, and carries the loaded crosswalk itself: the reference-
-data identity it was built from (source, URL, sha256, covered year range).
+A ``NutsCrosswalk`` names its Gebietsstand and NUTS version and carries the loaded LAU-to-NUTS rows
+with the reference-data identity they were built from (source, URL, sha256, covered year range).
 """
 
 from __future__ import annotations
@@ -16,14 +15,13 @@ from .reference.eurostat import LauNutsRow, load_lau_nuts_de
 from .reference.gv_isys import GvIsysChange
 from .reference.sources import EUROSTAT_LAU_NUTS
 
-# The pinned crosswalk is a single-year snapshot; this is the NUTS edition it represents,
-# not to be confused with the differently-labelled Eurostat "Correspondence table" edition
-# (see reference/eurostat.py:NutsCorrespondenceOverview).
+# The NUTS version of the pinned single-year crosswalk, not the differently-labelled version of
+# Eurostat's "Correspondence table" (see reference/eurostat.py:NutsCorrespondenceOverview).
 NUTS_VERSION = "2024"
 
 
 @dataclass(frozen=True)
-class Edition:
+class NutsCrosswalk:
     gebietsstand: str
     nuts_version: str
     source: str
@@ -34,24 +32,24 @@ class Edition:
     gv_isys_changes: tuple[GvIsysChange, ...] = ()
 
 
-def load_edition(
+def load_nuts_crosswalk(
     cache: DownloadCache, *, gv_isys_changes: Sequence[GvIsysChange] = (), revalidate: bool = False
-) -> Edition:
-    """Builds the current :class:`Edition` from the pinned Eurostat LAU-to-NUTS crosswalk.
+) -> NutsCrosswalk:
+    """Builds the :class:`NutsCrosswalk` from the pinned Eurostat LAU-to-NUTS file.
 
     ``gv_isys_changes`` is optional history (e.g. from :func:`reference.gv_isys.load_gv_isys_changes`)
     used to redirect a since-retired Kreis code to its successor; without it, only Kreis codes
-    already present in this edition's crosswalk resolve.
+    already present in the crosswalk resolve.
     """
     rows = load_lau_nuts_de(cache, revalidate=revalidate)
     if not rows:
-        raise ValueError("Eurostat LAU-to-NUTS table loaded with zero rows; cannot build an edition")
+        raise ValueError("Eurostat LAU-to-NUTS table loaded with zero rows; cannot build a crosswalk")
     periods = {row.period for row in rows}
     if len(periods) > 1:
         raise ValueError(f"Eurostat LAU-to-NUTS rows span multiple PERIOD values: {sorted(periods)}")
     year = periods.pop()
     years = [year, *(c.effective_date_legal.year for c in gv_isys_changes)]
-    return Edition(
+    return NutsCrosswalk(
         gebietsstand=str(year),
         nuts_version=NUTS_VERSION,
         source=EUROSTAT_LAU_NUTS.name,

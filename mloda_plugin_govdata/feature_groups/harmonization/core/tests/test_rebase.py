@@ -12,7 +12,7 @@ from mloda_plugin_govdata.feature_groups.harmonization.core.rebase import (
     Flag,
     IncompleteError,
     IssueKind,
-    KeyEdition,
+    KeySheet,
     Observation,
     RebasedRow,
     RebaseError,
@@ -32,7 +32,7 @@ from mloda_plugin_govdata.feature_groups.harmonization.core.reference.sources im
 GOETTINGEN_ZIP = "12411-0015_2013-2017_de_flat.zip"
 COCHEM_ZELL_ZIP = "12411-0015_2013-2014_de_flat.zip"
 
-# The fixture is an extract, so its edition names the extract's own hash (see the reference NOTICE).
+# The fixture is an extract, so its key sheet names the extract's own hash (see the reference NOTICE).
 EXTRACT = ReferenceSource(
     name="BBSR Umsteigeschluessel Kreise (test extract)",
     url=BBSR_KREISE.url,
@@ -110,8 +110,8 @@ def test_c2_goettingen_series_rebased_onto_gebietsstand_2016_cell_for_cell(
     # Merger shares are exactly 1, so the re-based sums are exact, not merely rounded.
     assert [r.value for r in result.rows] == [322616.0, 324013.0, 329538.0, 327065.0, 328036.0]
     assert [r.marker for r in result.rows] == [""] * 5
-    assert result.edition == KeyEdition(EXTRACT.name, EXTRACT.url, EXTRACT.sha256, 2015, 2016, ShareKind.POPULATION)
-    assert result.edition.sheet == "2015-2016"
+    assert result.key_sheet == KeySheet(EXTRACT.name, EXTRACT.url, EXTRACT.sha256, 2015, 2016, ShareKind.POPULATION)
+    assert result.key_sheet.sheet == "2015-2016"
     assert result.census_breaks == ()
     assert result.issues_of(IssueKind.RENORMALIZED) == ()
 
@@ -465,6 +465,6 @@ def test_a_sheet_without_employee_columns_refuses_the_employees_share() -> None:
 def test_share_kind_accepts_wire_strings(bbsr_keys: list[UmsteigeschluesselRow]) -> None:
     observations = [Observation("03152", 2015, 10.0), Observation("03156", 2015, 1.0)]
     result = _rebase(observations, bbsr_keys, share="area")
-    assert result.edition.share is ShareKind.AREA
+    assert result.key_sheet.share is ShareKind.AREA
     with pytest.raises(ValueError, match="people"):
         _rebase(observations, bbsr_keys, share="people")

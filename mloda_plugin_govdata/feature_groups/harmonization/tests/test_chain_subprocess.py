@@ -55,8 +55,8 @@ _SCRIPT = textwrap.dedent(
     table = result[0]
     values = table.column("destatis__bevoelkerung__kreise~value").to_pylist()
     assert values == [322616.0, 324013.0, 329538.0, 327065.0, 328036.0], values
-    edition = json.loads(table.column("destatis__bevoelkerung__kreise~edition").to_pylist()[0])
-    assert edition["sheet"] == "2015-2016", edition
+    provenance = json.loads(table.column("destatis__bevoelkerung__kreise~provenance").to_pylist()[0])
+    assert provenance["sheet"] == "2015-2016", provenance
     steps = [step.feature_group_name for step in result.plan if step.step_kind == "compute"]
     assert steps == ["GovDataFeature", "KreisRebaseFeature"], steps
     print("OK")

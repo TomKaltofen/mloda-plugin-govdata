@@ -43,7 +43,7 @@ Source: Eurostat "Correspondence table 2024" (NUTS levels to national administra
 last updated 2026-04-27; cover block, column header, and the DE row only (16 Laender / 38
 Regierungsbezirke / 401 Kreise-kreisfreie Staedte / 10957 Gemeinden, as printed in that table).
 This file labels itself "based on NUTS 2027 and LAU 2025"; that is a different, not yet
-current, edition from the LAU-to-NUTS crosswalk below (NUTS 2024), so its 401-Kreise count is
+current, NUTS version from the LAU-to-NUTS crosswalk below (NUTS 2024), so its 401-Kreise count is
 not the count the five hand-mapped keys were derived against.
 Original: https://ec.europa.eu/eurostat/documents/345175/6742814/Correspondence-table-2024-NUTS-SR-EN-DE-FR.xlsx/4576becd-b6b9-c3e5-cb83-e4200aa43c3a
 Fetched: 2026-08-17
@@ -63,7 +63,7 @@ one representative Gemeinde per remaining Kreis key (03159016 Goettingen Stadt f
 07135020 Cochem Stadt for AGS 07135, 07140144 Simmern/Huensrueck Stadt for AGS 07140).
 Verified over the full DE sheet (11,268 rows, blank trailing rows excluded): 400 distinct
 5-digit Kreis prefixes and 400 distinct NUTS3 codes, in exact bijection (no Kreis maps to two
-NUTS3 codes or vice versa) for this NUTS 2024 / LAU 2025 edition specifically. Germany's own
+NUTS3 codes or vice versa) for this NUTS 2024 / LAU 2025 version specifically. Germany's own
 row is marked "validated" in the file's Overview sheet across every column (NUTS3, DEGURBA,
 coastal area, city, FUA); among all EU-27 countries only Cyprus carries a partial-validation
 caveat there (FUAs use 2018 commuting data), non-EU candidate countries are unvalidated, and
