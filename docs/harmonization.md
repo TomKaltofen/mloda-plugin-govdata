@@ -67,10 +67,25 @@ Feature(
 )
 ```
 
-Names are ASCII (`bevoelkerung`, not `Bevölkerung`). A result with several parts comes back as
-`<name>~<part>` columns; request `<name>~<part>` to get one part alone, and chain onto a part to go on
-(`value__rebased~key__nuts2024` maps the re-based keys). mloda returns one frame per FeatureGroup, so a
-reader column requested next to a harmonized feature lands in its own frame.
+## Feature names
+
+| Name | Group | Result |
+| --- | --- | --- |
+| `<col>__rebased` | `KreisRebaseFeature` | one row per Kreis and year, as the parts `~key` to `~provenance` |
+| `<key>__nuts2024` | `AgsToNutsFeature` | row-aligned parts `~key`, `~nuts1`, `~nuts2`, `~nuts3`, `~version`, `~unmatched` |
+| `<time>__year_period` | `AnnualPeriodFeature` | one `date32` column, no parts |
+| `<name>~<part>` | the group of `<name>` | that part alone (`value__rebased~flag`) |
+| `<name>~key__nuts2024` | `AgsToNutsFeature` | NUTS codes for a part's keys (`value__rebased~key__nuts2024`) |
+| configuration-based name | the group its options select | the same parts under that name (`destatis__bevoelkerung__kreise~value`); the source column goes in `in_features`, the parameters in the group options |
+
+- Names are ASCII (`bevoelkerung`, not `Bevölkerung`).
+- An unknown part (`value__rebased~edition`) fails at match time, before any fetch, and the error lists the
+  group's parts.
+- Over `DestatisReader`, a configuration-based name must contain `__`: the reader claims every other name its
+  option is set for, and mloda then finds two groups. Over the other readers, name the group instead (see
+  [Over other readers](#over-other-readers)).
+- mloda returns one frame per FeatureGroup, so a reader column requested next to a harmonized feature lands
+  in its own frame.
 
 ## `value__rebased` (`KreisRebaseFeature`)
 
@@ -88,11 +103,32 @@ Re-bases Kreis observations onto a later Gebietsstand with the BBSR Umsteigeschl
 | `rebase_on_unmatched`, `rebase_on_incomplete` | `raise` (default), `flag`, or `drop` |
 
 Output, one row per Kreis and year: `~key`, `~year`, `~value` (float, never rounded), `~flag`
-(`observed` or `rebased`), `~sources` (the contributing keys, `+`-joined), `~marker` (the raw GENESIS
-sign of an observed cell), `~issues` (the issues that touch that row, `kind: detail`), and `~provenance`
-(JSON: the key sheet's source, URL, sha256, years, sheet and share, the census breaks, and the full
-records of the issues no row carries). The input rows do not survive; a partial sum or a key the sheet
+(`observed` or `rebased`), `~sources` (the contributing keys), `~marker` (the raw GENESIS sign of an
+observed cell), `~issues` (the records of the issues that touch that row: `kind`, `key`, `year`, `detail`,
+`target`), and `~provenance`. `~sources`, `~issues` and `~provenance` are JSON strings, not Arrow lists,
+since pyarrow joins refuse a list column. The input rows do not survive; a partial sum or a key the sheet
 does not know raises unless the policy says otherwise.
+
+`~provenance` is the same on every row: the key sheet's `source`, `url`, `sha256`, `from_year`, `to_year`,
+`sheet` and `share`, the `census_breaks` the years span, and `issues_elsewhere`, the records of the issues no
+row carries:
+
+```json
+{
+  "census_breaks": [],
+  "from_year": 2015,
+  "issues_elsewhere": [
+    {"detail": "03152 does not exist from 31.12.2016 on per key sheet 2015-2016; its 2016 cell ('-') is excluded",
+     "key": "03152", "kind": "not_applicable", "target": null, "year": 2016}
+  ],
+  "sha256": "68c4d001cc450115938d37c42aa8cc090fb9e6381e7e29d00f049cffdbcc8f1f",
+  "share": "population",
+  "sheet": "2015-2016",
+  "source": "BBSR Umsteigeschluessel Kreise",
+  "to_year": 2016,
+  "url": "https://www.bbsr.bund.de/.../ref-kreise-1990-2024.xlsx?__blob=publicationFile&v=2"
+}
+```
 
 ## `<key>__nuts2024` (`AgsToNutsFeature`)
 

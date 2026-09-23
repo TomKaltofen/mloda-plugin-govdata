@@ -3,9 +3,16 @@
 from __future__ import annotations
 
 import re
-from typing import ClassVar
+from typing import Any, ClassVar
 
-from mloda.provider import COLUMN_SEPARATOR, ComputeFramework, FeatureChainParserMixin, FeatureGroup, FeatureSet
+from mloda.provider import (
+    COLUMN_SEPARATOR,
+    ComputeFramework,
+    FeatureChainParserMixin,
+    FeatureGroup,
+    FeatureSet,
+    record_match_rejection,
+)
 from mloda.user import Feature, FeatureName, Options
 from mloda.user.pyarrow import PyArrowTable
 
@@ -14,7 +21,9 @@ from ..govdata.core.cache import DEFAULT_CACHE_DIR
 
 # A part selector is lowercase letters and digits only, so ``~key__nuts2024`` never reads as one part.
 PART_PATTERN = r"[a-z0-9]+"
-_TRAILING_PART = re.compile(rf"{re.escape(COLUMN_SEPARATOR)}{PART_PATTERN}$")
+# The optional trailing ``~part`` of a PREFIX_PATTERN: request one output column of the group alone.
+OPTIONAL_PART = rf"(?:~{PART_PATTERN})?"
+_TRAILING_PART = re.compile(rf"{re.escape(COLUMN_SEPARATOR)}({PART_PATTERN})$")
 
 
 class HarmonizationFeature(FeatureChainParserMixin, FeatureGroup):
@@ -28,10 +37,26 @@ class HarmonizationFeature(FeatureChainParserMixin, FeatureGroup):
     cache_dir: ClassVar[str] = str(DEFAULT_CACHE_DIR)  # reference tables are read offline from here
     # Context keys the children pull from the consumer; context never enters the feature hash.
     inherited_context_keys: ClassVar[frozenset[str]] = frozenset({OPTION_GENESIS_CREDENTIALS})
+    # The ``~part`` columns a multi-output group returns; empty for a one-column group, whose name is not checked.
+    PARTS: ClassVar[tuple[str, ...]] = ()
 
     @classmethod
     def compute_framework_rule(cls) -> set[type[ComputeFramework]] | None:
         return {PyArrowTable}
+
+    @classmethod
+    def match_feature_group_criteria(
+        cls, feature_name: str | FeatureName, options: Options, data_access_collection: Any = None
+    ) -> bool:
+        """Refuses a trailing ``~part`` the group does not return, with the valid parts as mloda's reason."""
+        if not super().match_feature_group_criteria(feature_name, options, data_access_collection):
+            return False
+        trailing = _TRAILING_PART.search(str(feature_name))
+        if not cls.PARTS or trailing is None or trailing.group(1) in cls.PARTS:
+            return True
+        parts = ", ".join(f"~{part}" for part in cls.PARTS)
+        record_match_rejection(cls.__name__, f"unknown part ~{trailing.group(1)}; {cls.__name__} returns {parts}")
+        return False
 
     @classmethod
     def child(cls, name: str) -> Feature:

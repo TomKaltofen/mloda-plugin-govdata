@@ -47,6 +47,21 @@ year outside 1900 to 2100, `startyear` after `endyear`, or an unknown dict key f
 `area`'s allowed values differ between the OpenAPI spec (`free`/`public`/`user`) and the PDF
 documentation (`Alle`/...); the connector leaves it at the server default rather than guessing which is current.
 
+## Output columns
+
+The reader returns the parsed ffcsv table, one row per value cell:
+
+| Column | Type | Holds |
+|---|---|---|
+| `statistics_code`, `statistics_label` | string | the statistic (`12411`, `Fortschreibung des Bevölkerungsstandes`) |
+| `time_code`, `time_label` | string | the time dimension: `JAHR` / `Jahr` or `STAG` / `Stichtag` |
+| `time` | int64 | the year, parsed from the JAHR (`2015`) or STAG (`2015-12-31`) value; the raw value is not kept |
+| `{N}_variable_code`, `{N}_variable_label`, `{N}_variable_attribute_code`, `{N}_variable_attribute_label` | string | one block per variable, `N` from 1; block 1 is usually the region (`1_variable_code` `KREISE`, its key `03159` in `1_variable_attribute_code`) |
+| `value` | float64 | the number; a `-` reads as 0, the other signs as null |
+| `value_unit`, `value_variable_code`, `value_variable_label` | string | the measure (`Anzahl`, `BEVSTD`, `Bevölkerungsstand`) |
+| `value_q` | string | the quality flag, only with `quality=True` |
+| `value_marker` | string | the raw sign of the `value` cell (`-`, `.`, `...`, `/`, `x`, `()`), `""` for a number |
+
 ## `whoami` / `logincheck`
 
 `helloworld/whoami` (GET, no credentials) echoes the client's own `User-Agent` as a connectivity

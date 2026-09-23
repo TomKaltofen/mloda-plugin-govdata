@@ -13,7 +13,7 @@ from mloda.provider import DefaultOptionKeys, FeatureSet, property_spec
 from mloda.user import Feature, FeatureName, Options
 
 from ..govdata.core.cache import CacheMissError, DownloadCache
-from .base import PART_PATTERN, HarmonizationFeature
+from .base import OPTIONAL_PART, HarmonizationFeature
 from .core.rebase import (
     DEFAULT_TOLERANCE,
     KeySheet,
@@ -33,7 +33,6 @@ VARIABLE_COLUMN = "1_variable_code"
 KEY_COLUMN = "1_variable_attribute_code"
 TIME_COLUMN = "time"
 MARKER_COLUMN = "value_marker"
-PARTS: tuple[str, ...] = ("key", "year", "value", "flag", "sources", "marker", "issues", "provenance")
 
 _POLICIES = {"raise": "fail loud", "flag": "keep the row, report the issue", "drop": "drop the row"}
 _SHARES = {kind.value: f"{kind.value}-proportional key" for kind in ShareKind}
@@ -44,15 +43,17 @@ class KreisRebaseFeature(HarmonizationFeature):
 
     Reads the ffcsv key (``1_variable_attribute_code`` with ``1_variable_code == KREISE``), ``time``,
     the value column and ``value_marker``; the key sheets come from the BBSR file in the cache.
-    Returns one row per (Kreis, year): ``~key``, ``~year``, ``~value``, ``~flag``, ``~sources``,
-    ``~marker``, ``~issues`` (the issues touching that row) and ``~provenance`` (the key sheet's source
-    identity, census breaks and the issues no row carries, as JSON). The input rows do not survive.
+    Returns one row per (Kreis, year): ``~key``, ``~year``, ``~value``, ``~flag``, ``~sources`` (the
+    contributing keys), ``~marker``, ``~issues`` (the issue records touching that row) and ``~provenance``
+    (the key sheet's source identity, census breaks and the issues no row carries). ``~sources``,
+    ``~issues`` and ``~provenance`` are JSON. The input rows do not survive.
     """
 
-    PREFIX_PATTERN = rf".*__(?:rebased)(?:~{PART_PATTERN})?$"
+    PREFIX_PATTERN = rf".*__rebased{OPTIONAL_PART}$"
     RECOGNITION_ONLY_PATTERN = True  # no capture: the name identifies the group, every value comes from Options
     MIN_IN_FEATURES = 1
     MAX_IN_FEATURES = 1
+    PARTS: ClassVar = ("key", "year", "value", "flag", "sources", "marker", "issues", "provenance")
     PROPERTY_MAPPING: ClassVar = {
         "rebase_from_year": property_spec("Source Gebietsstand year, the key sheet's first year", context=False),
         "rebase_to_year": property_spec("Target Gebietsstand year, the key sheet's second year", context=False),
@@ -176,13 +177,12 @@ class KreisRebaseFeature(HarmonizationFeature):
         rows = result.rows
         attached: set[RebaseIssue] = set()
         issues = [_issues_for(row, result.issues, attached) for row in rows]
-        elsewhere = [asdict(issue) for issue in result.issues if issue not in attached]
         provenance = {
             **asdict(result.key_sheet),
             "share": result.key_sheet.share.value,
             "sheet": result.key_sheet.sheet,
             "census_breaks": list(result.census_breaks),
-            "issues_elsewhere": [{**issue, "kind": issue["kind"].value} for issue in elsewhere],
+            "issues_elsewhere": [_issue_record(issue) for issue in result.issues if issue not in attached],
         }
         provenance_json = json.dumps(provenance, sort_keys=True)
         return {
@@ -190,11 +190,16 @@ class KreisRebaseFeature(HarmonizationFeature):
             f"{name}~year": pa.array([r.year for r in rows], pa.int64()),
             f"{name}~value": pa.array([r.value for r in rows], pa.float64()),
             f"{name}~flag": pa.array([r.flag.value for r in rows], pa.string()),
-            f"{name}~sources": pa.array(["+".join(r.sources) for r in rows], pa.string()),
+            # JSON, not an Arrow list: pyarrow joins refuse a list column that is not a key.
+            f"{name}~sources": pa.array([json.dumps(list(r.sources)) for r in rows], pa.string()),
             f"{name}~marker": pa.array([r.marker for r in rows], pa.string()),
             f"{name}~issues": pa.array(issues, pa.string()),
             f"{name}~provenance": pa.array([provenance_json] * len(rows), pa.string()),
         }
+
+
+def _issue_record(issue: RebaseIssue) -> dict[str, Any]:
+    return {**asdict(issue), "kind": issue.kind.value}
 
 
 def _issues_for(row: RebasedRow, issues: Sequence[RebaseIssue], attached: set[RebaseIssue]) -> str:
@@ -205,7 +210,7 @@ def _issues_for(row: RebasedRow, issues: Sequence[RebaseIssue], attached: set[Re
         if (row.key in (issue.key, issue.target) or issue.key in row.sources) and issue.year in (None, row.year)
     ]
     attached.update(mine)
-    return "; ".join(f"{issue.kind.value}: {issue.detail}" for issue in mine)
+    return json.dumps([_issue_record(issue) for issue in mine], sort_keys=True)
 
 
 def _option(options: Options, key: str, default: Any) -> Any:

@@ -47,7 +47,8 @@ reader loads nothing outside entries 1 to 3.
   [input feature forwarding](https://github.com/mloda-ai/mloda-registry/blob/main/docs/guides/feature-group-patterns/26-input-feature-forwarding.md).
 - **`~` multi-output columns.** A result with several parts comes back as `<name>~<part>` columns
   (`value__rebased~key`, `value__rebased~flag`). Request one part alone, or chain onto a part
-  (`value__rebased~key__nuts2024`). `LandPopulationPerVoter` returns the same shape. Guide:
+  (`value__rebased~key__nuts2024`). `LandPopulationPerVoter` returns the same shape. Every name form:
+  [harmonization.md](harmonization.md#feature-names). Guide:
   [multi-output features](https://github.com/mloda-ai/mloda-registry/blob/main/docs/guides/feature-group-patterns/05-multi-output-features.md).
 
 ## Where to start
