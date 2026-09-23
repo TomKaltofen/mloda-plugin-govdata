@@ -11,7 +11,7 @@ import pyarrow as pa
 import pytest
 import respx
 from mloda.provider import FeatureSet
-from mloda.user import Feature, FeatureName, Options, mloda
+from mloda.user import Feature, FeatureName, FeatureResolutionError, Options, mloda
 
 from mloda_plugin_govdata.feature_groups.destatis.core.auth import OPTION_GENESIS_CREDENTIALS, DestatisCredentials
 from mloda_plugin_govdata.feature_groups.destatis.reader import DestatisReader
@@ -24,12 +24,13 @@ from mloda_plugin_govdata.feature_groups.harmonization.core.rebase import (
     ShareKind,
     rebase,
 )
-from mloda_plugin_govdata.feature_groups.harmonization.rebase import PARTS, KreisRebaseFeature
+from mloda_plugin_govdata.feature_groups.harmonization.rebase import KreisRebaseFeature
 from mloda_plugin_govdata.recipes import Compliance, SourceCompliance, build_recipe, parse_recipe, recipe_to_json
 
 from .conftest import COCHEM_ZELL_ZIP, EXTRACT, GOETTINGEN_LOCATOR, GOETTINGEN_ZIP, LAND_ZIP, ffcsv_zip_with_rows
 
 CONFIGURATION_BASED_NAME = "destatis__bevoelkerung__kreise"
+PARTS = KreisRebaseFeature.PARTS
 YEARS = {"rebase_from_year": 2015, "rebase_to_year": 2016}
 
 
@@ -40,7 +41,10 @@ def _expected(path: Path) -> list[tuple[str, int, int, str, str]]:
 
 def _cells(table: pa.Table, name: str) -> list[tuple[str, int, int, str, str]]:
     columns = [table.column(f"{name}~{part}").to_pylist() for part in ("key", "year", "value", "flag", "sources")]
-    return [(key, year, round(value), flag, sources) for key, year, value, flag, sources in zip(*columns)]
+    return [
+        (key, year, round(value), flag, "+".join(json.loads(sources)))
+        for key, year, value, flag, sources in zip(*columns)
+    ]
 
 
 def _run(features: list[Feature | str]) -> Any:
@@ -54,10 +58,13 @@ def test_matches_the_chained_and_the_configuration_based_name() -> None:
     years = Options(group=YEARS)
     assert KreisRebaseFeature.match_feature_group_criteria("value__rebased", years)
     assert KreisRebaseFeature.match_feature_group_criteria("value__rebased~flag", years)
+    assert not KreisRebaseFeature.match_feature_group_criteria("value__rebased~edition", years)  # not a part
     assert not KreisRebaseFeature.match_feature_group_criteria("value__rebased", Options({}))  # the years are required
     assert not KreisRebaseFeature.match_feature_group_criteria("value", years)
     configured = Options(group=YEARS, context={"in_features": "value"})
     assert KreisRebaseFeature.match_feature_group_criteria(CONFIGURATION_BASED_NAME, configured)
+    assert KreisRebaseFeature.match_feature_group_criteria(f"{CONFIGURATION_BASED_NAME}~flag", configured)
+    assert not KreisRebaseFeature.match_feature_group_criteria(f"{CONFIGURATION_BASED_NAME}~edition", configured)
     assert not KreisRebaseFeature.match_feature_group_criteria(
         CONFIGURATION_BASED_NAME, Options(context={"in_features": "value"})
     )
@@ -93,6 +100,7 @@ def test_children_carry_the_locator_and_leave_the_group_keys_behind() -> None:
 
 def test_the_destatis_reader_leaves_chained_names_to_the_derived_groups() -> None:
     assert DestatisReader.match_subclass_data_access("12411-0015", ["value__rebased"], Options({})) is None
+    assert DestatisReader.match_subclass_data_access("12411-0015", ["kreise~edition"], Options({})) is None
     assert DestatisReader.match_subclass_data_access("12411-0015", ["value"], Options({})) is not None
 
 
@@ -144,19 +152,45 @@ def test_one_sub_column_can_be_requested_alone(genesis: Callable[[str], respx.Ro
 
 
 @respx.mock
+def test_an_unknown_part_is_refused_before_any_fetch_naming_the_parts(
+    genesis: Callable[[str], respx.Route], extract_keys: None
+) -> None:
+    route = genesis(GOETTINGEN_ZIP)
+    options = {DestatisReader.__name__: GOETTINGEN_LOCATOR, **YEARS}
+    features = [
+        Feature("value__rebased~edition", options=options),
+        Feature("value__rebased~edition__nuts2024", options=options),  # inside a chain
+        Feature("kreise~edition", Options(group=options, context={"in_features": "value"})),  # the reader declines it
+    ]
+    for feature in features:
+        with pytest.raises(
+            FeatureResolutionError, match=r"unknown part ~edition; KreisRebaseFeature returns ~key.*~provenance"
+        ):
+            _run([feature])
+    assert route.calls.call_count == 0
+
+
+@respx.mock
 def test_issues_sit_next_to_their_rows_and_the_provenance_carries_the_rest(
     genesis: Callable[[str], respx.Route], extract_keys: None
 ) -> None:
     genesis(GOETTINGEN_ZIP)
     table = _run([Feature("value__rebased", options={DestatisReader.__name__: GOETTINGEN_LOCATOR, **YEARS})])[0]
-    issues = dict(
-        zip(table.column("value__rebased~year").to_pylist(), table.column("value__rebased~issues").to_pylist())
-    )
+    issues = {
+        year: json.loads(records)
+        for year, records in zip(
+            table.column("value__rebased~year").to_pylist(), table.column("value__rebased~issues").to_pylist()
+        )
+    }
 
-    assert "not_applicable: 03159 does not exist before 31.12.2016" in issues[2013]
-    assert "unverified_year" in issues[2014] and "03152" in issues[2014] and "03156" in issues[2014]
-    assert issues[2016] == ""
-    assert issues[2017].startswith("unverified_year: no key sheet 2016-2017")
+    assert any(
+        i["kind"] == "not_applicable" and i["detail"].startswith("03159 does not exist before 31.12.2016")
+        for i in issues[2013]
+    )
+    assert {i["key"] for i in issues[2014] if i["kind"] == "unverified_year"} == {"03152", "03156"}
+    assert issues[2016] == []
+    assert issues[2017][0]["kind"] == "unverified_year"
+    assert issues[2017][0]["detail"].startswith("no key sheet 2016-2017")
 
     provenances = set(table.column("value__rebased~provenance").to_pylist())
     assert len(provenances) == 1
@@ -186,6 +220,9 @@ def test_issues_sit_next_to_their_rows_and_the_provenance_carries_the_rest(
         ("share_sum", "07137", None),
     }
     assert any("0.9828486" in i["detail"] for i in provenance["issues_elsewhere"])
+    # A row's issue records have the shape of the records the provenance carries.
+    shapes = {frozenset(i) for i in provenance["issues_elsewhere"]} | {frozenset(i) for r in issues.values() for i in r}
+    assert shapes == {frozenset({"kind", "key", "year", "detail", "target"})}
 
 
 @respx.mock
@@ -243,14 +280,17 @@ def test_a_missing_feeder_is_explained_on_the_null_target_row(
     options = {DestatisReader.__name__: GOETTINGEN_LOCATOR, **YEARS, "rebase_on_incomplete": "flag"}
     table = _run([Feature("value__rebased", options=options)])[0]
     rows = {
-        year: (value, sources, issues)
+        year: (value, json.loads(sources), json.loads(issues))
         for year, value, sources, issues in zip(
             *(table.column(f"value__rebased~{part}").to_pylist() for part in ("year", "value", "sources", "issues"))
         )
     }
     assert set(table.column("value__rebased~key").to_pylist()) == {"03159"}
-    assert rows[2015][:2] == (None, "03152")
-    assert "missing_source: 03156 2015 was not given but feeds 03159" in rows[2015][2]
+    assert rows[2015][:2] == (None, ["03152"])
+    assert any(
+        i["kind"] == "missing_source" and "03156 2015 was not given but feeds 03159" in i["detail"]
+        for i in rows[2015][2]
+    )
 
 
 @respx.mock
@@ -307,7 +347,7 @@ def test_the_fractional_case_matches_the_expected_values(
     }
     table = _run([Feature("value__rebased", options=options)])[0]
     assert _cells(table, "value__rebased") == _expected(expected_dir / "c2-cochem-zell-2014.csv")
-    assert set(table.column("value__rebased~issues").to_pylist()) == {""}
+    assert set(table.column("value__rebased~issues").to_pylist()) == {"[]"}
 
 
 @respx.mock

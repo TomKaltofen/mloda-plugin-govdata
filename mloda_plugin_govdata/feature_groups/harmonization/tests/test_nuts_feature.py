@@ -12,10 +12,10 @@ from mloda.user import Feature, FeatureName, Options, mloda
 from mloda_plugin_govdata.feature_groups.destatis.core.auth import OPTION_GENESIS_CREDENTIALS
 from mloda_plugin_govdata.feature_groups.destatis.reader import DestatisReader
 from mloda_plugin_govdata.feature_groups.govdata.core.cache import CacheMissError
-from mloda_plugin_govdata.feature_groups.harmonization.base import PART_PATTERN
+from mloda_plugin_govdata.feature_groups.harmonization.base import OPTIONAL_PART
 from mloda_plugin_govdata.feature_groups.harmonization.core.crosswalk import NutsCrosswalk
 from mloda_plugin_govdata.feature_groups.harmonization.core.nuts import UnmatchedKeysError
-from mloda_plugin_govdata.feature_groups.harmonization.nuts import NULL_KEY, PARTS, AgsToNutsFeature
+from mloda_plugin_govdata.feature_groups.harmonization.nuts import NULL_KEY, AgsToNutsFeature
 
 from .conftest import (
     GOETTINGEN_LOCATOR,
@@ -29,6 +29,7 @@ from .conftest import (
 
 KEY = "1_variable_attribute_code"
 NAME = f"{KEY}__nuts2024"
+PARTS = AgsToNutsFeature.PARTS
 
 
 def _run(features: list[Feature | str]) -> Any:
@@ -38,6 +39,7 @@ def _run(features: list[Feature | str]) -> Any:
 def test_matches_only_the_pinned_nuts_version() -> None:
     assert AgsToNutsFeature.match_feature_group_criteria(NAME, Options({}))
     assert AgsToNutsFeature.match_feature_group_criteria(f"{NAME}~nuts3", Options({}))
+    assert not AgsToNutsFeature.match_feature_group_criteria(f"{NAME}~nuts4", Options({}))  # not a part
     assert not AgsToNutsFeature.match_feature_group_criteria(f"{KEY}__nuts2021", Options({}))
     assert AgsToNutsFeature.match_feature_group_criteria(
         "kreis_nuts", Options(group={"nuts_version": "2024"}, context={"in_features": KEY})
@@ -59,7 +61,7 @@ def test_a_second_overlapping_nuts_version_would_still_bind_by_name() -> None:
     # A pattern with two alternatives, as a real second NUTS version would add, still binds each value
     # by name unconditionally. No FeatureGroup involved: this exercises the parser directly, so it
     # can't leak a test-local subclass into mloda's global FeatureGroup discovery.
-    pattern = rf".*__nuts(?P<nuts_version>2024|2021)(?:~{PART_PATTERN})?$"
+    pattern = rf".*__nuts(?P<nuts_version>2024|2021){OPTIONAL_PART}$"
     assert FeatureChainParser.parse_name(f"{KEY}__nuts2024", [pattern]).named_captures == {"nuts_version": "2024"}
     assert FeatureChainParser.parse_name(f"{KEY}__nuts2021", [pattern]).named_captures == {"nuts_version": "2021"}
 

@@ -10,12 +10,11 @@ from mloda.provider import DefaultOptionKeys, FeatureSet, property_spec
 from mloda.user import Feature, FeatureName, Options
 
 from ..govdata.core.cache import CacheMissError, DownloadCache
-from .base import PART_PATTERN, HarmonizationFeature
+from .base import OPTIONAL_PART, HarmonizationFeature
 from .core.crosswalk import NUTS_VERSION, NutsCrosswalk, load_nuts_crosswalk
 from .core.nuts import map_ags_to_nuts
 from .core.reference.gv_isys import load_gv_isys_changes
 
-PARTS: tuple[str, ...] = ("key", "nuts1", "nuts2", "nuts3", "version", "unmatched")
 NULL_KEY = "null key cell"
 _POLICIES = {"raise": "fail loud", "flag": "null codes, the reason in ~unmatched"}
 
@@ -28,9 +27,10 @@ class AgsToNutsFeature(HarmonizationFeature):
     name (or ``nuts_version``) must be the cached crosswalk's, so a result names what it was mapped with.
     """
 
-    PREFIX_PATTERN = rf".*__nuts(?P<nuts_version>{NUTS_VERSION})(?:~{PART_PATTERN})?$"
+    PREFIX_PATTERN = rf".*__nuts(?P<nuts_version>{NUTS_VERSION}){OPTIONAL_PART}$"
     MIN_IN_FEATURES = 1
     MAX_IN_FEATURES = 1
+    PARTS: ClassVar = ("key", "nuts1", "nuts2", "nuts3", "version", "unmatched")
     PROPERTY_MAPPING: ClassVar = {
         "nuts_version": property_spec(
             "NUTS version the keys resolve against",
@@ -97,7 +97,7 @@ class AgsToNutsFeature(HarmonizationFeature):
                 "version": [crosswalk.nuts_version if k in matched else None for k in raw],
                 "unmatched": [NULL_KEY if k is None else reasons.get(k, "") for k in raw],
             }
-            for part in PARTS:
+            for part in cls.PARTS:
                 table = table.append_column(f"{name}~{part}", pa.array(parts[part], pa.string()))
         return table
 
