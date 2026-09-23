@@ -143,4 +143,4 @@ def test_the_rebased_recipe_runs_in_a_fresh_process(tmp_path: Path, monkeypatch:
 
 
 def test_links_resolve_in_a_fresh_process() -> None:
-    _fresh_process(_LINK_SCRIPT, str(RECIPES_DIR / "land_population_voters.json"))
+    _fresh_process(_LINK_SCRIPT, str(RECIPES_DIR / "land_population_per_voter.json"))

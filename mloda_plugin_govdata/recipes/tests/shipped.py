@@ -22,7 +22,7 @@ from mloda_plugin_govdata.feature_groups.govdata import (
     uba_measures_url,
 )
 from mloda_plugin_govdata.feature_groups.harmonization.core.reference.sources import BBSR_KREISE
-from mloda_plugin_govdata.feature_groups.land_join import LAND_LINK
+from mloda_plugin_govdata.feature_groups.land_population_per_voter import LAND_LINK
 from mloda_plugin_govdata.recipes import Compliance, SourceCompliance
 
 DESTATIS = "dl-de/by-2-0"
@@ -172,8 +172,8 @@ KREIS_FOREIGNERS_SHARE = ShippedRecipe(
     ),
 )
 
-LAND_POPULATION_VOTERS = ShippedRecipe(
-    "land_population_voters.json",
+LAND_POPULATION_PER_VOTER = ShippedRecipe(
+    "land_population_per_voter.json",
     [
         *_destatis_features(LAND, KEY, "1_variable_attribute_label", "value", "value_marker"),
         *(
@@ -189,7 +189,7 @@ LAND_POPULATION_VOTERS = ShippedRecipe(
             "mloda_plugin_govdata.feature_groups.harmonization.core.land_codes. A party column is empty where the "
             "party was not on the ballot (the CSU outside Bayern), which is not a zero. The links block lets a "
             "consumer FeatureGroup needing a column from each side join them "
-            "(mloda_plugin_govdata.feature_groups.land_join.LandPopulationPerVoter is one); "
+            "(mloda_plugin_govdata.feature_groups.land_population_per_voter.LandPopulationPerVoter is one); "
             "requesting this recipe's own raw features returns them unjoined, one frame per source. "
             "kerg.csv re-fetched on 2026-09-12: unchanged since the first capture."
         ),
@@ -275,7 +275,7 @@ UBA_OZONE_STATION_143 = ShippedRecipe(
 RECIPES: tuple[ShippedRecipe, ...] = (
     KREIS_POPULATION_REBASED,
     KREIS_FOREIGNERS_SHARE,
-    LAND_POPULATION_VOTERS,
+    LAND_POPULATION_PER_VOTER,
     STUTTGART_POPULATION,
     BUNDESTAGSWAHL_2025,
     UBA_OZONE_STATION_143,

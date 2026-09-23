@@ -6,22 +6,21 @@ from pathlib import Path
 from typing import Any
 
 import respx
-from mloda.user import Feature, PluginCollector, mloda
+from mloda.user import Feature
 
-from mloda_plugin_govdata.feature_groups.govdata import GovDataFeature
 from mloda_plugin_govdata.feature_groups.harmonization.core.land_codes import LAND_NAMES, check_land_names
 from mloda_plugin_govdata.feature_groups.harmonization.core.tests.test_land_codes import BUNDESGEBIET, BUNDESGEBIET_ROW
-from mloda_plugin_govdata.feature_groups.land_join import LandPopulationPerVoter
+from mloda_plugin_govdata.feature_groups.land_population_per_voter import LAND_LINK, LandPopulationPerVoter
 from mloda_plugin_govdata.recipes import LoadedRecipe, frames_by_column, load_recipe
 
 from .conftest import FFCSV_FIXTURES, GOVDATA_FIXTURES, LAND_ZIP, Mock, run
-from .shipped import CSU_ZWEITSTIMMEN, KEY, LAND_POPULATION_VOTERS, VOTERS
+from .shipped import CSU_ZWEITSTIMMEN, KEY, LAND_POPULATION_PER_VOTER, VOTERS
 
 Genesis = Callable[[Mapping[str, str | bytes]], respx.Route]
 
 
 def _load(recipes_dir: Path) -> LoadedRecipe:
-    return load_recipe(recipes_dir / LAND_POPULATION_VOTERS.file)
+    return load_recipe(recipes_dir / LAND_POPULATION_PER_VOTER.file)
 
 
 def _land_rows(election: Any) -> dict[str, dict[str, Any]]:
@@ -56,16 +55,12 @@ def test_both_sides_run_and_the_land_rows_line_up_by_name(recipes_dir: Path, gen
 
 
 @respx.mock
-def test_the_links_block_joins_the_two_sides(recipes_dir: Path, genesis: Genesis, kerg: Mock) -> None:
+def test_the_consumer_joins_once_on_the_recipes_link(recipes_dir: Path, genesis: Genesis, kerg: Mock) -> None:
     genesis({"12411-0010": LAND_ZIP})
     kerg()
     recipe = _load(recipes_dir)
-    result = mloda.run_all(
-        [Feature(LandPopulationPerVoter.NAME)],
-        compute_frameworks=["PyArrowTable"],
-        links=set(recipe.links),
-        plugin_collector=PluginCollector.enabled_feature_groups({GovDataFeature, LandPopulationPerVoter}),
-    )
+    assert set(recipe.links) == {LAND_LINK}  # the link LandPopulationPerVoter declares on both inputs
+    result = run([Feature(LandPopulationPerVoter.NAME)], recipe.links)
     assert [step.step_kind for step in result.plan].count("join") == 1
     table = result[0]
     assert table.num_rows == 16

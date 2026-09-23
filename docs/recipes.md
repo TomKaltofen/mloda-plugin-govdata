@@ -97,7 +97,7 @@ recipes sit next to their tests.
 | --- | --- | --- |
 | `kreis_population_rebased.json` | GENESIS-Online `12411-0015`, Kreise 03152, 03156, 03159, 2013 to 2017, plus the BBSR key file | the re-based series as `destatis__bevoelkerung__kreise` (a configuration-based name with `in_features` and the re-basing options) |
 | `kreis_foreigners_share.json` | GENESIS-Online `12521-0040` and `12411-0015`, same keys and years | a rate with its denominator; two selections, two frames |
-| `land_population_voters.json` | GENESIS-Online `12411-0010` and the Bundeswahlleiterin `kerg.csv` | population per eligible voter by Land, the links block on `1_variable_attribute_code` = `Nr` |
+| `land_population_per_voter.json` | GENESIS-Online `12411-0010` and the Bundeswahlleiterin `kerg.csv` | population per eligible voter by Land, the links block on `1_variable_attribute_code` = `Nr` |
 | `land_population.json` | GENESIS-Online `12411-0010` | the 16 Land rows, the first recipe |
 | `stuttgart_population.json` | GovData CSV via CKAN | residents by age group and district |
 | `bundestagswahl_2025.json` | Bundeswahlleiterin `kerg.csv` | the merged-header election file |
@@ -107,8 +107,8 @@ The re-based recipe needs the BBSR key file in the cache (`load_bbsr_kreise(cach
 once). Running the Land recipe's own features returns them unjoined, one frame per source; check the
 Land names on each side with `feature_groups.harmonization.core.land_codes.check_land_names`. The links
 block lets a consumer FeatureGroup that needs a column from each side join them instead (mloda executes a
-join only for such a consumer); `feature_groups.land_join.LandPopulationPerVoter` is one, computing
-population per voter.
+join only for such a consumer); `feature_groups.land_population_per_voter.LandPopulationPerVoter` is one, computing
+population per voter; it carries the same link on both inputs, so it also runs without `links=`.
 A `-` in a GENESIS cell arrives as 0 with the sign kept in
 `value_marker`; only the harmonization step, which knows the validity windows, turns it into not applicable,
 so a consumer of raw columns reads the marker before taking a 0 as a count. Each recipe except the first
@@ -119,5 +119,5 @@ source).
 `mloda_plugin_govdata/recipes/tests/shipped.py` holds the same recipes as Python; a test pins each file to
 the writer's output of its definition, so edit the definition and rewrite the file rather than the JSON.
 
-The demo notebook (`demos/govdata_demo.py`) runs `land_population_voters.json` and `kreis_population_rebased.json`
+The demo notebook (`demos/govdata_demo.py`) runs `land_population_per_voter.json` and `kreis_population_rebased.json`
 live, with the attribution lines and change markers from their compliance blocks.
