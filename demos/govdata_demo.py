@@ -191,18 +191,16 @@ def _(mo):
 
 @app.cell
 def _():
-    from mloda.user import PluginCollector
-
     from mloda_plugin_govdata.feature_groups.destatis import (
         GENESIS_ONLINE,
         DestatisCredentials,
         MissingCredentialsError,
     )
-    from mloda_plugin_govdata.feature_groups.govdata import CacheMissError, DownloadCache, GovDataFeature
+    from mloda_plugin_govdata.feature_groups.govdata import CacheMissError, DownloadCache
     from mloda_plugin_govdata.feature_groups.harmonization import KreisRebaseFeature
     from mloda_plugin_govdata.feature_groups.harmonization.core.land_codes import check_land_names
     from mloda_plugin_govdata.feature_groups.harmonization.core.reference.bbsr import load_bbsr_kreise
-    from mloda_plugin_govdata.feature_groups.land_join import LandPopulationPerVoter
+    from mloda_plugin_govdata.feature_groups.land_population_per_voter import LandPopulationPerVoter
     from mloda_plugin_govdata.recipes import frames_by_column, load_recipe
 
     return (
@@ -210,11 +208,9 @@ def _():
         DestatisCredentials,
         DownloadCache,
         GENESIS_ONLINE,
-        GovDataFeature,
         KreisRebaseFeature,
         LandPopulationPerVoter,
         MissingCredentialsError,
-        PluginCollector,
         check_land_names,
         frames_by_column,
         load_bbsr_kreise,
@@ -250,12 +246,12 @@ def _(DestatisCredentials, GENESIS_ONLINE, MissingCredentialsError, mo):
 def _(mo):
     mo.md(
         """
-        ### Population per eligible voter by Land (`land_population_voters.json`)
+        ### Population per eligible voter by Land (`land_population_per_voter.json`)
 
         Requesting the recipe's own features returns two frames, one per source. `check_land_names`
         verifies the AGS-2 codes and names on each side. `LandPopulationPerVoter` is a consumer
-        FeatureGroup needing a column from each side, so mloda's join fires for it, using the
-        recipe's own links block: no manual merge.
+        FeatureGroup needing a column from each side and declares the recipe's link on both inputs,
+        so mloda's join fires for it: no manual merge.
         """
     )
     return
@@ -263,7 +259,7 @@ def _(mo):
 
 @app.cell
 def _(check_land_names, frames_by_column, load_recipe, mloda, recipes):
-    land_recipe = load_recipe(recipes / "land_population_voters.json")
+    land_recipe = load_recipe(recipes / "land_population_per_voter.json")
     _frames = frames_by_column(mloda.run_all(land_recipe.features, compute_frameworks=["PyArrowTable"]))
     population_by_land = _frames["value"].to_pandas()
     _election = _frames["Nr"].to_pandas()
@@ -282,14 +278,8 @@ def _(mo, population_by_land, voters_by_land):
 
 
 @app.cell
-def _(Feature, GovDataFeature, LandPopulationPerVoter, PluginCollector, land_recipe, mloda):
-    # links= is required here, not optional: tests/test_land_join.py's _run_land_join() explains why.
-    _table = mloda.run_all(
-        [Feature(LandPopulationPerVoter.NAME)],
-        compute_frameworks=["PyArrowTable"],
-        links=set(land_recipe.links),
-        plugin_collector=PluginCollector.enabled_feature_groups({GovDataFeature, LandPopulationPerVoter}),
-    )[0]
+def _(Feature, LandPopulationPerVoter, mloda):
+    _table = mloda.run_all([Feature(LandPopulationPerVoter.NAME)], compute_frameworks=["PyArrowTable"])[0]
     # ~code, ~land, ~population, ~voters, ~value: one labeled row per Land, sorted by AGS-2 code.
     per_voter = _table.rename_columns([name.rpartition("~")[2] for name in _table.schema.names]).to_pandas()
     per_voter  # Bevölkerung je Wahlberechtigte

@@ -2,19 +2,24 @@
 name mapping. ``LandPopulationPerVoter`` is the consumer FeatureGroup mloda's join fires for."""
 
 from pathlib import Path
-from typing import Any
 
 import httpx
 import pyarrow as pa
 import pytest
 import respx
-from mloda.user import Feature, PluginCollector, mloda
+from mloda.user import Feature, FeatureName, Options, PluginCollector, mloda
 
 from mloda_plugin_govdata.feature_groups.destatis import DestatisReader, parse_ffcsv_zip
 from mloda_plugin_govdata.feature_groups.destatis.core.hosts import GENESIS_ONLINE
 from mloda_plugin_govdata.feature_groups.govdata import BundeswahlleiterinReader, GovDataFeature, GovDataLocator
 from mloda_plugin_govdata.feature_groups.harmonization.core.land_codes import check_land_names
-from mloda_plugin_govdata.feature_groups.land_join import KERG_URL, LAND_LINK, PARTS, VOTERS, LandPopulationPerVoter
+from mloda_plugin_govdata.feature_groups.land_population_per_voter import (
+    KERG_URL,
+    LAND_LINK,
+    PARTS,
+    VOTERS,
+    LandPopulationPerVoter,
+)
 
 FEATURE_GROUPS = Path(__file__).resolve().parents[1] / "mloda_plugin_govdata" / "feature_groups"
 LAND_TABLE_ZIP = FEATURE_GROUPS / "destatis" / "tests" / "fixtures" / "ffcsv" / "12411-0010_2024_de_flat.zip"
@@ -37,18 +42,10 @@ def _mock_both_sources(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-def _run_land_join() -> Any:
-    # links= is required despite LandPopulationPerVoter.input_features() already attaching LAND_LINK
-    # to its own Feature: input_features() returns a set, so whether the linked Feature or its
-    # sibling is added to the engine first is hash-order dependent; when the sibling goes first, its
-    # same-class index injection runs before mloda's own link auto-registration takes effect, and the
-    # join fails a fraction of the time depending on PYTHONHASHSEED. Confirmed by 100+ direct runs.
-    return mloda.run_all(
-        [Feature(LandPopulationPerVoter.NAME)],
-        compute_frameworks=["PyArrowTable"],
-        links={LAND_LINK},
-        plugin_collector=PluginCollector.enabled_feature_groups({GovDataFeature, LandPopulationPerVoter}),
-    )
+def test_both_inputs_carry_the_link() -> None:
+    features = LandPopulationPerVoter().input_features(Options(), FeatureName(LandPopulationPerVoter.NAME))
+    assert features is not None
+    assert [feature.link for feature in features] == [LAND_LINK, LAND_LINK]
 
 
 def test_land_keys_line_up_without_name_mapping() -> None:
@@ -86,7 +83,12 @@ def _expected_ratios() -> dict[str, float]:
 def test_land_join_through_mloda(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _mock_both_sources(tmp_path, monkeypatch)
 
-    result = _run_land_join()
+    result = mloda.run_all(
+        [Feature(LandPopulationPerVoter.NAME)],
+        compute_frameworks=["PyArrowTable"],
+        # Only the two groups the join needs resolve features, so no other registered group can claim a column.
+        plugin_collector=PluginCollector.enabled_feature_groups({GovDataFeature, LandPopulationPerVoter}),
+    )
 
     table = result[0]
     assert table.num_rows == 16

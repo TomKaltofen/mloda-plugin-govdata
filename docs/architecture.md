@@ -9,8 +9,8 @@ How the packages fit together and where to start reading for a change. Paths are
 | --- | --- |
 | `feature_groups/govdata/` | The root `GovDataFeature`, `BaseGovDataReader`, and the GET readers (GovData CKAN, Bundeswahlleiterin `kerg.csv`, UBA Air Data JSON). `core/` is the shared plumbing: HTTP client, download cache, CKAN discovery, locator, CSV parsing, provenance. |
 | `feature_groups/destatis/` | `DestatisReader` and `DestatisLocator` for GENESIS tables. `core/` holds the POST client, credentials, reply envelope, parameter-keyed cache, the ffcsv parser, and the JAHR/STAG time-label model (`period.py`). |
-| `feature_groups/harmonization/` | The chained FeatureGroups on `HarmonizationFeature`: `value__rebased`, `<key>__nuts2024`, `<time>__year_period`. `core/` holds the logic behind the re-basing and NUTS groups (keys, NUTS crosswalk, NUTS mapping, re-basing) and the Land codes `land_join.py` uses; `core/reference/` holds the BBSR, GV-ISys and Eurostat loaders. `<time>__year_period` wraps the Destatis time-label model. |
-| `feature_groups/land_join.py` | `LandPopulationPerVoter`, the consumer FeatureGroup that makes mloda run the Land-level join of a Destatis table and `kerg.csv`. |
+| `feature_groups/harmonization/` | The chained FeatureGroups on `HarmonizationFeature`: `value__rebased`, `<key>__nuts2024`, `<time>__year_period`. `core/` holds the logic behind the re-basing and NUTS groups (keys, NUTS crosswalk, NUTS mapping, re-basing) and the Land codes `land_population_per_voter.py` uses; `core/reference/` holds the BBSR, GV-ISys and Eurostat loaders. `<time>__year_period` wraps the Destatis time-label model. |
+| `feature_groups/land_population_per_voter.py` | `LandPopulationPerVoter`, the consumer FeatureGroup that makes mloda run the Land-level join of a Destatis table and `kerg.csv`. |
 | `recipes/` | The recipe model, JSON load and write, the credential scan, `frames_by_column`. |
 | `recipes/*.json` (repository root) | The shipped recipe files. |
 
@@ -24,7 +24,7 @@ Each entry imports only from entries before it:
 4. `feature_groups/harmonization/core/` (the shared download cache only)
 5. the harmonization FeatureGroups (their `core/`, the shared cache, the Destatis credential option and
    time-label model)
-6. `feature_groups/land_join.py` (`GovDataFeature`, the readers, `core/land_codes.py`)
+6. `feature_groups/land_population_per_voter.py` (`GovDataFeature`, the readers, `core/land_codes.py`)
 7. the `recipes` package, which imports every FeatureGroup package to register it; the JSON files are data it
    loads by path
 
