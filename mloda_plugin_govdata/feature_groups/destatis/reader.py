@@ -72,7 +72,7 @@ class DestatisReader(BaseGovDataReader[DestatisLocator]):
         )
 
     @classmethod
-    def _fetch(cls, locator: DestatisLocator, options: Options | None = None) -> FetchedPayload:
+    def _fetch(cls, locator: DestatisLocator, *, options: Options | None = None) -> FetchedPayload:
         """POSTs (or reuses a cached reply for) the selection; credentials resolve lazily on a miss only."""
         host = resolve_host(locator.host)
         explicit = explicit_credentials_from_options(options)
@@ -87,5 +87,5 @@ class DestatisReader(BaseGovDataReader[DestatisLocator]):
         )
 
     @classmethod
-    def _parse(cls, path: Path, locator: DestatisLocator, options: Options | None = None) -> pa.Table:
+    def _parse(cls, path: Path, locator: DestatisLocator, *, options: Options | None = None) -> pa.Table:
         return parse_ffcsv_zip(path.read_bytes())

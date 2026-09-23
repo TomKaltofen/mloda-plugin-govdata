@@ -117,7 +117,7 @@ class BaseGovDataReader(ReadFile, Generic[LocatorT]):
         return cls._parse(payload.path, locator, options=options)
 
     @classmethod
-    def _fetch(cls, locator: LocatorT, options: Options | None = None) -> FetchedPayload:
+    def _fetch(cls, locator: LocatorT, *, options: Options | None = None) -> FetchedPayload:
         """CKAN discovery plus a cached GET for GovData locators."""
         if not isinstance(locator, GovDataLocator):
             raise NotImplementedError(f"{cls.__name__} must implement _fetch for {type(locator).__name__}")
@@ -132,7 +132,7 @@ class BaseGovDataReader(ReadFile, Generic[LocatorT]):
         )
 
     @classmethod
-    def _parse(cls, path: Path, locator: LocatorT, options: Options | None = None) -> pa.Table:
+    def _parse(cls, path: Path, locator: LocatorT, *, options: Options | None = None) -> pa.Table:
         raise NotImplementedError(f"{cls.__name__} must implement _parse")
 
 
@@ -146,5 +146,5 @@ class GovDataReader(BaseGovDataReader[GovDataLocator]):
     schema: ClassVar[dict[str, ColumnType] | None] = None
 
     @classmethod
-    def _parse(cls, path: Path, locator: GovDataLocator, options: Options | None = None) -> pa.Table:
+    def _parse(cls, path: Path, locator: GovDataLocator, *, options: Options | None = None) -> pa.Table:
         return parse_german_csv(path, cls.schema)

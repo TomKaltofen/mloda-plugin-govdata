@@ -295,5 +295,5 @@ class UbaAirReader(BaseGovDataReader[GovDataLocator]):
         return GovDataLocator(distribution_url=url)
 
     @classmethod
-    def _parse(cls, path: Path, locator: GovDataLocator, options: Options | None = None) -> pa.Table:
+    def _parse(cls, path: Path, locator: GovDataLocator, *, options: Options | None = None) -> pa.Table:
         return parse_uba_measures(path)

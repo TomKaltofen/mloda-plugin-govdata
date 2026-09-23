@@ -161,10 +161,12 @@ def test_explicit_credentials_from_options_are_used_over_env(
 ) -> None:
     from mloda_plugin_govdata.feature_groups.destatis.core.auth import OPTION_GENESIS_CREDENTIALS, DestatisCredentials
 
-    monkeypatch.delenv("GENESIS_TOKEN", raising=False)
+    monkeypatch.setenv("GENESIS_TOKEN", "envTokenAbCdEf0123456789abcdef0123")
+    for var in ("GENESIS_USER", "GENESIS_PASSWORD"):
+        monkeypatch.delenv(var, raising=False)
     monkeypatch.setattr(DestatisReader, "cache_dir", str(tmp_path))
     zip_bytes = (fixtures_dir / "ffcsv" / FFCSV_FIXTURE).read_bytes()
-    _mock_tablefile(zip_bytes)
+    route = _mock_tablefile(zip_bytes)
     result = mloda.run_all(
         [
             Feature(
@@ -178,6 +180,7 @@ def test_explicit_credentials_from_options_are_used_over_env(
         compute_frameworks=["PyArrowTable"],
     )
     assert result[0].num_rows == 207
+    assert route.calls.last.request.headers["username"] == TOKEN
 
 
 @respx.mock

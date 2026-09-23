@@ -82,15 +82,15 @@ class _FakeLocator:
 class FakeReader(BaseGovDataReader[_FakeLocator]):
     """Reads from a locator the base class knows nothing about, proving _fetch is a real seam."""
 
-    seen_options: ClassVar[list[Options | None]] = []
+    seen_fetches: ClassVar[list[tuple[_FakeLocator, Options | None]]] = []
 
     @classmethod
     def locator_type(cls) -> type[_FakeLocator]:
         return _FakeLocator
 
     @classmethod
-    def _fetch(cls, locator: _FakeLocator, options: Options | None = None) -> FetchedPayload:
-        cls.seen_options.append(options)
+    def _fetch(cls, locator: _FakeLocator, *, options: Options | None = None) -> FetchedPayload:
+        cls.seen_fetches.append((locator, options))
         path = Path(cls.cache_dir) / f"{locator.code}.csv"
         path.write_text("a;b\n1;2\n", encoding="utf-8")
         return FetchedPayload(
@@ -101,7 +101,7 @@ class FakeReader(BaseGovDataReader[_FakeLocator]):
         )
 
     @classmethod
-    def _parse(cls, path: Path, locator: _FakeLocator, options: Options | None = None) -> pa.Table:
+    def _parse(cls, path: Path, locator: _FakeLocator, *, options: Options | None = None) -> pa.Table:
         return parse_german_csv(path, None)
 
 
@@ -256,7 +256,7 @@ def test_bad_geometry_option_raises(fixtures_dir: Path) -> None:
     locator = GovDataLocator.from_string(KERG_URL)
     options = Options({OPTION_WAHL_SKIPROWS: "five"})
     with pytest.raises(ValueError):
-        BundeswahlleiterinReader._parse(fixtures_dir / "kerg_sample.csv", locator, options)
+        BundeswahlleiterinReader._parse(fixtures_dir / "kerg_sample.csv", locator, options=options)
 
 
 @pytest.mark.parametrize(
@@ -434,7 +434,7 @@ def test_fake_reader_option_never_yields_govdata_locator() -> None:
 @respx.mock
 def test_fake_reader_end_to_end_makes_no_http_calls(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(FakeReader, "cache_dir", str(tmp_path))
-    FakeReader.seen_options.clear()
+    FakeReader.seen_fetches.clear()
     result = mloda.run_all(
         [Feature("a", options={FakeReader.__name__: "x"})],
         compute_frameworks=["PyArrowTable"],
@@ -442,7 +442,8 @@ def test_fake_reader_end_to_end_makes_no_http_calls(tmp_path: Path, monkeypatch:
     table = result[0]
     assert table.column("a").to_pylist() == ["1"]
     assert respx.calls.call_count == 0
-    [options] = FakeReader.seen_options
+    [(locator, options)] = FakeReader.seen_fetches
+    assert locator == _FakeLocator("x")
     assert options is not None
     assert options.get(FakeReader.__name__) == "x"
 

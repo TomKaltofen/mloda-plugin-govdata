@@ -81,7 +81,7 @@ class BundeswahlleiterinReader(BaseGovDataReader[GovDataLocator]):
         return locator
 
     @classmethod
-    def _parse(cls, path: Path, locator: GovDataLocator, options: Options | None = None) -> pa.Table:
+    def _parse(cls, path: Path, locator: GovDataLocator, *, options: Options | None = None) -> pa.Table:
         return parse_multi_header_csv(
             path,
             skiprows=int(cls.reader_option(OPTION_WAHL_SKIPROWS, options)),  # non-numeric values raise loudly
