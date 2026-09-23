@@ -22,7 +22,7 @@ from ..govdata.core.cache import DEFAULT_CACHE_DIR
 # A part selector is lowercase letters and digits only, so ``~key__nuts2024`` never reads as one part.
 PART_PATTERN = r"[a-z0-9]+"
 # The optional trailing ``~part`` of a PREFIX_PATTERN: request one output column of the group alone.
-OPTIONAL_PART = rf"(?:~{PART_PATTERN})?"
+OPTIONAL_PART = rf"(?:{re.escape(COLUMN_SEPARATOR)}{PART_PATTERN})?"
 _TRAILING_PART = re.compile(rf"{re.escape(COLUMN_SEPARATOR)}({PART_PATTERN})$")
 
 

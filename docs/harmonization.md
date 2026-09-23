@@ -79,8 +79,8 @@ Feature(
 | configuration-based name | the group its options select | the same parts under that name (`destatis__bevoelkerung__kreise~value`); the source column goes in `in_features`, the parameters in the group options |
 
 - Names are ASCII (`bevoelkerung`, not `Bevölkerung`).
-- An unknown part (`value__rebased~edition`) fails at match time, before any fetch, and the error lists the
-  group's parts.
+- A part is lowercase letters and digits. An unknown one (`value__rebased~edition`) fails at match time,
+  before any fetch, and the error lists the group's parts.
 - Over `DestatisReader`, a configuration-based name must contain `__`: the reader claims every other name its
   option is set for, and mloda then finds two groups. Over the other readers, name the group instead (see
   [Over other readers](#over-other-readers)).
@@ -111,7 +111,7 @@ does not know raises unless the policy says otherwise.
 
 `~provenance` is the same on every row: the key sheet's `source`, `url`, `sha256`, `from_year`, `to_year`,
 `sheet` and `share`, the `census_breaks` the years span, and `issues_elsewhere`, the records of the issues no
-row carries:
+row carries. Abridged (the cell is one line, the URL is cut, and only one record is shown):
 
 ```json
 {
@@ -156,6 +156,6 @@ not make. `period_freq` is `year`; quarter and month are not built.
 
 ## Over other readers
 
-`DestatisReader` leaves chained names to these groups. The other readers claim any name their option
+`DestatisReader` leaves chained and `~part` names to these groups. The other readers claim any name their option
 key is set for, so a harmonized feature over them names its group: `Feature("Stichtag__year_period",
 options={StuttgartPopulationReader.__name__: slug}, feature_group=AnnualPeriodFeature)`.

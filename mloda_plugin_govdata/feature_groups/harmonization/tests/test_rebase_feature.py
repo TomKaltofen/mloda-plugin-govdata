@@ -100,6 +100,7 @@ def test_children_carry_the_locator_and_leave_the_group_keys_behind() -> None:
 
 def test_the_destatis_reader_leaves_chained_names_to_the_derived_groups() -> None:
     assert DestatisReader.match_subclass_data_access("12411-0015", ["value__rebased"], Options({})) is None
+    assert DestatisReader.match_subclass_data_access("12411-0015", ["kreise~edition"], Options({})) is None
     assert DestatisReader.match_subclass_data_access("12411-0015", ["value"], Options({})) is not None
 
 
@@ -156,11 +157,16 @@ def test_an_unknown_part_is_refused_before_any_fetch_naming_the_parts(
 ) -> None:
     route = genesis(GOETTINGEN_ZIP)
     options = {DestatisReader.__name__: GOETTINGEN_LOCATOR, **YEARS}
-    for name in ("value__rebased~edition", "value__rebased~edition__nuts2024"):  # alone, or inside a chain
+    features = [
+        Feature("value__rebased~edition", options=options),
+        Feature("value__rebased~edition__nuts2024", options=options),  # inside a chain
+        Feature("kreise~edition", Options(group=options, context={"in_features": "value"})),  # the reader declines it
+    ]
+    for feature in features:
         with pytest.raises(
             FeatureResolutionError, match=r"unknown part ~edition; KreisRebaseFeature returns ~key.*~provenance"
         ):
-            _run([Feature(name, options=options)])
+            _run([feature])
     assert route.calls.call_count == 0
 
 
