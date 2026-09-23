@@ -123,7 +123,7 @@ def test_resolves_without_explicit_compute_framework(
 
 
 @respx.mock
-def test_peek_without_credentials_on_a_cache_hit(
+def test_peek_and_fetch_without_credentials_on_a_cache_hit(
     fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     for var in ("GENESIS_TOKEN", "GENESIS_USER", "GENESIS_PASSWORD"):
@@ -135,9 +135,13 @@ def test_peek_without_credentials_on_a_cache_hit(
     ParameterCache(tmp_path).store(GENESIS_ONLINE, "data/tablefile", fields, zip_bytes)
 
     columns = DestatisReader.peek(TABLE_CODE)
+    payload = DestatisReader._fetch(locator)
 
     assert columns["value"] == "double"
     assert columns["time"] == "int64"
+    assert payload.provenance.source == "genesis"
+    assert payload.provenance.url == GENESIS_ONLINE.url("data/tablefile")
+    assert payload.provenance.parameters["name"] == TABLE_CODE
     assert respx.calls.call_count == 0
 
 

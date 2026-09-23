@@ -22,7 +22,6 @@ from mloda_plugin_govdata.feature_groups.govdata.bundeswahlleiterin import (
     OPTION_WAHL_VALUE_TYPE,
     BundeswahlleiterinReader,
 )
-from mloda_plugin_govdata.feature_groups.govdata.core.client import build_client
 from mloda_plugin_govdata.feature_groups.govdata.core.locator import GovDataLocator
 from mloda_plugin_govdata.feature_groups.govdata.core.parse import parse_german_csv
 from mloda_plugin_govdata.feature_groups.govdata.core.provenance import FetchedPayload, Provenance
@@ -83,14 +82,15 @@ class _FakeLocator:
 class FakeReader(BaseGovDataReader[_FakeLocator]):
     """Reads from a locator the base class knows nothing about, proving _fetch is a real seam."""
 
-    seen_provenance: ClassVar[list[Provenance]] = []
+    seen_options: ClassVar[list[Options | None]] = []
 
     @classmethod
     def locator_type(cls) -> type[_FakeLocator]:
         return _FakeLocator
 
     @classmethod
-    def _fetch(cls, locator: _FakeLocator, client: httpx.Client) -> FetchedPayload:
+    def _fetch(cls, locator: _FakeLocator, options: Options | None = None) -> FetchedPayload:
+        cls.seen_options.append(options)
         path = Path(cls.cache_dir) / f"{locator.code}.csv"
         path.write_text("a;b\n1;2\n", encoding="utf-8")
         return FetchedPayload(
@@ -101,10 +101,7 @@ class FakeReader(BaseGovDataReader[_FakeLocator]):
         )
 
     @classmethod
-    def _parse(
-        cls, path: Path, locator: _FakeLocator, provenance: Provenance, options: Options | None = None
-    ) -> pa.Table:
-        cls.seen_provenance.append(provenance)
+    def _parse(cls, path: Path, locator: _FakeLocator, options: Options | None = None) -> pa.Table:
         return parse_german_csv(path, None)
 
 
@@ -257,10 +254,9 @@ def test_geometry_options_default_to_btw25(fixtures_dir: Path, tmp_path: Path, m
 
 def test_bad_geometry_option_raises(fixtures_dir: Path) -> None:
     locator = GovDataLocator.from_string(KERG_URL)
-    provenance = Provenance(source="url", url=KERG_URL)
     options = Options({OPTION_WAHL_SKIPROWS: "five"})
     with pytest.raises(ValueError):
-        BundeswahlleiterinReader._parse(fixtures_dir / "kerg_sample.csv", locator, provenance, options)
+        BundeswahlleiterinReader._parse(fixtures_dir / "kerg_sample.csv", locator, options)
 
 
 @pytest.mark.parametrize(
@@ -438,7 +434,7 @@ def test_fake_reader_option_never_yields_govdata_locator() -> None:
 @respx.mock
 def test_fake_reader_end_to_end_makes_no_http_calls(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(FakeReader, "cache_dir", str(tmp_path))
-    FakeReader.seen_provenance.clear()
+    FakeReader.seen_options.clear()
     result = mloda.run_all(
         [Feature("a", options={FakeReader.__name__: "x"})],
         compute_frameworks=["PyArrowTable"],
@@ -446,7 +442,9 @@ def test_fake_reader_end_to_end_makes_no_http_calls(tmp_path: Path, monkeypatch:
     table = result[0]
     assert table.column("a").to_pylist() == ["1"]
     assert respx.calls.call_count == 0
-    assert FakeReader.seen_provenance == [Provenance(source="fake", url="fake:x")]
+    [options] = FakeReader.seen_options
+    assert options is not None
+    assert options.get(FakeReader.__name__) == "x"
 
 
 @respx.mock
@@ -471,8 +469,7 @@ def test_fetch_returns_payload_with_provenance(
 ) -> None:
     monkeypatch.setattr(GovDataReader, "cache_dir", str(tmp_path))
     _mock_population_endpoints(fixtures_dir)
-    with build_client() as client:
-        payload = GovDataReader._fetch(GovDataLocator(dataset_id=SLUG), client)
+    payload = GovDataReader._fetch(GovDataLocator(dataset_id=SLUG))
     assert payload.path.exists()
     assert payload.sha256 == hashlib.sha256(payload.path.read_bytes()).hexdigest()
     assert payload.provenance.source == "ckan"
@@ -483,5 +480,5 @@ def test_fetch_returns_payload_with_provenance(
 
 @respx.mock
 def test_base_fetch_rejects_foreign_locator() -> None:
-    with build_client() as client, pytest.raises(NotImplementedError):
-        BaseGovDataReader._fetch(_FakeLocator("x"), client)
+    with pytest.raises(NotImplementedError):
+        BaseGovDataReader._fetch(_FakeLocator("x"))

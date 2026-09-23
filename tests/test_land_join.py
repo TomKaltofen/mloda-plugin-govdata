@@ -12,12 +12,7 @@ from mloda.user import Feature, PluginCollector, mloda
 
 from mloda_plugin_govdata.feature_groups.destatis import DestatisReader, parse_ffcsv_zip
 from mloda_plugin_govdata.feature_groups.destatis.core.hosts import GENESIS_ONLINE
-from mloda_plugin_govdata.feature_groups.govdata import (
-    BundeswahlleiterinReader,
-    GovDataFeature,
-    GovDataLocator,
-    Provenance,
-)
+from mloda_plugin_govdata.feature_groups.govdata import BundeswahlleiterinReader, GovDataFeature, GovDataLocator
 from mloda_plugin_govdata.feature_groups.harmonization.core.land_codes import check_land_names
 from mloda_plugin_govdata.feature_groups.land_join import KERG_URL, LAND_LINK, PARTS, VOTERS, LandPopulationPerVoter
 
@@ -58,9 +53,7 @@ def _run_land_join() -> Any:
 
 def test_land_keys_line_up_without_name_mapping() -> None:
     destatis = parse_ffcsv_zip(LAND_TABLE_ZIP.read_bytes())
-    kerg = BundeswahlleiterinReader._parse(
-        KERG_SAMPLE, GovDataLocator.from_string(KERG_URL), Provenance(source="url", url=KERG_URL)
-    )
+    kerg = BundeswahlleiterinReader._parse(KERG_SAMPLE, GovDataLocator.from_string(KERG_URL))
 
     assert destatis.column("1_variable_code").to_pylist() == ["DLAND"] * 16
     assert set(destatis.column("1_variable_attribute_code").to_pylist()) == LAND_CODES
@@ -82,9 +75,7 @@ def _expected_ratios() -> dict[str, float]:
     population = dict(
         zip(destatis.column("1_variable_attribute_code").to_pylist(), destatis.column("value").to_pylist())
     )
-    kerg = BundeswahlleiterinReader._parse(
-        KERG_SAMPLE, GovDataLocator.from_string(KERG_URL), Provenance(source="url", url=KERG_URL)
-    )
+    kerg = BundeswahlleiterinReader._parse(KERG_SAMPLE, GovDataLocator.from_string(KERG_URL))
     rows = zip(kerg.column("Nr").to_pylist(), kerg.column("gehört zu").to_pylist(), kerg.column(VOTERS).to_pylist())
     voters = {nr: count for nr, parent, count in rows if parent == "99"}
     assert set(population) == set(voters) == LAND_CODES
