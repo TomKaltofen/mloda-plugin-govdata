@@ -1,4 +1,7 @@
-"""Destatis GENESIS connector: credentials, client, and reply envelope for GENESIS-Online and Regionalstatistik."""
+"""Destatis GENESIS connector: ``DestatisReader`` reads the table selection a ``DestatisLocator`` names.
+
+Hosts: GENESIS-Online and Regionalstatistik.
+"""
 
 from .core.api import (
     GENESIS_ONLINE,

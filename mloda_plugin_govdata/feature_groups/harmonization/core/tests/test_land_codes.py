@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from mloda_plugin_govdata.feature_groups.destatis.core.parse import parse_ffcsv_zip
-from mloda_plugin_govdata.feature_groups.govdata import BundeswahlleiterinReader, GovDataLocator, Provenance
+from mloda_plugin_govdata.feature_groups.govdata import BundeswahlleiterinReader, GovDataLocator
 from mloda_plugin_govdata.feature_groups.harmonization.core.land_codes import (
     LAND_NAMES,
     LandNameError,
@@ -22,7 +22,7 @@ BUNDESGEBIET_ROW = b"99;Bundesgebiet;\n"
 
 
 def _kerg_land_rows(path: Path) -> list[tuple[str, object]]:
-    table = BundeswahlleiterinReader._parse(path, GovDataLocator.from_string(KERG_URL), Provenance("url", KERG_URL))
+    table = BundeswahlleiterinReader._parse(path, GovDataLocator.from_string(KERG_URL))
     columns = (table.column(name).to_pylist() for name in ("Nr", "Gebiet", "gehört zu"))
     return [(nr, name) for nr, name, parent in zip(*columns) if parent == BUNDESGEBIET]
 

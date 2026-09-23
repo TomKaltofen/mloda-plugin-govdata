@@ -12,7 +12,6 @@ from mloda.user import Options
 
 from .core.locator import GovDataLocator
 from .core.parse import ColumnType, parse_multi_header_csv
-from .core.provenance import Provenance
 from .reader import BaseGovDataReader
 
 # Feature-option keys steering the multi-header election parse; defaults are the btw25 kerg.csv
@@ -82,9 +81,7 @@ class BundeswahlleiterinReader(BaseGovDataReader[GovDataLocator]):
         return locator
 
     @classmethod
-    def _parse(
-        cls, path: Path, locator: GovDataLocator, provenance: Provenance, options: Options | None = None
-    ) -> pa.Table:
+    def _parse(cls, path: Path, locator: GovDataLocator, *, options: Options | None = None) -> pa.Table:
         return parse_multi_header_csv(
             path,
             skiprows=int(cls.reader_option(OPTION_WAHL_SKIPROWS, options)),  # non-numeric values raise loudly

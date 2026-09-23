@@ -123,7 +123,7 @@ def test_resolves_without_explicit_compute_framework(
 
 
 @respx.mock
-def test_peek_without_credentials_on_a_cache_hit(
+def test_peek_and_fetch_without_credentials_on_a_cache_hit(
     fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     for var in ("GENESIS_TOKEN", "GENESIS_USER", "GENESIS_PASSWORD"):
@@ -135,9 +135,13 @@ def test_peek_without_credentials_on_a_cache_hit(
     ParameterCache(tmp_path).store(GENESIS_ONLINE, "data/tablefile", fields, zip_bytes)
 
     columns = DestatisReader.peek(TABLE_CODE)
+    payload = DestatisReader._fetch(locator)
 
     assert columns["value"] == "double"
     assert columns["time"] == "int64"
+    assert payload.provenance.source == "genesis"
+    assert payload.provenance.url == GENESIS_ONLINE.url("data/tablefile")
+    assert payload.provenance.parameters["name"] == TABLE_CODE
     assert respx.calls.call_count == 0
 
 
@@ -157,10 +161,12 @@ def test_explicit_credentials_from_options_are_used_over_env(
 ) -> None:
     from mloda_plugin_govdata.feature_groups.destatis.core.auth import OPTION_GENESIS_CREDENTIALS, DestatisCredentials
 
-    monkeypatch.delenv("GENESIS_TOKEN", raising=False)
+    monkeypatch.setenv("GENESIS_TOKEN", "envTokenAbCdEf0123456789abcdef0123")
+    for var in ("GENESIS_USER", "GENESIS_PASSWORD"):
+        monkeypatch.delenv(var, raising=False)
     monkeypatch.setattr(DestatisReader, "cache_dir", str(tmp_path))
     zip_bytes = (fixtures_dir / "ffcsv" / FFCSV_FIXTURE).read_bytes()
-    _mock_tablefile(zip_bytes)
+    route = _mock_tablefile(zip_bytes)
     result = mloda.run_all(
         [
             Feature(
@@ -174,6 +180,7 @@ def test_explicit_credentials_from_options_are_used_over_env(
         compute_frameworks=["PyArrowTable"],
     )
     assert result[0].num_rows == 207
+    assert route.calls.last.request.headers["username"] == TOKEN
 
 
 @respx.mock

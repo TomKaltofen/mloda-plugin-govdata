@@ -1,10 +1,10 @@
 """mloda reader for a GENESIS ``data/tablefile`` selection (ffcsv).
 
-Overrides ``_read_table`` rather than ``_fetch``: the inherited ``_fetch(locator, client)`` seam
-(built for a GET-based CKAN reader) never receives ``Options``, but a POST fetch here needs
-explicit credentials read from ``Options.context``. ``_coerce_locator`` needs no override: the
-generic base derives it from ``locator_type()`` (see ``BaseGovDataReader``);
-``match_subclass_data_access`` is overridden only to decline chained names.
+Flow, on the shared ``BaseGovDataReader`` seam:
+    match_subclass_data_access  option value -> DestatisLocator; declines chained names
+    _fetch                      locator -> tablefile wire fields -> ParameterCache hit, or a
+                                GenesisClient POST on a miss (credentials: Options.context, then env)
+    _parse                      zip on disk -> parse_ffcsv_zip -> typed Arrow table
 """
 
 from __future__ import annotations
@@ -72,7 +72,7 @@ class DestatisReader(BaseGovDataReader[DestatisLocator]):
         )
 
     @classmethod
-    def _fetch_tablefile(cls, locator: DestatisLocator, options: Options | None) -> FetchedPayload:
+    def _fetch(cls, locator: DestatisLocator, *, options: Options | None = None) -> FetchedPayload:
         """POSTs (or reuses a cached reply for) the selection; credentials resolve lazily on a miss only."""
         host = resolve_host(locator.host)
         explicit = explicit_credentials_from_options(options)
@@ -87,12 +87,5 @@ class DestatisReader(BaseGovDataReader[DestatisLocator]):
         )
 
     @classmethod
-    def _read_table(cls, locator: DestatisLocator, options: Options | None = None) -> pa.Table:
-        payload = cls._fetch_tablefile(locator, options)
-        return cls._parse(payload.path, locator, payload.provenance, options)
-
-    @classmethod
-    def _parse(
-        cls, path: Path, locator: DestatisLocator, provenance: Provenance, options: Options | None = None
-    ) -> pa.Table:
+    def _parse(cls, path: Path, locator: DestatisLocator, *, options: Options | None = None) -> pa.Table:
         return parse_ffcsv_zip(path.read_bytes())

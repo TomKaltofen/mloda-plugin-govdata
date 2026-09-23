@@ -78,7 +78,7 @@ Use the issue form at [.github/ISSUE_TEMPLATE/issue.yml](.github/ISSUE_TEMPLATE/
 
 This repo is one plugin. If you want to:
 
-- **Add a dataset here**: see [docs/adding-a-reader.md](docs/adding-a-reader.md). Every reader is a thin subclass of `BaseGovDataReader` that overrides only the parse step.
+- **Add a dataset here**: see [docs/adding-a-reader.md](docs/adding-a-reader.md). Every reader is a thin subclass of `BaseGovDataReader` that overrides the parse step (and the fetch step for a source with its own locator type).
 - **Build your own plugin**: start from [mloda-plugin-template](https://github.com/mloda-ai/mloda-plugin-template). The full walkthrough lives in [mloda-registry/docs/guides/](https://github.com/mloda-ai/mloda-registry/tree/main/docs/guides/).
 - **Contribute to the core framework**: see [mloda](https://github.com/mloda-ai/mloda).
 - **Contribute to community plugins**: see [mloda-registry](https://github.com/mloda-ai/mloda-registry).

@@ -24,7 +24,6 @@ from mloda.user import Options
 
 from .core.locator import GovDataLocator
 from .core.parse import ColumnType
-from .core.provenance import Provenance
 from .reader import BaseGovDataReader
 
 UBA_AIR_BASE = "https://luftdaten.umweltbundesamt.de/api/air-data/v4"
@@ -296,7 +295,5 @@ class UbaAirReader(BaseGovDataReader[GovDataLocator]):
         return GovDataLocator(distribution_url=url)
 
     @classmethod
-    def _parse(
-        cls, path: Path, locator: GovDataLocator, provenance: Provenance, options: Options | None = None
-    ) -> pa.Table:
+    def _parse(cls, path: Path, locator: GovDataLocator, *, options: Options | None = None) -> pa.Table:
         return parse_uba_measures(path)

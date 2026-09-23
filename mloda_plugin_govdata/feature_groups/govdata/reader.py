@@ -1,12 +1,9 @@
 """Base mloda reader for GovData distributions.
 
-``BaseGovDataReader`` follows the ``CsvReader`` pattern (a ``ReadFile`` subclass):
-it coerces a locator, fetches the payload through the cache (``_fetch``), and lets
-the subclass parse it into a typed Arrow table (``_parse``). One module per data
-source implements ``_parse``; ``GovDataReader`` is the generic single-header
-German-CSV reader. ``_fetch(locator, client)`` never receives ``Options``: a
-credentialed source (see ``DestatisReader``) overrides ``_read_table`` instead so
-it can read ``Options.context``.
+``BaseGovDataReader`` follows the ``CsvReader`` pattern (a ``ReadFile`` subclass). Every reader
+flows ``load_data -> _read_table -> _fetch -> _parse``: coerce a locator, fetch the payload through
+the cache, parse it into a typed Arrow table. One module per data source implements ``_parse``;
+``GovDataReader`` is the generic single-header German-CSV reader.
 """
 
 from __future__ import annotations
@@ -15,7 +12,6 @@ import difflib
 from pathlib import Path
 from typing import Any, ClassVar, Generic, TypeVar, cast
 
-import httpx
 import pyarrow as pa
 from mloda.provider import FeatureSet
 from mloda.user import Options
@@ -117,17 +113,17 @@ class BaseGovDataReader(ReadFile, Generic[LocatorT]):
 
     @classmethod
     def _read_table(cls, locator: LocatorT, options: Options | None = None) -> pa.Table:
-        with build_client() as client:
-            payload = cls._fetch(locator, client)
-        return cls._parse(payload.path, locator, payload.provenance, options)
+        payload = cls._fetch(locator, options=options)
+        return cls._parse(payload.path, locator, options=options)
 
     @classmethod
-    def _fetch(cls, locator: LocatorT, client: httpx.Client) -> FetchedPayload:
+    def _fetch(cls, locator: LocatorT, *, options: Options | None = None) -> FetchedPayload:
         """CKAN discovery plus a cached GET for GovData locators."""
         if not isinstance(locator, GovDataLocator):
             raise NotImplementedError(f"{cls.__name__} must implement _fetch for {type(locator).__name__}")
-        distribution = resolve_distribution(locator, client)
-        cached = DownloadCache(cls.cache_dir, client=client).get_or_download(distribution.url)
+        with build_client() as client:
+            distribution = resolve_distribution(locator, client)
+            cached = DownloadCache(cls.cache_dir, client=client).get_or_download(distribution.url)
         return FetchedPayload(
             path=cached.path,
             sha256=cached.sha256,
@@ -136,7 +132,7 @@ class BaseGovDataReader(ReadFile, Generic[LocatorT]):
         )
 
     @classmethod
-    def _parse(cls, path: Path, locator: LocatorT, provenance: Provenance, options: Options | None = None) -> pa.Table:
+    def _parse(cls, path: Path, locator: LocatorT, *, options: Options | None = None) -> pa.Table:
         raise NotImplementedError(f"{cls.__name__} must implement _parse")
 
 
@@ -150,7 +146,5 @@ class GovDataReader(BaseGovDataReader[GovDataLocator]):
     schema: ClassVar[dict[str, ColumnType] | None] = None
 
     @classmethod
-    def _parse(
-        cls, path: Path, locator: GovDataLocator, provenance: Provenance, options: Options | None = None
-    ) -> pa.Table:
+    def _parse(cls, path: Path, locator: GovDataLocator, *, options: Options | None = None) -> pa.Table:
         return parse_german_csv(path, cls.schema)
