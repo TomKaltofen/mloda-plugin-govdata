@@ -9,9 +9,9 @@ import respx
 from mloda.user import Feature, PluginCollector, mloda
 
 from mloda_plugin_govdata.feature_groups.govdata import GovDataFeature
+from mloda_plugin_govdata.feature_groups.harmonization.core.land_codes import LAND_NAMES, check_land_names
+from mloda_plugin_govdata.feature_groups.harmonization.core.tests.test_land_codes import BUNDESGEBIET, BUNDESGEBIET_ROW
 from mloda_plugin_govdata.feature_groups.land_join import LandPopulationPerVoter
-from mloda_plugin_govdata.harmonization.land_codes import LAND_NAMES, check_land_names
-from mloda_plugin_govdata.harmonization.tests.test_land_codes import BUNDESGEBIET, BUNDESGEBIET_ROW
 from mloda_plugin_govdata.recipes import LoadedRecipe, frames_by_column, load_recipe
 
 from .conftest import FFCSV_FIXTURES, GOVDATA_FIXTURES, LAND_ZIP, Mock, run

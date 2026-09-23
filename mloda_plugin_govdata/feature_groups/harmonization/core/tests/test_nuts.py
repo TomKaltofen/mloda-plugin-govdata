@@ -4,14 +4,20 @@ from pathlib import Path
 
 import pytest
 
-from mloda_plugin_govdata.harmonization.edition import Edition
-from mloda_plugin_govdata.harmonization.nuts import (
+from mloda_plugin_govdata.feature_groups.harmonization.core.edition import Edition
+from mloda_plugin_govdata.feature_groups.harmonization.core.nuts import (
     UnmatchedKeysError,
     combine_mapping_results,
     map_ags_to_nuts,
 )
-from mloda_plugin_govdata.harmonization.reference.eurostat import LauNutsRow, parse_lau_nuts_de_workbook
-from mloda_plugin_govdata.harmonization.reference.gv_isys import GvIsysChange, parse_gv_isys_workbook
+from mloda_plugin_govdata.feature_groups.harmonization.core.reference.eurostat import (
+    LauNutsRow,
+    parse_lau_nuts_de_workbook,
+)
+from mloda_plugin_govdata.feature_groups.harmonization.core.reference.gv_isys import (
+    GvIsysChange,
+    parse_gv_isys_workbook,
+)
 
 
 def _kreis_change(from_ags: str, to_ags: str) -> GvIsysChange:

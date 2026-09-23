@@ -4,9 +4,12 @@ from typing import Any
 
 import pytest
 
-from mloda_plugin_govdata.harmonization.reference import gv_isys
-from mloda_plugin_govdata.harmonization.reference.gv_isys import load_gv_isys_changes, parse_gv_isys_workbook
-from mloda_plugin_govdata.harmonization.reference.sources import GV_ISYS_2016_SHA256
+from mloda_plugin_govdata.feature_groups.harmonization.core.reference import gv_isys
+from mloda_plugin_govdata.feature_groups.harmonization.core.reference.gv_isys import (
+    load_gv_isys_changes,
+    parse_gv_isys_workbook,
+)
+from mloda_plugin_govdata.feature_groups.harmonization.core.reference.sources import GV_ISYS_2016_SHA256
 
 
 def test_parses_kreis_merger_and_gemeinde_row(fixtures_dir: Path) -> None:

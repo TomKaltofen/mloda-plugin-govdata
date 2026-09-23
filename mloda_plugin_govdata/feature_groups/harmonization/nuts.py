@@ -9,11 +9,11 @@ import pyarrow as pa
 from mloda.provider import DefaultOptionKeys, FeatureSet, property_spec
 from mloda.user import Feature, FeatureName, Options
 
-from ...harmonization.edition import NUTS_VERSION, Edition, load_edition
-from ...harmonization.nuts import map_ags_to_nuts
-from ...harmonization.reference.gv_isys import load_gv_isys_changes
 from ..govdata.core.cache import CacheMissError, DownloadCache
 from .base import PART_PATTERN, HarmonizationFeature
+from .core.edition import NUTS_VERSION, Edition, load_edition
+from .core.nuts import map_ags_to_nuts
+from .core.reference.gv_isys import load_gv_isys_changes
 
 PARTS: tuple[str, ...] = ("key", "nuts1", "nuts2", "nuts3", "version", "unmatched")
 NULL_KEY = "null key cell"

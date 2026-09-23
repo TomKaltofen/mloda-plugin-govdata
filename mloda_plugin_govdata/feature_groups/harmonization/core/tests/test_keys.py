@@ -2,7 +2,7 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from mloda_plugin_govdata.harmonization.keys import (
+from mloda_plugin_govdata.feature_groups.harmonization.core.keys import (
     ARS_LENGTH,
     AgsLevel,
     detect_level,

@@ -11,8 +11,8 @@ import pytest
 import respx
 from mloda.user import Feature
 
-from mloda_plugin_govdata.harmonization.rebase import ValidityError
-from mloda_plugin_govdata.harmonization.reference.sources import BBSR_KREISE
+from mloda_plugin_govdata.feature_groups.harmonization.core.rebase import ValidityError
+from mloda_plugin_govdata.feature_groups.harmonization.core.reference.sources import BBSR_KREISE
 from mloda_plugin_govdata.recipes import load_recipe
 
 from .conftest import EXPECTED_DIR, FFCSV_FIXTURES, GOETTINGEN_ZIP, ffcsv_zip_with_rows, run

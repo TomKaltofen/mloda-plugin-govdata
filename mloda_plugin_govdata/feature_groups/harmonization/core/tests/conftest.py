@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-_FEATURE_GROUPS = Path(__file__).parents[2] / "feature_groups"
+_FEATURE_GROUPS = Path(__file__).parents[3]
 
 
 @pytest.fixture

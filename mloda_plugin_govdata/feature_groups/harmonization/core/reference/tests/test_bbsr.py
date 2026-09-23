@@ -4,7 +4,10 @@ import openpyxl
 import pytest
 
 from mloda_plugin_govdata.feature_groups.govdata.core.cache import DownloadCache
-from mloda_plugin_govdata.harmonization.reference.bbsr import load_bbsr_kreise, parse_bbsr_kreise_workbook
+from mloda_plugin_govdata.feature_groups.harmonization.core.reference.bbsr import (
+    load_bbsr_kreise,
+    parse_bbsr_kreise_workbook,
+)
 
 
 def test_parses_all_three_fixture_sheets(fixtures_dir: Path) -> None:

@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from mloda_plugin_govdata.harmonization.reference import eurostat
-from mloda_plugin_govdata.harmonization.reference.eurostat import (
+from mloda_plugin_govdata.feature_groups.harmonization.core.reference import eurostat
+from mloda_plugin_govdata.feature_groups.harmonization.core.reference.eurostat import (
     parse_lau_nuts_de_workbook,
     parse_nuts_correspondence_workbook,
 )

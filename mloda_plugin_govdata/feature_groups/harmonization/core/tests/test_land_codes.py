@@ -6,7 +6,7 @@ import pytest
 
 from mloda_plugin_govdata.feature_groups.destatis.core.parse import parse_ffcsv_zip
 from mloda_plugin_govdata.feature_groups.govdata import BundeswahlleiterinReader, GovDataLocator, Provenance
-from mloda_plugin_govdata.harmonization.land_codes import (
+from mloda_plugin_govdata.feature_groups.harmonization.core.land_codes import (
     LAND_NAMES,
     LandNameError,
     check_land_names,

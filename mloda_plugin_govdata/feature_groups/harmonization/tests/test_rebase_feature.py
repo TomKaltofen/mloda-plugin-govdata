@@ -16,8 +16,15 @@ from mloda.user import Feature, FeatureName, Options, mloda
 from mloda_plugin_govdata.feature_groups.destatis.core.auth import OPTION_GENESIS_CREDENTIALS, DestatisCredentials
 from mloda_plugin_govdata.feature_groups.destatis.reader import DestatisReader
 from mloda_plugin_govdata.feature_groups.govdata.core.cache import CacheMissError
+from mloda_plugin_govdata.feature_groups.harmonization.core.rebase import (
+    Flag,
+    KeyEdition,
+    RebasedRow,
+    RebaseResult,
+    ShareKind,
+    rebase,
+)
 from mloda_plugin_govdata.feature_groups.harmonization.rebase import PARTS, KreisRebaseFeature
-from mloda_plugin_govdata.harmonization.rebase import Flag, KeyEdition, RebasedRow, RebaseResult, ShareKind, rebase
 from mloda_plugin_govdata.recipes import Compliance, SourceCompliance, build_recipe, parse_recipe, recipe_to_json
 
 from .conftest import COCHEM_ZELL_ZIP, EXTRACT, GOETTINGEN_LOCATOR, GOETTINGEN_ZIP, LAND_ZIP, ffcsv_zip_with_rows

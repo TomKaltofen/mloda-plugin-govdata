@@ -105,9 +105,10 @@ recipes sit next to their tests.
 
 The re-based recipe needs the BBSR key file in the cache (`load_bbsr_kreise(cache, revalidate=True)`
 once). Running the Land recipe's own features returns them unjoined, one frame per source; check the
-Land names on each side with `harmonization.land_codes.check_land_names`. The links block lets a consumer
-FeatureGroup that needs a column from each side join them instead (mloda executes a join only for such a
-consumer); `feature_groups.land_join.LandPopulationPerVoter` is one, computing population per voter.
+Land names on each side with `feature_groups.harmonization.core.land_codes.check_land_names`. The links
+block lets a consumer FeatureGroup that needs a column from each side join them instead (mloda executes a
+join only for such a consumer); `feature_groups.land_join.LandPopulationPerVoter` is one, computing
+population per voter.
 A `-` in a GENESIS cell arrives as 0 with the sign kept in
 `value_marker`; only the harmonization step, which knows the validity windows, turns it into not applicable,
 so a consumer of raw columns reads the marker before taking a 0 as a count. Each recipe except the first
