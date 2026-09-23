@@ -12,7 +12,7 @@ import respx
 
 from mloda_plugin_govdata.feature_groups.destatis.core.hosts import GENESIS_ONLINE
 from mloda_plugin_govdata.feature_groups.destatis.reader import DestatisReader
-from mloda_plugin_govdata.feature_groups.harmonization.core.edition import Edition
+from mloda_plugin_govdata.feature_groups.harmonization.core.crosswalk import NutsCrosswalk
 from mloda_plugin_govdata.feature_groups.harmonization.core.reference.bbsr import parse_bbsr_kreise_workbook
 from mloda_plugin_govdata.feature_groups.harmonization.core.reference.eurostat import parse_lau_nuts_de_workbook
 from mloda_plugin_govdata.feature_groups.harmonization.core.reference.gv_isys import parse_gv_isys_workbook
@@ -99,10 +99,10 @@ def gv_isys_changes(reference_fixtures_dir: Path) -> tuple[Any, ...]:
     return tuple(parse_gv_isys_workbook(reference_fixtures_dir / "gv-isys-2016-extract.xlsx"))
 
 
-def fixture_edition(reference_fixtures_dir: Path, *, with_history: bool = True) -> Edition:
+def fixture_crosswalk(reference_fixtures_dir: Path, *, with_history: bool = True) -> NutsCrosswalk:
     rows = lau_rows(reference_fixtures_dir)
     changes = gv_isys_changes(reference_fixtures_dir)
-    return Edition(
+    return NutsCrosswalk(
         gebietsstand="2024",
         nuts_version="2024",
         source="test extract",
@@ -115,7 +115,7 @@ def fixture_edition(reference_fixtures_dir: Path, *, with_history: bool = True) 
 
 
 @pytest.fixture
-def extract_edition(monkeypatch: pytest.MonkeyPatch, reference_fixtures_dir: Path) -> Edition:
-    edition = fixture_edition(reference_fixtures_dir)
-    monkeypatch.setattr(AgsToNutsFeature, "edition", classmethod(lambda cls: edition))
-    return edition
+def extract_crosswalk(monkeypatch: pytest.MonkeyPatch, reference_fixtures_dir: Path) -> NutsCrosswalk:
+    crosswalk = fixture_crosswalk(reference_fixtures_dir)
+    monkeypatch.setattr(AgsToNutsFeature, "load_crosswalk", classmethod(lambda cls: crosswalk))
+    return crosswalk

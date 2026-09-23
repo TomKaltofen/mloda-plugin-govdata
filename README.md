@@ -132,8 +132,8 @@ the full parameter table. `peek` lists the ffcsv columns the same way as the oth
 
 Harmonized features sit on top of the reader columns: `value__rebased` re-bases a Kreis series onto a
 later Gebietsstand with the BBSR keys, `1_variable_attribute_code__nuts2024` adds NUTS codes, and
-`time__year_period` types the period. The re-based series carries its flags, sources, issues and key
-edition as columns; see [docs/harmonization.md](docs/harmonization.md).
+`time__year_period` types the period. The re-based series carries its flags, sources, issues and
+key-sheet provenance as columns; see [docs/harmonization.md](docs/harmonization.md).
 
 ```python
 from mloda_plugin_govdata.feature_groups.govdata import DownloadCache
@@ -159,7 +159,7 @@ result = mloda.run_all(
     ],
     compute_frameworks=["PyArrowTable"],
 )
-result[0]  # value__rebased~key, ~year, ~value, ~flag, ~sources, ~marker, ~issues, ~edition
+result[0]  # value__rebased~key, ~year, ~value, ~flag, ~sources, ~marker, ~issues, ~provenance
 ```
 
 `KreisRebaseFeature.cache_dir` above is independent of `BaseGovDataReader.cache_dir`; see

@@ -26,14 +26,14 @@ def test_parses_nuts_correspondence_overview(fixtures_dir: Path) -> None:
     overview = parse_nuts_correspondence_workbook(fixtures_dir / "eurostat-nuts-correspondence-extract.xlsx")
     assert overview.kreise == 401
     assert overview.gemeinden == 10957
-    assert overview.edition_label == "NUTS 2027 and LAU 2025"
+    assert overview.version_label == "NUTS 2027 and LAU 2025"
 
 
-def test_overview_edition_differs_from_mapping_edition(fixtures_dir: Path) -> None:
-    # ADR 0006, Edition identity: the overview table's own label is a different, not-yet-
-    # current edition from the NUTS 2024 crosswalk the mapper actually uses.
+def test_overview_version_differs_from_the_crosswalk_version(fixtures_dir: Path) -> None:
+    # The overview table's own label names a different, not-yet-current NUTS version from the
+    # NUTS 2024 crosswalk the mapper actually uses.
     overview = parse_nuts_correspondence_workbook(fixtures_dir / "eurostat-nuts-correspondence-extract.xlsx")
-    assert "2024" not in overview.edition_label
+    assert "2024" not in overview.version_label
 
 
 def test_lau_loader_docstring_documents_the_partial_validation_caveat() -> None:

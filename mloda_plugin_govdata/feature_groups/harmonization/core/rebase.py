@@ -121,7 +121,9 @@ class Observation:
 
 
 @dataclass(frozen=True)
-class KeyEdition:
+class KeySheet:
+    """Which key sheet of which file, with which share, a re-basing used; not the sheet's rows."""
+
     source: str
     url: str
     sha256: str | None
@@ -156,7 +158,7 @@ class RebaseIssue:
 @dataclass(frozen=True)
 class RebaseResult:
     rows: tuple[RebasedRow, ...]
-    edition: KeyEdition
+    key_sheet: KeySheet
     issues: tuple[RebaseIssue, ...]
     census_breaks: tuple[int, ...]  # breaks the observation years span, noted only
 
@@ -340,7 +342,7 @@ def rebase(
 ) -> RebaseResult:
     """Re-bases Kreis observations onto the ``to_year`` Gebietsstand with the ``from_year``-``to_year`` key sheet.
 
-    ``source`` names the file ``keys`` were parsed from and is recorded in the result's edition, not
+    ``source`` names the file ``keys`` were parsed from and is recorded in the result's key sheet, not
     verified: pass ``BBSR_KREISE`` for rows from ``load_bbsr_kreise``, which pins that file's sha256.
     ``keys`` may hold more sheets than the one used (e.g. the whole BBSR file); the others verify that
     every requested key was unchanged between its observation years and the key sheet. Shares of the
@@ -456,6 +458,6 @@ def rebase(
 
     observed_years = [obs.year for obs in observations]
     breaks = tuple(b for b in CENSUS_BREAKS if min(observed_years) < b <= max(observed_years))
-    edition = KeyEdition(source.name, source.url, source.sha256, from_year, to_year, share)
+    key_sheet = KeySheet(source.name, source.url, source.sha256, from_year, to_year, share)
     rows.sort(key=lambda row: (row.year, row.key))
-    return RebaseResult(tuple(rows), edition, tuple(issues), breaks)
+    return RebaseResult(tuple(rows), key_sheet, tuple(issues), breaks)

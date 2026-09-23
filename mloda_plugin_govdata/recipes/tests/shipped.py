@@ -46,7 +46,7 @@ UBA_OPTIONS: dict[str, Any] = {
     OPTION_UBA_DATE_TO: "2025-01-01",
 }
 
-D1_NAME = "destatis__bevoelkerung__kreise"
+CONFIGURATION_BASED_NAME = "destatis__bevoelkerung__kreise"
 GOETTINGEN_KEYS = ["03152", "03156", "03159"]
 GOETTINGEN: dict[str, Any] = {
     "name": "12411-0015",
@@ -114,7 +114,8 @@ KREIS_POPULATION_REBASED = ShippedRecipe(
     "kreis_population_rebased.json",
     [
         Feature(
-            D1_NAME, Options(group={DestatisReader.__name__: GOETTINGEN, **REBASE}, context={"in_features": "value"})
+            CONFIGURATION_BASED_NAME,
+            Options(group={DestatisReader.__name__: GOETTINGEN, **REBASE}, context={"in_features": "value"}),
         )
     ],
     Compliance(
@@ -124,7 +125,7 @@ KREIS_POPULATION_REBASED = ShippedRecipe(
                 _at(2026, 9, 12),
                 GOETTINGEN_SHA256,
                 "re-based onto the 31.12.2016 Gebietsstand with the BBSR key sheet 2015-2016; every row carries its "
-                "flag, source keys, issues, and the key edition",
+                "flag, source keys, issues, and the key-sheet provenance",
             ),
             SourceCompliance(
                 license=DESTATIS,

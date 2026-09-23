@@ -16,7 +16,7 @@ from ..govdata.core.cache import CacheMissError, DownloadCache
 from .base import PART_PATTERN, HarmonizationFeature
 from .core.rebase import (
     DEFAULT_TOLERANCE,
-    KeyEdition,
+    KeySheet,
     Policy,
     RebasedRow,
     RebaseIssue,
@@ -33,7 +33,7 @@ VARIABLE_COLUMN = "1_variable_code"
 KEY_COLUMN = "1_variable_attribute_code"
 TIME_COLUMN = "time"
 MARKER_COLUMN = "value_marker"
-PARTS: tuple[str, ...] = ("key", "year", "value", "flag", "sources", "marker", "issues", "edition")
+PARTS: tuple[str, ...] = ("key", "year", "value", "flag", "sources", "marker", "issues", "provenance")
 
 _POLICIES = {"raise": "fail loud", "flag": "keep the row, report the issue", "drop": "drop the row"}
 _SHARES = {kind.value: f"{kind.value}-proportional key" for kind in ShareKind}
@@ -45,8 +45,8 @@ class KreisRebaseFeature(HarmonizationFeature):
     Reads the ffcsv key (``1_variable_attribute_code`` with ``1_variable_code == KREISE``), ``time``,
     the value column and ``value_marker``; the key sheets come from the BBSR file in the cache.
     Returns one row per (Kreis, year): ``~key``, ``~year``, ``~value``, ``~flag``, ``~sources``,
-    ``~marker``, ``~issues`` (the issues touching that row) and ``~edition`` (the key edition, census
-    breaks and the issues no row carries, as JSON). The input rows do not survive.
+    ``~marker``, ``~issues`` (the issues touching that row) and ``~provenance`` (the key sheet's source
+    identity, census breaks and the issues no row carries, as JSON). The input rows do not survive.
     """
 
     PREFIX_PATTERN = rf".*__(?:rebased)(?:~{PART_PATTERN})?$"
@@ -146,8 +146,8 @@ class KreisRebaseFeature(HarmonizationFeature):
         from_year, to_year = _year(options, "rebase_from_year"), _year(options, "rebase_to_year")
         share = ShareKind(_option(options, "rebase_share", ShareKind.POPULATION.value))
         if table.num_rows == 0:  # an empty selection is an empty result with its schema, not a wrong one
-            edition = KeyEdition(source.name, source.url, source.sha256, from_year, to_year, share)
-            return RebaseResult((), edition, (), ())
+            key_sheet = KeySheet(source.name, source.url, source.sha256, from_year, to_year, share)
+            return RebaseResult((), key_sheet, (), ())
         variables = sorted(set(table.column(VARIABLE_COLUMN).to_pylist()))
         if variables != [KREIS_VARIABLE]:
             raise ValueError(
@@ -177,14 +177,14 @@ class KreisRebaseFeature(HarmonizationFeature):
         attached: set[RebaseIssue] = set()
         issues = [_issues_for(row, result.issues, attached) for row in rows]
         elsewhere = [asdict(issue) for issue in result.issues if issue not in attached]
-        edition = {
-            **asdict(result.edition),
-            "share": result.edition.share.value,
-            "sheet": result.edition.sheet,
+        provenance = {
+            **asdict(result.key_sheet),
+            "share": result.key_sheet.share.value,
+            "sheet": result.key_sheet.sheet,
             "census_breaks": list(result.census_breaks),
             "issues_elsewhere": [{**issue, "kind": issue["kind"].value} for issue in elsewhere],
         }
-        edition_json = json.dumps(edition, sort_keys=True)
+        provenance_json = json.dumps(provenance, sort_keys=True)
         return {
             f"{name}~key": pa.array([r.key for r in rows], pa.string()),
             f"{name}~year": pa.array([r.year for r in rows], pa.int64()),
@@ -193,7 +193,7 @@ class KreisRebaseFeature(HarmonizationFeature):
             f"{name}~sources": pa.array(["+".join(r.sources) for r in rows], pa.string()),
             f"{name}~marker": pa.array([r.marker for r in rows], pa.string()),
             f"{name}~issues": pa.array(issues, pa.string()),
-            f"{name}~edition": pa.array([edition_json] * len(rows), pa.string()),
+            f"{name}~provenance": pa.array([provenance_json] * len(rows), pa.string()),
         }
 
 

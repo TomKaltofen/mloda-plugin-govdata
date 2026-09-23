@@ -4,6 +4,24 @@ Three derived FeatureGroups turn a reader's columns into comparable ones. Each i
 (`<column>__<operation>`) that sits on top of the reader features: the reader locator you set on the
 harmonized feature travels to the reader columns it needs, so one `Feature` describes the whole chain.
 
+## Terms
+
+| Term | Meaning |
+| --- | --- |
+| Land | One of the 16 federal states; 2-digit AGS (`03` Niedersachsen). |
+| Kreis | A district (Landkreis or kreisfreie Stadt), one level below the Land; 5-digit AGS (`03159` Göttingen). |
+| AGS | Amtlicher Gemeindeschluessel, the official area key: 2 digits for a Land, 5 for a Kreis, 8 for a Gemeinde. Kept as a string, since leading zeros matter. |
+| Gebietsstand | The territorial layout on a reference date: which keys exist and what each covers. A merger ends one Gebietsstand and starts the next. |
+| Stichtag | The reference date of a snapshot value, such as the population on 31 December. |
+| LAU | Local Administrative Units, Eurostat's municipality level; in Germany the Gemeinde, coded by its 8-digit AGS. |
+| NUTS | Eurostat's regional classification: NUTS-1 (the Laender), NUTS-2, NUTS-3 (the Kreise). Eurostat revises it every few years; the NUTS version (`2024`) names which classification a code belongs to. The LAU-to-NUTS crosswalk maps each LAU to its NUTS-3 code for one Gebietsstand and one NUTS version. |
+| BBSR Umsteigeschluessel | The BBSR's conversion keys between Gebietsstaende: one key sheet per pair of years (`2015-2016`), giving the population, area and employee share each old Kreis passes to each new one. |
+| GV-ISys | Destatis' Gemeindeverzeichnis; its yearly change files list mergers and key changes with their effective dates. |
+| ffcsv | The GENESIS flat-file CSV: one row per value cell, with `time`, numbered variable blocks (`1_variable_attribute_code` holds the key) and `value`. |
+| JAHR / STAG | GENESIS time labels: a plain year (`2015`) or a 31 December Stichtag (`2015-12-31`); both parse to the same annual `time`. |
+| `value_marker` | The raw GENESIS sign of a `value` cell, empty for a number: `-` is exactly zero (nichts vorhanden); `.`, `...`, `/`, `x` and `()` mean unknown or withheld and read as null. |
+| census break | Zensus 2011 and Zensus 2022 re-based the population figures; values across a break are not comparable. Listed in `~provenance` when the years span one, never smoothed. |
+
 `HarmonizationFeature.cache_dir` holds the reference-table cache (BBSR keys, NUTS/LAU crosswalk,
 GV-ISys changes) that `KreisRebaseFeature` and `AgsToNutsFeature` read; independent of
 `BaseGovDataReader.cache_dir` (the reader's download cache), though both default to the same
@@ -31,10 +49,10 @@ result = mloda.run_all(
     ],
     compute_frameworks=["PyArrowTable"],
 )
-result[0]  # value__rebased~key, ~year, ~value, ~flag, ~sources, ~marker, ~issues, ~edition
+result[0]  # value__rebased~key, ~year, ~value, ~flag, ~sources, ~marker, ~issues, ~provenance
 ```
 
-Every group also takes an application-style name with the source column in `in_features` and the
+Every group also takes a configuration-based name with the source column in `in_features` and the
 parameters in the group options, the form a recipe file carries:
 
 ```python
@@ -69,23 +87,24 @@ Re-bases Kreis observations onto a later Gebietsstand with the BBSR Umsteigeschl
 
 Output, one row per Kreis and year: `~key`, `~year`, `~value` (float, never rounded), `~flag`
 (`observed` or `rebased`), `~sources` (the contributing keys, `+`-joined), `~marker` (the raw GENESIS
-sign of an observed cell), `~issues` (the issues that touch that row, `kind: detail`), and `~edition`
-(JSON: source, URL, sha256, sheet, share, census breaks, and the full records of the issues no row
-carries). The input rows do not survive; a partial sum or a key the sheet does not know raises unless
-the policy says otherwise.
+sign of an observed cell), `~issues` (the issues that touch that row, `kind: detail`), and `~provenance`
+(JSON: the key sheet's source, URL, sha256, sheet and share, the census breaks, and the full records of
+the issues no row carries). The input rows do not survive; a partial sum or a key the sheet does not
+know raises unless the policy says otherwise.
 
 ## `<key>__nuts2024` (`AgsToNutsFeature`)
 
 Maps AGS keys through the pinned Eurostat LAU-to-NUTS crosswalk
-(`mloda_plugin_govdata/feature_groups/harmonization/core/nuts.py`). The edition is part of the name (or
-the `nuts_version` option) and must be the one the cache holds (`load_edition(cache, revalidate=True)`
-once). Kreis keys retired before the edition resolve through
-the GV-ISys change files named in `AgsToNutsFeature.history_years` (the pinned year, fetched once with
-`load_gv_isys_changes(year, cache, revalidate=True)`); Land keys are out of scope.
+(`mloda_plugin_govdata/feature_groups/harmonization/core/nuts.py`). The NUTS version is part of the name
+(or the `nuts_version` option) and must be the cached crosswalk's
+(`load_nuts_crosswalk(cache, revalidate=True)` once). Kreis keys retired before the crosswalk's
+Gebietsstand resolve through the GV-ISys change files named in `AgsToNutsFeature.history_years` (the
+pinned year, fetched once with `load_gv_isys_changes(year, cache, revalidate=True)`); Land keys are out
+of scope.
 
 | Option | Meaning |
 | --- | --- |
-| `nuts_version` | `2024`; required in the configured form |
+| `nuts_version` | `2024`; required in the configuration-based form |
 | `nuts_on_unmatched` | `raise` (default) or `flag` (null codes, the reason in `~unmatched`) |
 
 Output, row-aligned with the input: `~key`, `~nuts1`, `~nuts2`, `~nuts3`, `~version`, `~unmatched`.

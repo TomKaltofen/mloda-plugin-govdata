@@ -16,14 +16,14 @@ _LAST_UPDATE = re.compile(r"last update (\d{2}/\d{2}/\d{4}).*based on (NUTS \d+ 
 
 @dataclass(frozen=True)
 class NutsCorrespondenceOverview:
-    """The small DE summary row of Eurostat's "Correspondence table" (edition overview only).
+    """The small DE summary row of Eurostat's "Correspondence table" (version overview only).
 
-    Not the crosswalk used for mapping: see :class:`Edition`. This table's own
-    ``edition_label`` names the NUTS/LAU edition it was drawn from, which lags the one
+    Not the crosswalk used for mapping: see :class:`NutsCrosswalk`. This table's own
+    ``version_label`` names the NUTS/LAU versions it was drawn from, which differ from the one
     :func:`load_lau_nuts_de` uses (``nuts_version="2024"``); mismatch is expected, not a bug.
     """
 
-    edition_label: str
+    version_label: str
     last_update: str
     laender: int
     regierungsbezirke: int
@@ -36,20 +36,20 @@ def parse_nuts_correspondence_workbook(path: str | os.PathLike[str]) -> NutsCorr
     sheet = workbook[workbook.sheetnames[0]]
 
     last_update = ""
-    edition_label = ""
+    version_label = ""
     counts: tuple[int, int, int, int] | None = None
     for cells in sheet.iter_rows(values_only=True):
         first = cells[0]
         if isinstance(first, str):
             match = _LAST_UPDATE.search(first)
             if match is not None:
-                last_update, edition_label = match.group(1), match.group(2)
+                last_update, version_label = match.group(1), match.group(2)
         if first == "DE":
             counts = (int(cells[2]), int(cells[4]), int(cells[6]), int(cells[8]))
     if counts is None:
         raise ValueError("no 'DE' row found in the Eurostat NUTS correspondence table")
     return NutsCorrespondenceOverview(
-        edition_label=edition_label,
+        version_label=version_label,
         last_update=last_update,
         laender=counts[0],
         regierungsbezirke=counts[1],
@@ -74,7 +74,7 @@ class LauNutsRow:
 def parse_lau_nuts_de_workbook(path: str | os.PathLike[str]) -> list[LauNutsRow]:
     """Parses the Eurostat LAU-to-NUTS correspondence workbook, Germany sheet only.
 
-    NUTS 2024 / LAU 2025 edition (not the newer-labelled "2027" summary
+    NUTS 2024 / LAU 2025 versions (not the newer-labelled "2027" summary
     table from :func:`parse_nuts_correspondence_workbook`). Germany's row in the
     source file's own Overview sheet (not loaded here) is marked fully validated
     across every column; among all EU-27 countries only Cyprus carries a

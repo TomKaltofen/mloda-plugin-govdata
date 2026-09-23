@@ -16,14 +16,14 @@ from mloda_plugin_govdata.feature_groups.harmonization.core.reference.sources im
 from mloda_plugin_govdata.recipes import load_recipe
 
 from .conftest import EXPECTED_DIR, FFCSV_FIXTURES, GOETTINGEN_ZIP, ffcsv_zip_with_rows, run
-from .shipped import D1_NAME, KREIS_POPULATION_REBASED
+from .shipped import CONFIGURATION_BASED_NAME, KREIS_POPULATION_REBASED
 
 Genesis = Callable[[Mapping[str, str | bytes]], respx.Route]
-PARTS = ("key", "year", "value", "flag", "sources", "marker", "issues", "edition")
+PARTS = ("key", "year", "value", "flag", "sources", "marker", "issues", "provenance")
 
 
 def _rows(table: Any) -> dict[int, dict[str, Any]]:
-    columns = {part: table.column(f"{D1_NAME}~{part}").to_pylist() for part in PARTS}
+    columns = {part: table.column(f"{CONFIGURATION_BASED_NAME}~{part}").to_pylist() for part in PARTS}
     return {year: {part: columns[part][row] for part in PARTS} for row, year in enumerate(columns["year"])}
 
 
@@ -67,8 +67,8 @@ def test_zero_vs_missing_a_dash_outside_the_validity_is_not_applicable(
     # The observed cells are numbers: no sign survives on them, and no output value is a zero.
     assert {rows[year]["marker"] for year in rows} == {""}
     assert 0.0 not in {rows[year]["value"] for year in rows}
-    # The retired keys' "-" from 2016 on never enters a sum; it is reported with the edition instead.
-    elsewhere = {(i["kind"], i["key"], i["year"]) for i in json.loads(rows[2016]["edition"])["issues_elsewhere"]}
+    # The retired keys' "-" from 2016 on never enters a sum; it is reported with the provenance instead.
+    elsewhere = {(i["kind"], i["key"], i["year"]) for i in json.loads(rows[2016]["provenance"])["issues_elsewhere"]}
     assert {("not_applicable", key, year) for key in ("03152", "03156") for year in (2016, 2017)} <= elsewhere
 
 

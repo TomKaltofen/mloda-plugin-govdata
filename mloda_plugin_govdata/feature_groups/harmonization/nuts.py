@@ -11,7 +11,7 @@ from mloda.user import Feature, FeatureName, Options
 
 from ..govdata.core.cache import CacheMissError, DownloadCache
 from .base import PART_PATTERN, HarmonizationFeature
-from .core.edition import NUTS_VERSION, Edition, load_edition
+from .core.crosswalk import NUTS_VERSION, NutsCrosswalk, load_nuts_crosswalk
 from .core.nuts import map_ags_to_nuts
 from .core.reference.gv_isys import load_gv_isys_changes
 
@@ -21,11 +21,11 @@ _POLICIES = {"raise": "fail loud", "flag": "null codes, the reason in ~unmatched
 
 
 class AgsToNutsFeature(HarmonizationFeature):
-    """``<key>__nuts2024``: NUTS codes for AGS keys from the pinned crosswalk edition.
+    """``<key>__nuts2024``: NUTS codes for AGS keys from the pinned LAU-to-NUTS crosswalk.
 
     Appends, row-aligned, ``~key`` (the input key), ``~nuts1``, ``~nuts2``, ``~nuts3``, ``~version``
-    (null when unmatched) and ``~unmatched`` (the reason, empty when matched). The edition in the name
-    (or ``nuts_version``) must be the one the cache holds, so a result names what it was mapped with.
+    (null when unmatched) and ``~unmatched`` (the reason, empty when matched). The NUTS version in the
+    name (or ``nuts_version``) must be the cached crosswalk's, so a result names what it was mapped with.
     """
 
     PREFIX_PATTERN = rf".*__nuts(?P<nuts_version>{NUTS_VERSION})(?:~{PART_PATTERN})?$"
@@ -33,13 +33,13 @@ class AgsToNutsFeature(HarmonizationFeature):
     MAX_IN_FEATURES = 1
     PROPERTY_MAPPING: ClassVar = {
         "nuts_version": property_spec(
-            "NUTS edition the keys resolve against",
+            "NUTS version the keys resolve against",
             strict=True,
             allowed_values={NUTS_VERSION: "the pinned Eurostat LAU-to-NUTS crosswalk"},
             context=False,
         ),
         "nuts_on_unmatched": property_spec(
-            "Keys the edition cannot map", strict=True, allowed_values=_POLICIES, default="raise", context=False
+            "Keys the crosswalk cannot map", strict=True, allowed_values=_POLICIES, default="raise", context=False
         ),
         DefaultOptionKeys.in_features: property_spec("The AGS key column"),
     }
@@ -47,15 +47,15 @@ class AgsToNutsFeature(HarmonizationFeature):
     history_years: ClassVar[tuple[int, ...]] = (2016,)
 
     @classmethod
-    def edition(cls) -> Edition:
-        """The crosswalk edition plus the pinned history, from the offline cache; a miss names the fetch calls."""
+    def load_crosswalk(cls) -> NutsCrosswalk:
+        """The crosswalk plus the pinned history, from the offline cache; a miss names the fetch calls."""
         with DownloadCache(Path(cls.cache_dir)) as cache:
             try:
                 changes = [change for year in cls.history_years for change in load_gv_isys_changes(year, cache)]
-                return load_edition(cache, gv_isys_changes=changes)
+                return load_nuts_crosswalk(cache, gv_isys_changes=changes)
             except CacheMissError as exc:
                 raise CacheMissError(
-                    f"{exc}. Call load_edition(cache, revalidate=True) and load_gv_isys_changes(year, cache, "
+                    f"{exc}. Call load_nuts_crosswalk(cache, revalidate=True) and load_gv_isys_changes(year, cache, "
                     f"revalidate=True) for each year in {cls.history_years} once to fetch and cache them. If the "
                     f"reference tables live elsewhere, set HarmonizationFeature.cache_dir (or {cls.__name__}."
                     "cache_dir for this group alone), independent of any reader's cache_dir."
@@ -67,12 +67,12 @@ class AgsToNutsFeature(HarmonizationFeature):
     @classmethod
     def calculate_feature(cls, data: Any, features: FeatureSet) -> Any:
         table: pa.Table = data
-        edition = cls.edition()
+        crosswalk = cls.load_crosswalk()
         for name, feature in cls.by_base(features).items():
             version = cls.declared(feature, "nuts_version")
-            if version != edition.nuts_version:
+            if version != crosswalk.nuts_version:
                 raise ValueError(
-                    f"{feature.name} asks for NUTS {version}, the cached edition is NUTS {edition.nuts_version}"
+                    f"{feature.name} asks for NUTS {version}, the cached crosswalk is NUTS {crosswalk.nuts_version}"
                 )
             source = cls.source_column(feature)
             column = table.column(source)
@@ -86,7 +86,7 @@ class AgsToNutsFeature(HarmonizationFeature):
             if nulls and policy == "raise":
                 raise ValueError(f"{source}, row {nulls[0]}: {NULL_KEY}; nuts_on_unmatched='flag' keeps such rows")
             present = list(dict.fromkeys(key for key in raw if key is not None))
-            result = map_ags_to_nuts(present, edition=edition, on_unmatched=policy)
+            result = map_ags_to_nuts(present, crosswalk=crosswalk, on_unmatched=policy)
             matched = {m.key: m for m in result.matched}
             reasons = {u.key: u.reason for u in result.unmatched}
             parts = {
@@ -94,7 +94,7 @@ class AgsToNutsFeature(HarmonizationFeature):
                 "nuts1": [matched[k].nuts1 if k in matched else None for k in raw],
                 "nuts2": [matched[k].nuts2 if k in matched else None for k in raw],
                 "nuts3": [matched[k].nuts3 if k in matched else None for k in raw],
-                "version": [edition.nuts_version if k in matched else None for k in raw],
+                "version": [crosswalk.nuts_version if k in matched else None for k in raw],
                 "unmatched": [NULL_KEY if k is None else reasons.get(k, "") for k in raw],
             }
             for part in PARTS:

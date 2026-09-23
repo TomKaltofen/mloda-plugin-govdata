@@ -1,4 +1,4 @@
-"""AgsToNutsFeature: matching, the explicit edition, and the mapping through mloda.run_all."""
+"""AgsToNutsFeature: matching, the explicit NUTS version, and the mapping through mloda.run_all."""
 
 from collections.abc import Callable
 from pathlib import Path
@@ -13,7 +13,7 @@ from mloda_plugin_govdata.feature_groups.destatis.core.auth import OPTION_GENESI
 from mloda_plugin_govdata.feature_groups.destatis.reader import DestatisReader
 from mloda_plugin_govdata.feature_groups.govdata.core.cache import CacheMissError
 from mloda_plugin_govdata.feature_groups.harmonization.base import PART_PATTERN
-from mloda_plugin_govdata.feature_groups.harmonization.core.edition import Edition
+from mloda_plugin_govdata.feature_groups.harmonization.core.crosswalk import NutsCrosswalk
 from mloda_plugin_govdata.feature_groups.harmonization.core.nuts import UnmatchedKeysError
 from mloda_plugin_govdata.feature_groups.harmonization.nuts import NULL_KEY, PARTS, AgsToNutsFeature
 
@@ -22,7 +22,7 @@ from .conftest import (
     GOETTINGEN_ZIP,
     LAND_ZIP,
     ffcsv_zip_with_rows,
-    fixture_edition,
+    fixture_crosswalk,
     gv_isys_changes,
     lau_rows,
 )
@@ -35,7 +35,7 @@ def _run(features: list[Feature | str]) -> Any:
     return mloda.run_all(features, compute_frameworks=["PyArrowTable"])
 
 
-def test_matches_only_the_pinned_edition() -> None:
+def test_matches_only_the_pinned_nuts_version() -> None:
     assert AgsToNutsFeature.match_feature_group_criteria(NAME, Options({}))
     assert AgsToNutsFeature.match_feature_group_criteria(f"{NAME}~nuts3", Options({}))
     assert not AgsToNutsFeature.match_feature_group_criteria(f"{KEY}__nuts2021", Options({}))
@@ -56,7 +56,7 @@ def test_the_named_capture_binds_nuts_version_by_name() -> None:
 
 
 def test_a_second_overlapping_nuts_version_would_still_bind_by_name() -> None:
-    # A pattern with two alternatives, as a real second edition would add, still binds each value
+    # A pattern with two alternatives, as a real second NUTS version would add, still binds each value
     # by name unconditionally. No FeatureGroup involved: this exercises the parser directly, so it
     # can't leak a test-local subclass into mloda's global FeatureGroup discovery.
     pattern = rf".*__nuts(?P<nuts_version>2024|2021)(?:~{PART_PATTERN})?$"
@@ -75,8 +75,8 @@ def test_the_child_is_the_key_column_with_the_locator_forwarded() -> None:
 
 
 @respx.mock
-def test_kreis_keys_map_through_the_edition_and_its_history(
-    genesis: Callable[[str], respx.Route], extract_edition: Edition
+def test_kreis_keys_map_through_the_crosswalk_and_its_history(
+    genesis: Callable[[str], respx.Route], extract_crosswalk: NutsCrosswalk
 ) -> None:
     genesis(GOETTINGEN_ZIP)
     features: list[Feature | str] = [
@@ -97,8 +97,8 @@ def test_kreis_keys_map_through_the_edition_and_its_history(
 
 
 @respx.mock
-def test_one_sub_column_and_the_configured_name(
-    genesis: Callable[[str], respx.Route], extract_edition: Edition
+def test_one_sub_column_and_the_configuration_based_name(
+    genesis: Callable[[str], respx.Route], extract_crosswalk: NutsCrosswalk
 ) -> None:
     genesis(GOETTINGEN_ZIP)
     alone = _run([Feature(f"{NAME}~nuts3", options={DestatisReader.__name__: GOETTINGEN_LOCATOR})])[0]
@@ -119,8 +119,8 @@ def test_unmatched_keys_raise_by_default_and_flag_on_request(
     genesis: Callable[[str], respx.Route], monkeypatch: pytest.MonkeyPatch, reference_fixtures_dir: Path
 ) -> None:
     genesis(GOETTINGEN_ZIP)
-    bare = fixture_edition(reference_fixtures_dir, with_history=False)  # no redirect for the retired keys
-    monkeypatch.setattr(AgsToNutsFeature, "edition", classmethod(lambda cls: bare))
+    bare = fixture_crosswalk(reference_fixtures_dir, with_history=False)  # no redirect for the retired keys
+    monkeypatch.setattr(AgsToNutsFeature, "load_crosswalk", classmethod(lambda cls: bare))
 
     with pytest.raises(UnmatchedKeysError, match="03152"):
         _run([Feature(NAME, options={DestatisReader.__name__: GOETTINGEN_LOCATOR})])
@@ -135,7 +135,9 @@ def test_unmatched_keys_raise_by_default_and_flag_on_request(
 
 
 @respx.mock
-def test_land_keys_are_out_of_scope_and_say_so(genesis: Callable[[str], respx.Route], extract_edition: Edition) -> None:
+def test_land_keys_are_out_of_scope_and_say_so(
+    genesis: Callable[[str], respx.Route], extract_crosswalk: NutsCrosswalk
+) -> None:
     genesis(LAND_ZIP)
     locator = {"name": "12411-0010", "startyear": 2024, "endyear": 2024}
     with pytest.raises(UnmatchedKeysError, match="Land mapping is out of scope"):
@@ -143,27 +145,29 @@ def test_land_keys_are_out_of_scope_and_say_so(genesis: Callable[[str], respx.Ro
 
 
 @respx.mock
-def test_a_cached_edition_of_another_version_is_refused(
+def test_a_cached_crosswalk_of_another_nuts_version_is_refused(
     genesis: Callable[[str], respx.Route], monkeypatch: pytest.MonkeyPatch, reference_fixtures_dir: Path
 ) -> None:
     genesis(GOETTINGEN_ZIP)
-    other = Edition(**{**fixture_edition(reference_fixtures_dir).__dict__, "nuts_version": "2021"})
-    monkeypatch.setattr(AgsToNutsFeature, "edition", classmethod(lambda cls: other))
-    with pytest.raises(ValueError, match="asks for NUTS 2024, the cached edition is NUTS 2021"):
+    other = NutsCrosswalk(**{**fixture_crosswalk(reference_fixtures_dir).__dict__, "nuts_version": "2021"})
+    monkeypatch.setattr(AgsToNutsFeature, "load_crosswalk", classmethod(lambda cls: other))
+    with pytest.raises(ValueError, match="asks for NUTS 2024, the cached crosswalk is NUTS 2021"):
         _run([Feature(NAME, options={DestatisReader.__name__: GOETTINGEN_LOCATOR})])
 
 
-def test_an_edition_missing_from_the_cache_names_the_fetch_call(
+def test_a_crosswalk_missing_from_the_cache_names_the_fetch_call(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(AgsToNutsFeature, "cache_dir", str(tmp_path))
-    with pytest.raises(CacheMissError, match="load_edition\\(cache, revalidate=True\\).*AgsToNutsFeature.cache_dir"):
-        AgsToNutsFeature.edition()
+    with pytest.raises(
+        CacheMissError, match="load_nuts_crosswalk\\(cache, revalidate=True\\).*AgsToNutsFeature.cache_dir"
+    ):
+        AgsToNutsFeature.load_crosswalk()
 
 
 @respx.mock
 def test_two_parts_of_one_output_in_one_request(
-    genesis: Callable[[str], respx.Route], extract_edition: Edition
+    genesis: Callable[[str], respx.Route], extract_crosswalk: NutsCrosswalk
 ) -> None:
     genesis(GOETTINGEN_ZIP)
     options = {DestatisReader.__name__: GOETTINGEN_LOCATOR}
@@ -173,13 +177,13 @@ def test_two_parts_of_one_output_in_one_request(
 
 
 @respx.mock
-def test_the_real_edition_carries_the_pinned_history(
+def test_the_real_crosswalk_carries_the_pinned_history(
     genesis: Callable[[str], respx.Route], monkeypatch: pytest.MonkeyPatch, reference_fixtures_dir: Path, tmp_path: Path
 ) -> None:
-    # Only the two fetch-and-verify loaders are replaced, so edition() itself assembles the history.
+    # Only the two fetch-and-verify loaders are replaced, so load_crosswalk() itself assembles the history.
     rows, changes = lau_rows(reference_fixtures_dir), gv_isys_changes(reference_fixtures_dir)
     monkeypatch.setattr(
-        "mloda_plugin_govdata.feature_groups.harmonization.core.edition.load_lau_nuts_de",
+        "mloda_plugin_govdata.feature_groups.harmonization.core.crosswalk.load_lau_nuts_de",
         lambda cache, **kw: list(rows),
     )
     monkeypatch.setattr(
@@ -187,9 +191,9 @@ def test_the_real_edition_carries_the_pinned_history(
         lambda year, cache, **kw: list(changes) if year == 2016 else [],
     )
     monkeypatch.setattr(AgsToNutsFeature, "cache_dir", str(tmp_path))
-    edition = AgsToNutsFeature.edition()
-    assert (edition.nuts_version, edition.year_range) == ("2024", (2016, 2024))
-    assert edition.gv_isys_changes == changes
+    crosswalk = AgsToNutsFeature.load_crosswalk()
+    assert (crosswalk.nuts_version, crosswalk.year_range) == ("2024", (2016, 2024))
+    assert crosswalk.gv_isys_changes == changes
 
     genesis(GOETTINGEN_ZIP)
     table = _run([Feature(NAME, options={DestatisReader.__name__: GOETTINGEN_LOCATOR})])[0]
@@ -198,7 +202,7 @@ def test_the_real_edition_carries_the_pinned_history(
 
 @respx.mock
 def test_nuts_codes_for_the_rebased_keys(
-    genesis: Callable[[str], respx.Route], extract_edition: Edition, extract_keys: None
+    genesis: Callable[[str], respx.Route], extract_crosswalk: NutsCrosswalk, extract_keys: None
 ) -> None:
     # A part of one output is a column another group can chain onto.
     genesis(GOETTINGEN_ZIP)
@@ -212,7 +216,7 @@ def test_nuts_codes_for_the_rebased_keys(
 
 @respx.mock
 def test_a_non_string_key_column_is_refused_by_name(
-    genesis: Callable[[str], respx.Route], extract_edition: Edition
+    genesis: Callable[[str], respx.Route], extract_crosswalk: NutsCrosswalk
 ) -> None:
     genesis(GOETTINGEN_ZIP)
     with pytest.raises(TypeError, match="time must be a string column of AGS keys"):
@@ -221,7 +225,7 @@ def test_a_non_string_key_column_is_refused_by_name(
 
 @respx.mock
 def test_null_key_cells_are_named_and_kept_only_on_request(
-    genesis: Callable[[str | bytes], respx.Route], extract_edition: Edition, ffcsv_fixtures_dir: Path
+    genesis: Callable[[str | bytes], respx.Route], extract_crosswalk: NutsCrosswalk, ffcsv_fixtures_dir: Path
 ) -> None:
     zip_bytes = (ffcsv_fixtures_dir / GOETTINGEN_ZIP).read_bytes()
 
@@ -241,7 +245,7 @@ def test_null_key_cells_are_named_and_kept_only_on_request(
 
 @respx.mock
 def test_a_contradicting_explicit_version_is_refused(
-    genesis: Callable[[str], respx.Route], extract_edition: Edition
+    genesis: Callable[[str], respx.Route], extract_crosswalk: NutsCrosswalk
 ) -> None:
     genesis(GOETTINGEN_ZIP)
     options = {DestatisReader.__name__: GOETTINGEN_LOCATOR, "nuts_version": "2021"}

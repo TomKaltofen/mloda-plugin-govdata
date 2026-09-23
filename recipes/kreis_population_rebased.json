@@ -34,7 +34,7 @@
         "modifications": [
           "ffcsv reply parsed into a typed table; the raw value sign is kept in value_marker",
           "time normalized to the calendar year of the Stichtag",
-          "re-based onto the 31.12.2016 Gebietsstand with the BBSR key sheet 2015-2016; every row carries its flag, source keys, issues, and the key edition"
+          "re-based onto the 31.12.2016 Gebietsstand with the BBSR key sheet 2015-2016; every row carries its flag, source keys, issues, and the key-sheet provenance"
         ],
         "credential_env": [
           "GENESIS_TOKEN"
