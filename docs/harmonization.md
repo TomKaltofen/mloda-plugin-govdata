@@ -9,18 +9,20 @@ harmonized feature travels to the reader columns it needs, so one `Feature` desc
 | Term | Meaning |
 | --- | --- |
 | Land | One of the 16 federal states; 2-digit AGS (`03` Niedersachsen). |
-| Kreis | A district (Landkreis or kreisfreie Stadt), one level below the Land; 5-digit AGS (`03159` Göttingen). |
+| Kreis | A district (Landkreis or kreisfreie Stadt) within a Land; 5-digit AGS (`03159` Goettingen). |
 | AGS | Amtlicher Gemeindeschluessel, the official area key: 2 digits for a Land, 5 for a Kreis, 8 for a Gemeinde. Kept as a string, since leading zeros matter. |
 | Gebietsstand | The territorial layout on a reference date: which keys exist and what each covers. A merger ends one Gebietsstand and starts the next. |
 | Stichtag | The reference date of a snapshot value, such as the population on 31 December. |
-| LAU | Local Administrative Units, Eurostat's municipality level; in Germany the Gemeinde, coded by its 8-digit AGS. |
+| LAU | Local Administrative Units, Eurostat's municipality level; in Germany the Gemeinde or gemeindefreies Gebiet, coded by its 8-digit AGS. |
 | NUTS | Eurostat's regional classification: NUTS-1 (the Laender), NUTS-2, NUTS-3 (the Kreise). Eurostat revises it every few years; the NUTS version (`2024`) names which classification a code belongs to. The LAU-to-NUTS crosswalk maps each LAU to its NUTS-3 code for one Gebietsstand and one NUTS version. |
-| BBSR Umsteigeschluessel | The BBSR's conversion keys between Gebietsstaende: one key sheet per pair of years (`2015-2016`), giving the population, area and employee share each old Kreis passes to each new one. |
+| BBSR Umsteigeschluessel | The BBSR's conversion keys between Gebietsstaende: one key sheet per consecutive pair of years (`2015-2016`), giving the population and area share (and, on later sheets, the employee share) each old Kreis passes to each new one. |
 | GV-ISys | Destatis' Gemeindeverzeichnis; its yearly change files list mergers and key changes with their effective dates. |
 | ffcsv | The GENESIS flat-file CSV: one row per value cell, with `time`, numbered variable blocks (`1_variable_attribute_code` holds the key) and `value`. |
 | JAHR / STAG | GENESIS time labels: a plain year (`2015`) or a 31 December Stichtag (`2015-12-31`); both parse to the same annual `time`. |
-| `value_marker` | The raw GENESIS sign of a `value` cell, empty for a number: `-` is exactly zero (nichts vorhanden); `.`, `...`, `/`, `x` and `()` mean unknown or withheld and read as null. |
+| `value_marker` | The raw GENESIS sign of a `value` cell, empty for a number: `-` (nichts vorhanden) reads as 0, though `value__rebased` excludes one where the key sheet says the Kreis did not exist and reports one it sums; `.`, `...`, `/`, `x` and `()` (unknown, withheld, not yet available, not meaningful) read as null. |
 | census break | Zensus 2011 and Zensus 2022 re-based the population figures; values across a break are not comparable. Listed in `~provenance` when the years span one, never smoothed. |
+
+## Usage
 
 `HarmonizationFeature.cache_dir` holds the reference-table cache (BBSR keys, NUTS/LAU crosswalk,
 GV-ISys changes) that `KreisRebaseFeature` and `AgsToNutsFeature` read; independent of
@@ -88,9 +90,9 @@ Re-bases Kreis observations onto a later Gebietsstand with the BBSR Umsteigeschl
 Output, one row per Kreis and year: `~key`, `~year`, `~value` (float, never rounded), `~flag`
 (`observed` or `rebased`), `~sources` (the contributing keys, `+`-joined), `~marker` (the raw GENESIS
 sign of an observed cell), `~issues` (the issues that touch that row, `kind: detail`), and `~provenance`
-(JSON: the key sheet's source, URL, sha256, sheet and share, the census breaks, and the full records of
-the issues no row carries). The input rows do not survive; a partial sum or a key the sheet does not
-know raises unless the policy says otherwise.
+(JSON: the key sheet's source, URL, sha256, years, sheet and share, the census breaks, and the full
+records of the issues no row carries). The input rows do not survive; a partial sum or a key the sheet
+does not know raises unless the policy says otherwise.
 
 ## `<key>__nuts2024` (`AgsToNutsFeature`)
 

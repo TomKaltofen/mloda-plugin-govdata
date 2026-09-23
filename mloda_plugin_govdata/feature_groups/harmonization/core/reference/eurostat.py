@@ -19,8 +19,8 @@ class NutsCorrespondenceOverview:
     """The small DE summary row of Eurostat's "Correspondence table" (version overview only).
 
     Not the crosswalk used for mapping: see :class:`NutsCrosswalk`. This table's own
-    ``version_label`` names the NUTS/LAU versions it was drawn from, which differ from the one
-    :func:`load_lau_nuts_de` uses (``nuts_version="2024"``); mismatch is expected, not a bug.
+    ``version_label`` names a newer NUTS version than the one :func:`load_lau_nuts_de` uses
+    (``nuts_version="2024"``); the mismatch is expected, not a bug.
     """
 
     version_label: str
