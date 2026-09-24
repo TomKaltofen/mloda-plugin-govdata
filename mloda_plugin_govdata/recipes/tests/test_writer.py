@@ -23,7 +23,7 @@ from mloda_plugin_govdata.recipes import (
     recipe_to_json,
     write_recipe,
 )
-from mloda_plugin_govdata.recipes.writer import _UNSUPPORTED, SUPPORTED_FEATURE_PARAMETERS
+from mloda_plugin_govdata.recipes.write import _UNSUPPORTED, SUPPORTED_FEATURE_PARAMETERS
 
 from .shipped import KERG_URL, LAND_SHA256
 from .shipped import LAND as LAND_LOCATOR
@@ -338,7 +338,7 @@ def test_only_the_feature_array_reaches_mloda(monkeypatch: pytest.MonkeyPatch) -
 
     features: list[Feature | str] = [Feature("value", options={DestatisReader.__name__: LAND_LOCATOR}), "Nr"]
     text = recipe_to_json(build_recipe(features, COMPLIANCE, [LAND_LINK]))
-    monkeypatch.setattr("mloda_plugin_govdata.recipes.writer.load_features_from_config", capture)
+    monkeypatch.setattr("mloda_plugin_govdata.recipes.load.load_features_from_config", capture)
 
     parse_recipe(text)
 

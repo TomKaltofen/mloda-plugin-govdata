@@ -31,19 +31,14 @@ from .envelope import (
     inspect_response,
 )
 from .errors import GenesisBackendError, GenesisError, GenesisUnknownEnvelope, MissingCredentialsError
-from .hosts import GENESIS_ONLINE, KNOWN_HOSTS, REGIONALSTATISTIK, GenesisHost, resolve_host
+from .hosts import GENESIS_ONLINE, GenesisHost, resolve_host
 from .redact import redact_text
 
 __all__ = [
-    "GENESIS_ONLINE",
-    "KNOWN_HOSTS",
     "OPERATIONS",
-    "REGIONALSTATISTIK",
     "GenesisClient",
-    "GenesisHost",
     "Operation",
     "fetch_tablefile",
-    "resolve_host",
     "tablefile_parameters",
 ]
 

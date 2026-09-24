@@ -7,7 +7,6 @@ from mloda_plugin_govdata.feature_groups.destatis.core.auth import (
     ENV_SUFFIXES,
     OPTION_GENESIS_CREDENTIALS,
     DestatisCredentials,
-    credentials_from_options,
     explicit_credentials_from_options,
     resolve_credentials,
 )
@@ -48,7 +47,7 @@ def test_options_context_never_prints_the_secret() -> None:
     credentials = DestatisCredentials(token=TOKEN)
     options = Options(group={"DestatisReader": "12411-0015"}, context={OPTION_GENESIS_CREDENTIALS: credentials})
     assert TOKEN not in str(options) and TOKEN not in repr(options)
-    assert credentials_from_options(options, GENESIS_ONLINE, environ={}) is credentials
+    assert explicit_credentials_from_options(options) is credentials
     # The context does not feed the hash: two features with different credentials batch together.
     other = Options(
         group={"DestatisReader": "12411-0015"}, context={OPTION_GENESIS_CREDENTIALS: DestatisCredentials(token="x")}
@@ -59,7 +58,7 @@ def test_options_context_never_prints_the_secret() -> None:
 def test_options_group_is_refused() -> None:
     options = Options(group={OPTION_GENESIS_CREDENTIALS: DestatisCredentials(token=TOKEN)})
     with pytest.raises(ValueError, match="context"):
-        credentials_from_options(options, GENESIS_ONLINE, environ={})
+        explicit_credentials_from_options(options)
 
 
 def test_options_context_refuses_anything_but_the_redacting_instance() -> None:
@@ -67,9 +66,9 @@ def test_options_context_refuses_anything_but_the_redacting_instance() -> None:
     options = Options(context={OPTION_GENESIS_CREDENTIALS: {"token": TOKEN}})
     assert TOKEN in str(options)  # the very reason the form is refused
     with pytest.raises(TypeError, match="DestatisCredentials instance"):
-        credentials_from_options(options, GENESIS_ONLINE, environ={})
+        explicit_credentials_from_options(options)
     with pytest.raises(TypeError):
-        credentials_from_options(Options(context={OPTION_GENESIS_CREDENTIALS: 42}), GENESIS_ONLINE, environ={})
+        explicit_credentials_from_options(Options(context={OPTION_GENESIS_CREDENTIALS: 42}))
 
 
 def test_control_characters_and_non_latin1_are_refused_without_echo() -> None:

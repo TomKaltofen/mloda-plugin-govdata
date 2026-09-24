@@ -10,7 +10,6 @@ import pytest
 import respx
 
 from mloda_plugin_govdata.feature_groups.destatis.core.api import (
-    GENESIS_ONLINE,
     TABLEFILE_FIELDS,
     GenesisClient,
     fetch_tablefile,
@@ -19,6 +18,7 @@ from mloda_plugin_govdata.feature_groups.destatis.core.api import (
 from mloda_plugin_govdata.feature_groups.destatis.core.auth import DestatisCredentials
 from mloda_plugin_govdata.feature_groups.destatis.core.cache import ParameterCache
 from mloda_plugin_govdata.feature_groups.destatis.core.errors import GenesisUnknownEnvelope
+from mloda_plugin_govdata.feature_groups.destatis.core.hosts import GENESIS_ONLINE
 
 BASE = GENESIS_ONLINE.base_url
 TOKEN = "t0kenAbCdEf0123456789abcdef012345"
