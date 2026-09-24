@@ -160,15 +160,12 @@ class DestatisLocator:
         return {k: (list(v) if isinstance(v, tuple) else v) for k, v in raw.items()}
 
     def tablefile_fields(self) -> dict[str, object]:
-        """``data/tablefile`` form fields: the set locator fields plus the pinned ones.
+        """``data/tablefile`` form fields: the locator fields that are not None, the pinned ones, quality as on/off.
 
         Pass it as ``fields`` to ``ParameterCache.get_or_fetch``, which sorts the key lists and stringifies the years.
         """
-        wire: dict[str, object] = {
-            f.name: value
-            for f in fields(self)
-            if f.name not in _NOT_SENT_AS_IS and (value := getattr(self, f.name)) is not None
-        }
+        values = {f.name: getattr(self, f.name) for f in fields(self) if f.name not in _NOT_SENT_AS_IS}
+        wire: dict[str, object] = {name: value for name, value in values.items() if value is not None}
         return {**wire, **PINNED_TABLEFILE_FIELDS, "quality": "on" if self.quality else "off"}
 
     def describe(self) -> str:

@@ -65,38 +65,32 @@ def test_full_selection_field_set_and_pinned_values() -> None:
         endyear=2022,
         quality=True,
     ).tablefile_fields()
-    assert set(fields) == {
-        "name",
-        "regionalvariable",
-        "regionalkey",
-        "classifyingvariable1",
-        "classifyingkey1",
-        "classifyingvariable2",
-        "classifyingkey2",
-        "classifyingvariable3",
-        "classifyingkey3",
-        "classifyingvariable4",
-        "classifyingkey4",
-        "classifyingvariable5",
-        "classifyingkey5",
-        "contents",
-        "startyear",
-        "endyear",
-        "language",
-        "format",
-        "job",
-        "compress",
-        "transpose",
-        "quality",
+    assert fields == {
+        "name": "12411-0015",
+        "regionalvariable": "DLAND",
+        "regionalkey": ("02", "01"),
+        "classifyingvariable1": "GES",
+        "classifyingkey1": ("W", "M"),
+        "classifyingvariable2": "ALT",
+        "classifyingkey2": ("U18",),
+        "classifyingvariable3": "X3",
+        "classifyingkey3": ("k3",),
+        "classifyingvariable4": "X4",
+        "classifyingkey4": ("k4",),
+        "classifyingvariable5": "X5",
+        "classifyingkey5": ("k5",),
+        "contents": ("BEVSTD",),
+        "startyear": 2015,
+        "endyear": 2022,
+        "language": "de",
+        "format": "ffcsv",
+        "job": "false",
+        "compress": "false",
+        "transpose": "false",
+        "quality": "on",
     }
     assert set(fields) <= TABLEFILE_FIELDS  # never a name outside the spec's tablefile body
-    assert fields["quality"] == "on"
-    assert fields["language"] == "de"
-    assert fields["format"] == "ffcsv"
     assert NEVER_SENT.isdisjoint(fields)
-    assert fields["compress"] == "false"
-    assert fields["transpose"] == "false"
-    assert fields["job"] == "false"
 
 
 def test_area_compress_transpose_timeslices_job_stand_are_not_locator_fields() -> None:

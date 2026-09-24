@@ -1,4 +1,4 @@
-"""kreis_foreigners_share: two Destatis selections as two frames, the share computable, and a '-' told apart from a count."""
+"""kreis_foreigners_share: two Destatis selections as two frames, the share computable, '-' told apart from a count."""
 
 import hashlib
 from collections.abc import Callable, Mapping

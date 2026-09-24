@@ -84,7 +84,12 @@ TABLEFILE_FIELDS: frozenset[str] = frozenset(
     }
 )
 # Sent on every data/tablefile request; not locator fields (see docs/destatis-options.md).
-PINNED_TABLEFILE_FIELDS: dict[str, str] = {"format": "ffcsv", "job": "false", "compress": "false", "transpose": "false"}
+PINNED_TABLEFILE_FIELDS: Mapping[str, str] = {
+    "format": "ffcsv",
+    "job": "false",
+    "compress": "false",
+    "transpose": "false",
+}
 
 OPERATIONS: dict[str, Operation] = {
     "helloworld/whoami": Operation("helloworld/whoami", "GET", credentials=False, fields=frozenset()),

@@ -293,8 +293,8 @@ def test_value_q_column_survives_when_the_table_declares_it(fixtures_dir: Path) 
 
 
 def test_qualitysigns_legend_is_covered_by_zero_null_or_a_flag(fixtures_dir: Path) -> None:
-    # Every code in the captured legend is either a value marker this parser
-    # recognizes, or a value_q flag (p/r/s) that never appears in the value cell itself.
+    # Every code in the captured legend is either a value marker this parser recognizes, or a value_q
+    # flag (p/r/s) that never appears in the value cell itself.
     payload = json.loads((fixtures_dir / "genesis-guest-qualitysigns.json").read_text(encoding="utf-8"))
     flags = {"p", "r", "s"}
     for entry in payload["List"]:
