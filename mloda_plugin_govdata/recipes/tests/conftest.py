@@ -23,11 +23,9 @@ from mloda_plugin_govdata.feature_groups.govdata import (
 from mloda_plugin_govdata.feature_groups.harmonization.core.reference.bbsr import parse_bbsr_kreise_workbook
 from mloda_plugin_govdata.feature_groups.harmonization.core.reference.sources import BBSR_KREISE
 from mloda_plugin_govdata.feature_groups.harmonization.rebase import KreisRebaseFeature
-
-from .shipped import KERG_URL, UBA_URL
+from scripts.write_recipes import KERG_URL, RECIPES_DIR, UBA_URL
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-RECIPES_DIR = REPO_ROOT / "recipes"
 _PACKAGE = REPO_ROOT / "mloda_plugin_govdata"
 FFCSV_FIXTURES = _PACKAGE / "feature_groups" / "destatis" / "tests" / "fixtures" / "ffcsv"
 GOVDATA_FIXTURES = _PACKAGE / "feature_groups" / "govdata" / "tests" / "fixtures"

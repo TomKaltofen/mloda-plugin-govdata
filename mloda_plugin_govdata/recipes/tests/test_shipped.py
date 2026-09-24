@@ -7,12 +7,8 @@ import pytest
 
 from mloda_plugin_govdata.feature_groups.govdata import build_client
 from mloda_plugin_govdata.recipes import build_recipe, load_recipe, recipe_to_json
+from scripts.write_recipes import BUNDESTAGSWAHL_2025, RECIPES, RECIPES_DIR, STUTTGART_POPULATION, ShippedRecipe, main
 
-from .conftest import RECIPES_DIR
-from .shipped import BUNDESTAGSWAHL_2025, RECIPES, STUTTGART_POPULATION, ShippedRecipe
-
-# The first recipe file predates the definitions module; its pin lives in test_writer.py.
-LEGACY = {"land_population.json"}
 IDS = [r.file for r in RECIPES]
 
 
@@ -33,8 +29,13 @@ def test_the_file_loads_with_its_compliance_complete(recipes_dir: Path, shipped:
         assert source.retrieved_at.tzinfo is not None
 
 
-def test_every_file_under_recipes_is_pinned() -> None:
-    assert {path.name for path in RECIPES_DIR.glob("*.json")} == {r.file for r in RECIPES} | LEGACY
+def _texts(directory: Path) -> dict[str, str]:
+    return {path.name: path.read_text(encoding="utf-8") for path in directory.glob("*.json")}
+
+
+def test_the_script_rewrites_every_file_under_recipes_unchanged(tmp_path: Path) -> None:
+    assert main(["--out", str(tmp_path / "out")]) == 0
+    assert _texts(tmp_path / "out") == _texts(RECIPES_DIR)
 
 
 # The kerg and Stuttgart payloads are too large to commit, so their pins are checked against the live source.

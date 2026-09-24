@@ -9,9 +9,9 @@ import respx
 
 from mloda_plugin_govdata.feature_groups.destatis import DestatisReader
 from mloda_plugin_govdata.recipes import load_recipe
+from scripts.write_recipes import FOREIGNERS, GOETTINGEN, KEY, KREIS_FOREIGNERS_SHARE
 
 from .conftest import FFCSV_FIXTURES, FOREIGNERS_ZIP, GOETTINGEN_ZIP, run
-from .shipped import FOREIGNERS, GOETTINGEN, KEY, KREIS_FOREIGNERS_SHARE
 
 Genesis = Callable[[Mapping[str, str | bytes]], respx.Route]
 SEX_LABEL = "2_variable_attribute_label"

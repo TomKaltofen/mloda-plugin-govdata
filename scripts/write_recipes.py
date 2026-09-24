@@ -1,9 +1,16 @@
-"""The shipped recipe files as Python; each file under ``recipes/`` is pinned to the writer's output of these."""
+"""Write the shipped recipe files from their definitions below, the source of truth (repo tooling, not shipped).
+
+Usage:
+    uv run python scripts/write_recipes.py [--out recipes]
+"""
 
 from __future__ import annotations
 
+import argparse
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from mloda.user import Feature, Link, Options
@@ -23,8 +30,9 @@ from mloda_plugin_govdata.feature_groups.govdata import (
 )
 from mloda_plugin_govdata.feature_groups.harmonization.core.reference.sources import BBSR_KREISE
 from mloda_plugin_govdata.feature_groups.land_population_per_voter import LAND_LINK
-from mloda_plugin_govdata.recipes import Compliance, SourceCompliance
+from mloda_plugin_govdata.recipes import Compliance, SourceCompliance, write_recipe
 
+RECIPES_DIR = Path(__file__).resolve().parents[1] / "recipes"
 DESTATIS = "dl-de/by-2-0"
 DESTATIS_ATTRIBUTION = "(c) Statistisches Bundesamt (Destatis), 2026"
 DESTATIS_MODIFICATIONS = [
@@ -197,6 +205,15 @@ LAND_POPULATION_PER_VOTER = ShippedRecipe(
     [LAND_LINK],
 )
 
+LAND_POPULATION = ShippedRecipe(
+    "land_population.json",
+    _destatis_features(LAND, KEY, "value"),
+    Compliance(
+        sources=[_destatis("12411-0010", _at(2026, 9, 8), LAND_SHA256)],
+        notes="Fortschreibung des Bevölkerungsstandes, Stichtag 2024-12-31, all 16 Länder (DLAND 01 to 16).",
+    ),
+)
+
 STUTTGART_POPULATION = ShippedRecipe(
     "stuttgart_population.json",
     [
@@ -276,7 +293,22 @@ RECIPES: tuple[ShippedRecipe, ...] = (
     KREIS_POPULATION_REBASED,
     KREIS_FOREIGNERS_SHARE,
     LAND_POPULATION_PER_VOTER,
+    LAND_POPULATION,
     STUTTGART_POPULATION,
     BUNDESTAGSWAHL_2025,
     UBA_OZONE_STATION_143,
 )
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--out", type=Path, default=RECIPES_DIR)
+    args = parser.parse_args(argv)
+    args.out.mkdir(parents=True, exist_ok=True)
+    for recipe in RECIPES:
+        print(write_recipe(args.out / recipe.file, recipe.features, recipe.compliance, recipe.links))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
