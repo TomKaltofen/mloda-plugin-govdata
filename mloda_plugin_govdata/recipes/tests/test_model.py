@@ -6,14 +6,8 @@ from typing import Any
 
 import pytest
 
-from mloda_plugin_govdata.recipes import (
-    TOKEN_RUN_LENGTH,
-    FeatureItem,
-    Recipe,
-    RecipeError,
-    environment_secrets,
-    parse_recipe,
-)
+from mloda_plugin_govdata.recipes import FeatureItem, Recipe, RecipeError, parse_recipe
+from mloda_plugin_govdata.recipes.credential_scan import TOKEN_RUN_LENGTH, environment_secrets
 
 LOCATOR = {"name": "12411-0010", "startyear": 2024, "endyear": 2024}
 SOURCE: dict[str, Any] = {

@@ -104,11 +104,14 @@ recipes sit next to their tests.
 | `uba_ozone_station_143.json` | UBA Air Data JSON | hourly ozone at one station |
 
 The re-based recipe needs the BBSR key file in the cache (`load_bbsr_kreise(cache, revalidate=True)`
-once). Running the Land recipe's own features returns them unjoined, one frame per source; check the
-Land names on each side with `feature_groups.harmonization.core.land_codes.check_land_names`. The links
-block lets a consumer FeatureGroup that needs a column from each side join them instead (mloda executes a
-join only for such a consumer); `feature_groups.land_population_per_voter.LandPopulationPerVoter` is one, computing
-population per voter; it carries the same link on both inputs, so it also runs without `links=`.
+once). Running the Land recipe's own features returns them unjoined, one frame per source;
+`frames = frames_by_column(result)` picks a PyArrow frame by a column only it carries (`frames["value"]`,
+`frames["Nr"]`) and raises on a shared one, so for `kreis_foreigners_share.json`, whose two frames carry
+the same columns, iterate `result.frames()` instead. Check the Land names on each side with
+`feature_groups.harmonization.core.land_codes.check_land_names`. The links block lets a consumer
+FeatureGroup that needs a column from each side join them instead (mloda executes a join only for such a
+consumer); `feature_groups.land_population_per_voter.LandPopulationPerVoter` is one, computing population
+per voter; it carries the same link on both inputs, so it also runs without `links=`.
 A `-` in a GENESIS cell arrives as 0 with the sign kept in
 `value_marker`; only the harmonization step, which knows the validity windows, turns it into not applicable,
 so a consumer of raw columns reads the marker before taking a 0 as a count. Each recipe except the first

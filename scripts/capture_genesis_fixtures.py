@@ -23,10 +23,11 @@ from pathlib import Path
 
 import httpx
 
-from mloda_plugin_govdata.feature_groups.destatis.core.api import KNOWN_HOSTS, GenesisClient
+from mloda_plugin_govdata.feature_groups.destatis.core.api import GenesisClient
 from mloda_plugin_govdata.feature_groups.destatis.core.auth import DestatisCredentials
 from mloda_plugin_govdata.feature_groups.destatis.core.envelope import inspect_response
 from mloda_plugin_govdata.feature_groups.destatis.core.errors import GenesisError
+from mloda_plugin_govdata.feature_groups.destatis.core.hosts import KNOWN_HOSTS
 from mloda_plugin_govdata.feature_groups.destatis.core.redact import redact_json, redact_text, secret_variants
 
 

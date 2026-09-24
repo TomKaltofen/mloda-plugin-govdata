@@ -133,8 +133,8 @@ def resolve_credentials(
 def explicit_credentials_from_options(options: Options | None) -> DestatisCredentials | None:
     """The explicit ``DestatisCredentials`` from ``Options.context``, or ``None``; never touches env or a host.
 
-    Split out from ``credentials_from_options`` so a reader can build a ``GenesisClient`` before
-    knowing whether a request will actually happen (a cache hit needs no credentials at all).
+    That lets a reader build a ``GenesisClient`` before knowing whether a request will actually happen
+    (a cache hit needs no credentials at all).
     Only a ``DestatisCredentials`` instance is accepted: a plain mapping would sit unredacted in the
     context, which ``str(options)`` prints verbatim.
     """
@@ -154,12 +154,3 @@ def explicit_credentials_from_options(options: Options | None) -> DestatisCreden
             f"got {type(raw).__name__}"
         )
     return raw
-
-
-def credentials_from_options(
-    options: Options | None,
-    host: GenesisHost,
-    environ: Mapping[str, str] | None = None,
-) -> DestatisCredentials:
-    """Credentials for ``host`` from ``Options.context`` (explicit) or env; the key is refused in ``group``."""
-    return resolve_credentials(host, explicit_credentials_from_options(options), environ)
