@@ -16,6 +16,8 @@ Young but working. The three example readers and the Destatis connector run end 
 
 ## Usage
 
+### GovData readers
+
 Read the Stuttgart population dataset (via GovData) as a typed PyArrow table:
 
 ```python
@@ -34,8 +36,7 @@ table = result[0]  # pyarrow.Table with the requested columns
 result.plan  # resolved execution steps: which FeatureGroup ran on which framework
 ```
 
-The options key is the reader class or its class-name string; both select the same reader. The option value is a GovData dataset slug or a direct distribution URL. The license is read from the CKAN distribution metadata. Set `BaseGovDataReader.cache_dir` to control where downloads are cached (harmonized features below use a
-separate `HarmonizationFeature.cache_dir`). For any other GovData CSV dataset, `GovDataReader` works out of the box and reads every column as a string; subclass it and set `schema` for typed columns.
+The options key is the reader class or its class-name string; both select the same reader. The option value is a GovData dataset slug or a direct distribution URL. The license is read from the CKAN distribution metadata. Set `BaseGovDataReader.cache_dir` to control where downloads are cached (harmonized features below use a separate `HarmonizationFeature.cache_dir`). For any other GovData CSV dataset, `GovDataReader` works out of the box and reads every column as a string; subclass it and set `schema` for typed columns.
 
 Don't know the slug yet? Search GovData with the paginated CKAN `package_search` API:
 
@@ -100,75 +101,28 @@ result = mloda.run_all(
 
 Columns are `station_id`, `date_start`, `component_id`, `scope_id`, `value`, `date_end`, and `index` (the air-quality index). Component and scope ids come from the UBA `components` and `scopes` endpoints.
 
-The Destatis connector reads a GENESIS table (Statistisches Bundesamt or a Regionalstatistik
-installation) by table code, needs a free registration (`GENESIS_TOKEN` or `GENESIS_USER` /
-`GENESIS_PASSWORD`; see [docs/credentials.md](docs/credentials.md)), and parses the ffcsv reply:
+### Destatis
+
+The Destatis connector reads a GENESIS table (Statistisches Bundesamt or a Regionalstatistik installation) by table code, needs a free registration (`GENESIS_TOKEN` or `GENESIS_USER` / `GENESIS_PASSWORD`; see [docs/credentials.md](docs/credentials.md)), and parses the ffcsv reply:
 
 ```python
 from mloda_plugin_govdata.feature_groups.destatis import DestatisReader
 
 result = mloda.run_all(
-    [
-        Feature(
-            "value",
-            options={
-                DestatisReader.__name__: {
-                    "name": "12411-0015",
-                    "regionalvariable": "KREISE",
-                    "regionalkey": ["03159"],
-                    "startyear": 2016,
-                    "endyear": 2016,
-                }
-            },
-        )
-    ],
+    [Feature("value", options={DestatisReader: "12411-0010"})],  # population by Land
     compute_frameworks=["PyArrowTable"],
 )
 ```
 
-The option value is a bare table code, a `DestatisLocator`, or the dict form above (JSON-native, so
-it round-trips through a recipe file); see [docs/destatis-options.md](docs/destatis-options.md) for
-the full parameter table. `peek` lists the ffcsv columns the same way as the other readers.
+The option value is a bare table code (the server's default years), a `DestatisLocator`, or its dict form; the latter two narrow the selection by region, years, and classifying variables, and the dict form round-trips through a recipe file. See [docs/destatis-options.md](docs/destatis-options.md) for the full parameter table. `peek` lists the ffcsv columns the same way as the other readers.
 
-Harmonized features sit on top of the reader columns: `value__rebased` re-bases a Kreis series onto a
-later Gebietsstand with the BBSR keys, `1_variable_attribute_code__nuts2024` adds NUTS codes, and
-`time__year_period` types the period. The re-based series carries its flags, sources, issues and
-key-sheet provenance as columns; see [docs/harmonization.md](docs/harmonization.md).
+### Harmonization
 
-```python
-from mloda_plugin_govdata.feature_groups.govdata import DownloadCache
-from mloda_plugin_govdata.feature_groups.harmonization import KreisRebaseFeature  # registers the groups
-from mloda_plugin_govdata.feature_groups.harmonization.core.reference.bbsr import load_bbsr_kreise
+Harmonized features chain an operation onto a reader column (`<column>__<operation>`): `value__rebased` re-bases a Kreis series onto a later Gebietsstand with the BBSR keys, `1_variable_attribute_code__nuts2024` adds NUTS codes to Kreis and Gemeinde keys, and `time__year_period` types the period. A feature with several output columns returns them as `<name>~<part>`, mloda's multi-output convention: `value__rebased~key`, `value__rebased~flag`, and so on. `value__rebased` and `__nuts2024` read their reference tables offline from `HarmonizationFeature.cache_dir`, so fetch them once first; see [docs/harmonization.md](docs/harmonization.md) for the example, the options, and the one-time fetch.
 
-with DownloadCache(KreisRebaseFeature.cache_dir) as cache:
-    load_bbsr_kreise(cache, revalidate=True)  # the BBSR key file, fetched once and read offline afterwards
+### Recipes
 
-goettingen = {
-    "name": "12411-0015",
-    "regionalvariable": "KREISE",
-    "regionalkey": ["03152", "03156", "03159"],
-    "startyear": 2013,
-    "endyear": 2017,
-}
-result = mloda.run_all(
-    [
-        Feature(
-            "value__rebased",
-            options={DestatisReader.__name__: goettingen, "rebase_from_year": 2015, "rebase_to_year": 2016},
-        )
-    ],
-    compute_frameworks=["PyArrowTable"],
-)
-result[0]  # value__rebased~key, ~year, ~value, ~flag, ~sources, ~marker, ~issues, ~provenance
-```
-
-`KreisRebaseFeature.cache_dir` above is independent of `BaseGovDataReader.cache_dir`; see
-[docs/harmonization.md](docs/harmonization.md) before moving either to a persistent volume.
-
-A recipe file bundles the features, joins, and provenance of one run as JSON; `load_recipe` returns what
-`mloda.run_all` needs plus the compliance block (license, attribution, payload sha256, credential env names).
-Recipes ship under `recipes/` in the repository, not in the published package: the Land table, the re-based Kreis series, a rate with its denominator, the
-Land-level join, and the three example datasets above. See [docs/recipes.md](docs/recipes.md).
+A recipe file bundles the features, joins, and provenance of one run as JSON; `load_recipe` returns what `mloda.run_all` needs plus the compliance block (license, attribution, payload sha256, credential env names). Recipes ship under `recipes/` in the repository, not in the published package: the Land table, the re-based Kreis series, a rate with its denominator, the Land-level join, and the three example datasets above. See [docs/recipes.md](docs/recipes.md).
 
 ```python
 from mloda_plugin_govdata.recipes import load_recipe
@@ -180,7 +134,7 @@ recipe.compliance.sources[0].attribution  # what to print next to the result
 
 ## Demo
 
-An interactive [marimo](https://marimo.io) notebook walks through dataset discovery, all three example datasets, and two shipped recipes over Destatis tables (population per eligible voter by Land, a Kreis series re-based across a merger). The notebook lives in the repository (not in the published package), so run it from a source checkout:
+An interactive [marimo](https://marimo.io) notebook walks through dataset discovery, all three example datasets, a Destatis table, a recipe joining two sources (population per eligible voter by Land), and a Kreis series re-based across a merger. The notebook lives in the repository (not in the published package), so run it from a source checkout:
 
 ```bash
 git clone https://github.com/mloda-ai/mloda-plugin-govdata.git
@@ -189,7 +143,7 @@ uv sync --all-extras
 uv run marimo edit demos/govdata_demo.py
 ```
 
-The notebook hits the live GovData, Bundeswahlleiterin, UBA, and GENESIS-Online endpoints and fetches the BBSR key file; downloads are cached locally after the first run. The Destatis chapter needs GENESIS-Online credentials in the environment (`GENESIS_TOKEN`, or `GENESIS_USER` and `GENESIS_PASSWORD`; see [docs/credentials.md](docs/credentials.md)) and skips itself without them.
+The notebook hits the live GovData, Bundeswahlleiterin, UBA, and GENESIS-Online endpoints and fetches the BBSR key file; downloads are cached locally after the first run. The Destatis chapters need GENESIS-Online credentials in the environment (`GENESIS_TOKEN`, or `GENESIS_USER` and `GENESIS_PASSWORD`; see [docs/credentials.md](docs/credentials.md)) and skip themselves without them.
 
 ## Related Repositories
 

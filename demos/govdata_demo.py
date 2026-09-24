@@ -1,4 +1,4 @@
-"""Marimo demo: discover GovData datasets, read three example datasets, run two Destatis recipes.
+"""Marimo demo: discover GovData datasets, read three example datasets and a Destatis table, run two recipes.
 
 Run with: marimo edit demos/govdata_demo.py (needs network access; install the
 "demo" extra for marimo itself).
@@ -25,8 +25,9 @@ def _(mo):
 
         German open government data as mloda features: search GovData via the
         paginated CKAN API, read three example datasets (population,
-        elections, environment) as typed Arrow tables, then run two shipped
-        recipes over Destatis tables. Every cell below talks to the live
+        elections, environment) as typed Arrow tables, then read a Destatis
+        table, join two sources with a shipped recipe, and re-base a Kreis
+        series across a merger. Every cell below talks to the live
         endpoints; downloads are cached locally after the first run.
 
         Part of the Prototype Fund project mloda-plugin-govdata (FKZ 16IS26S11).
@@ -172,28 +173,24 @@ def _(
 
 @app.cell
 def _(mo):
-    mo.md("""## 5. Destatis through recipes (GENESIS-Online)""")
-    return
-
-
-@app.cell
-def _(mo):
     mo.md(
         """
-        A recipe file under `recipes/` names the features of one run, the joins, and where the data
-        came from; `load_recipe` returns what `mloda.run_all` needs plus the compliance block. The
-        cells below need a GENESIS-Online registration in the environment before marimo starts:
-        `GENESIS_TOKEN`, or `GENESIS_USER` and `GENESIS_PASSWORD` (see `docs/credentials.md`).
+        ## 5. Destatis: population by Land (GENESIS-Online)
+
+        This chapter and the next two need a GENESIS-Online registration in the environment before
+        marimo starts: `GENESIS_TOKEN`, or `GENESIS_USER` and `GENESIS_PASSWORD` (see
+        `docs/credentials.md`). Without one they skip themselves.
         """
     )
     return
 
 
 @app.cell
-def _():
+def _(mo):
     from mloda_plugin_govdata.feature_groups.destatis import (
         GENESIS_ONLINE,
         DestatisCredentials,
+        DestatisReader,
         MissingCredentialsError,
     )
     from mloda_plugin_govdata.feature_groups.govdata import CacheMissError, DownloadCache
@@ -203,23 +200,7 @@ def _():
     from mloda_plugin_govdata.feature_groups.land_population_per_voter import LandPopulationPerVoter
     from mloda_plugin_govdata.recipes import frames_by_column, load_recipe
 
-    return (
-        CacheMissError,
-        DestatisCredentials,
-        DownloadCache,
-        GENESIS_ONLINE,
-        KreisRebaseFeature,
-        LandPopulationPerVoter,
-        MissingCredentialsError,
-        check_land_names,
-        frames_by_column,
-        load_bbsr_kreise,
-        load_recipe,
-    )
-
-
-@app.cell
-def _(DestatisCredentials, GENESIS_ONLINE, MissingCredentialsError, mo):
+    # Every Destatis cell takes a name from this cell, so mo.stop skips them all.
     _why = None
     try:
         if DestatisCredentials.from_env(GENESIS_ONLINE) is None:
@@ -239,19 +220,50 @@ def _(DestatisCredentials, GENESIS_ONLINE, MissingCredentialsError, mo):
         )
         return mo.md(f"{sources}\n\n{recipe.compliance.notes or ''}")
 
-    return compliance_note, recipes
+    return (
+        CacheMissError,
+        DestatisReader,
+        DownloadCache,
+        KreisRebaseFeature,
+        LandPopulationPerVoter,
+        check_land_names,
+        compliance_note,
+        frames_by_column,
+        load_bbsr_kreise,
+        load_recipe,
+        recipes,
+    )
+
+
+@app.cell
+def _(DestatisReader, Feature, mloda):
+    _table = "12411-0010"  # a bare table code: the server's default years
+    _result = mloda.run_all(
+        [
+            Feature("time", options={DestatisReader: _table}),
+            Feature("1_variable_attribute_code", options={DestatisReader: _table}),
+            Feature("1_variable_attribute_label", options={DestatisReader: _table}),
+            Feature("value", options={DestatisReader: _table}),
+        ],
+        compute_frameworks=["PyArrowTable"],
+    )
+    land_population = _result[0].to_pandas()
+    land_population
+    return
 
 
 @app.cell
 def _(mo):
     mo.md(
         """
-        ### Population per eligible voter by Land (`land_population_per_voter.json`)
+        ## 6. Join two sources with a recipe: population per eligible voter by Land (`land_population_per_voter.json`)
 
-        Requesting the recipe's own features returns two frames, one per source. `check_land_names`
-        verifies the AGS-2 codes and names on each side. `LandPopulationPerVoter` is a consumer
-        FeatureGroup needing a column from each side and declares the recipe's link on both inputs,
-        so mloda's join fires for it: no manual merge.
+        A recipe file under `recipes/` names the features of one run, the joins, and where the data
+        came from; `load_recipe` returns what `mloda.run_all` needs plus the compliance block.
+        Requesting the recipe's own features returns two frames, one per source.
+        `check_land_names` verifies the AGS-2 codes and names on each side.
+        `LandPopulationPerVoter` is a consumer FeatureGroup needing a column from each side and
+        declares the recipe's link on both inputs, so mloda's join fires for it: no manual merge.
         """
     )
     return
@@ -296,7 +308,7 @@ def _(compliance_note, land_recipe):
 def _(mo):
     mo.md(
         """
-        ### A Kreis series re-based across the Göttingen merger (`kreis_population_rebased.json`)
+        ## 7. Re-base a Kreis series across the Göttingen merger (`kreis_population_rebased.json`)
 
         The BBSR key file must be in the download cache before the feature group runs: fetched once,
         checked against its pinned sha256, read offline afterwards.
