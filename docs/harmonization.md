@@ -33,7 +33,15 @@ location. `AnnualPeriodFeature` inherits the attribute but reads no reference ta
 ```python
 from mloda.user import Feature, Options, mloda
 from mloda_plugin_govdata.feature_groups.destatis import DestatisReader
-from mloda_plugin_govdata.feature_groups.harmonization import KreisRebaseFeature  # noqa: F401 (registers the groups)
+from mloda_plugin_govdata.feature_groups.govdata import CacheMissError, DownloadCache
+from mloda_plugin_govdata.feature_groups.harmonization import KreisRebaseFeature  # registers the groups
+from mloda_plugin_govdata.feature_groups.harmonization.core.reference.bbsr import load_bbsr_kreise
+
+with DownloadCache(KreisRebaseFeature.cache_dir) as cache:
+    try:
+        load_bbsr_kreise(cache)  # offline: the cached key file, checked against its pinned sha256
+    except CacheMissError:
+        load_bbsr_kreise(cache, revalidate=True)  # first run: fetch it once
 
 goettingen = {
     "name": "12411-0015",

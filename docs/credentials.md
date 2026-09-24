@@ -57,4 +57,4 @@ GENESIS_TOKEN=... pytest -m "live and genesis_live"
 
 ## Demo
 
-The demo notebook's Destatis chapter resolves credentials the same way and skips itself, naming the reason, when none are set.
+The demo notebook's Destatis chapters resolve credentials the same way and skip themselves, naming the reason, when none are set.
