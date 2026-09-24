@@ -9,15 +9,15 @@ import pyarrow as pa
 import respx
 
 from mloda_plugin_govdata.recipes import load_recipe
-
-from .conftest import GOVDATA_FIXTURES, Mock, run
-from .shipped import (
+from scripts.write_recipes import (
     BUNDESTAGSWAHL_2025,
     CSU_ZWEITSTIMMEN,
     STUTTGART_POPULATION,
     UBA_OZONE_STATION_143,
     UEBRIGE_VORPERIODE,
 )
+
+from .conftest import GOVDATA_FIXTURES, Mock, run
 
 STUTTGART_HEADER = "Stichtag;Stadtbezirk;Alter in 10 Gruppen;Einwohner\n"
 

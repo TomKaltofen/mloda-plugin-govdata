@@ -24,9 +24,8 @@ from mloda_plugin_govdata.recipes import (
     write_recipe,
 )
 from mloda_plugin_govdata.recipes.write import _UNSUPPORTED, SUPPORTED_FEATURE_PARAMETERS
-
-from .shipped import KERG_URL, LAND_SHA256
-from .shipped import LAND as LAND_LOCATOR
+from scripts.write_recipes import KERG_URL, LAND_SHA256
+from scripts.write_recipes import LAND as LAND_LOCATOR
 
 BERLIN_URL = "https://www.wahlen-berlin.de/wahlen/BE2023/AFSPRAES/agh/Datenexport_AGH2023_Zweitstimme_W_BE.csv"
 COMPLIANCE = Compliance(
@@ -109,33 +108,6 @@ def test_writing_a_loaded_recipe_again_gives_the_same_text() -> None:
     loaded = parse_recipe(first)
     second = recipe_to_json(build_recipe(loaded.features, loaded.compliance, loaded.links))
     assert first == second
-
-
-def test_the_fixture_is_what_the_writer_produces(fixtures_dir: Path) -> None:
-    compliance = Compliance(
-        sources=[
-            SourceCompliance(
-                license="dl-de/by-2-0",
-                attribution="(c) Statistisches Bundesamt (Destatis), 2026",
-                dataset_uri="https://genesis.destatis.de/datenbank/online/statistic/12411/table/12411-0010",
-                retrieved_at=datetime(2026, 9, 8, tzinfo=timezone.utc),
-                sha256=LAND_SHA256,
-                modifications=[
-                    "ffcsv reply parsed into a typed table; the raw value sign is kept in value_marker",
-                    "time normalized to the calendar year of the Stichtag",
-                ],
-                credential_env=["GENESIS_TOKEN"],
-            )
-        ],
-        notes="Fortschreibung des Bevölkerungsstandes, Stichtag 2024-12-31, all 16 Länder (DLAND 01 to 16).",
-    )
-    features = [
-        Feature(name, options={DestatisReader.__name__: LAND_LOCATOR})
-        for name in ("1_variable_attribute_code", "value")
-    ]
-    assert recipe_to_json(build_recipe(features, compliance)) == (fixtures_dir / "land_population.json").read_text(
-        "utf-8"
-    )
 
 
 def test_links_block_builds_the_link_with_discriminators() -> None:

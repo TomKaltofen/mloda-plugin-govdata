@@ -9,10 +9,12 @@ from pathlib import Path
 import pytest
 
 from mloda_plugin_govdata.recipes import load_recipe
+from scripts.write_recipes import RECIPES_DIR
 
-from .conftest import FFCSV_FIXTURES, GOETTINGEN_ZIP, LAND_ZIP, RECIPES_DIR, REFERENCE_FIXTURES, REPO_ROOT
+from .conftest import FFCSV_FIXTURES, GOETTINGEN_ZIP, LAND_ZIP, REFERENCE_FIXTURES
 
 LAND_TABLE_ZIP = FFCSV_FIXTURES / LAND_ZIP
+LAND_RECIPE = RECIPES_DIR / "land_population.json"
 
 _RUN_SCRIPT = textwrap.dedent(
     """
@@ -116,23 +118,15 @@ def _fresh_process(script: str, *args: str) -> None:
     assert completed.stdout.strip() == "OK"
 
 
-def test_fixture_recipe_pins_the_captured_payload(fixtures_dir: Path) -> None:
-    recipe = load_recipe(fixtures_dir / "land_population.json")
-    (source,) = recipe.compliance.sources
+def test_land_population_pins_the_captured_payload() -> None:
+    (source,) = load_recipe(LAND_RECIPE).compliance.sources
     assert source.sha256 == hashlib.sha256(LAND_TABLE_ZIP.read_bytes()).hexdigest()
     assert source.credential_env == ["GENESIS_TOKEN"]
 
 
-def test_the_repo_root_recipe_is_the_fixture(fixtures_dir: Path) -> None:
-    shipped = REPO_ROOT / "recipes" / "land_population.json"
-    assert shipped.read_text("utf-8") == (fixtures_dir / "land_population.json").read_text("utf-8")
-
-
-def test_recipe_runs_through_mloda_in_a_fresh_process(
-    fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_recipe_runs_through_mloda_in_a_fresh_process(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("GENESIS_TOKEN", "test-token")
-    _fresh_process(_RUN_SCRIPT, str(fixtures_dir / "land_population.json"), str(LAND_TABLE_ZIP), str(tmp_path))
+    _fresh_process(_RUN_SCRIPT, str(LAND_RECIPE), str(LAND_TABLE_ZIP), str(tmp_path))
 
 
 def test_the_rebased_recipe_runs_in_a_fresh_process(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

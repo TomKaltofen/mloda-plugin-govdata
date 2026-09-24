@@ -14,9 +14,9 @@ from mloda.user import Feature
 from mloda_plugin_govdata.feature_groups.harmonization.core.rebase import ValidityError
 from mloda_plugin_govdata.feature_groups.harmonization.core.reference.sources import BBSR_KREISE
 from mloda_plugin_govdata.recipes import load_recipe
+from scripts.write_recipes import CONFIGURATION_BASED_NAME, KREIS_POPULATION_REBASED
 
 from .conftest import EXPECTED_DIR, FFCSV_FIXTURES, GOETTINGEN_ZIP, ffcsv_zip_with_rows, run
-from .shipped import CONFIGURATION_BASED_NAME, KREIS_POPULATION_REBASED
 
 Genesis = Callable[[Mapping[str, str | bytes]], respx.Route]
 PARTS = ("key", "year", "value", "flag", "sources", "marker", "issues", "provenance")

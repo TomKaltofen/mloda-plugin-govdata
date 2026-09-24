@@ -12,9 +12,9 @@ from mloda_plugin_govdata.feature_groups.harmonization.core.land_codes import LA
 from mloda_plugin_govdata.feature_groups.harmonization.core.tests.test_land_codes import BUNDESGEBIET, BUNDESGEBIET_ROW
 from mloda_plugin_govdata.feature_groups.land_population_per_voter import LAND_LINK, LandPopulationPerVoter
 from mloda_plugin_govdata.recipes import LoadedRecipe, frames_by_column, load_recipe
+from scripts.write_recipes import CSU_ZWEITSTIMMEN, KEY, LAND_POPULATION_PER_VOTER, VOTERS
 
 from .conftest import FFCSV_FIXTURES, GOVDATA_FIXTURES, LAND_ZIP, Mock, run
-from .shipped import CSU_ZWEITSTIMMEN, KEY, LAND_POPULATION_PER_VOTER, VOTERS
 
 Genesis = Callable[[Mapping[str, str | bytes]], respx.Route]
 
