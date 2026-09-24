@@ -11,8 +11,7 @@ from mloda_plugin_govdata.feature_groups.destatis.core.auth import DestatisCrede
 from mloda_plugin_govdata.feature_groups.destatis.core.hosts import GENESIS_ONLINE, KNOWN_HOSTS
 from mloda_plugin_govdata.feature_groups.destatis.reader import DestatisReader
 
-# Pinned in week 0: Bevoelkerung, Kreise, Stichtag; small enough for a direct download, Berlin
-# present, GENESIS-Online only.
+# Bevoelkerung, Kreise, Stichtag: small enough for a direct download, Berlin present, GENESIS-Online only.
 LIVE_TABLE = "12411-0015"
 
 

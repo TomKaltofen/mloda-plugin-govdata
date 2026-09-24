@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from ...govdata.core.cache import write_atomic
-from .api import OPERATIONS
+from .api import CLASSIFYING_KEYS, OPERATIONS
 from .hosts import GenesisHost, resolve_host
 from .redact import CREDENTIAL_KEYS
 
@@ -35,7 +35,7 @@ _HASH_CHUNK = 1 << 20
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 
 # Comma-separated selections the server treats as sets: sorted for the key and on the wire.
-SELECTION_FIELDS: frozenset[str] = frozenset({"regionalkey", *(f"classifyingkey{i}" for i in range(1, 6))})
+SELECTION_FIELDS: frozenset[str] = frozenset({"regionalkey", *CLASSIFYING_KEYS})
 
 
 def _wire_scalar(name: str, value: object) -> str:

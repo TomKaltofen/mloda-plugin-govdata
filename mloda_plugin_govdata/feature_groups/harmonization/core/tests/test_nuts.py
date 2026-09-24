@@ -66,10 +66,10 @@ def real_crosswalk(reference_fixtures_dir: Path) -> NutsCrosswalk:
     )
 
 
-# --- the five hand-mapped keys from ADR 0006 --------------------------------------------
+# --- the five hand-mapped keys of the fixture extract ------------------------------------
 
 
-def test_the_five_adr_0006_hand_mapped_keys(real_crosswalk: NutsCrosswalk) -> None:
+def test_the_five_hand_mapped_keys(real_crosswalk: NutsCrosswalk) -> None:
     result = map_ags_to_nuts(
         ["11000", "03159", "03159501", "07135", "07140"], crosswalk=real_crosswalk, on_unmatched="raise"
     )
@@ -83,10 +83,10 @@ def test_the_five_adr_0006_hand_mapped_keys(real_crosswalk: NutsCrosswalk) -> No
     }
 
 
-# --- slice-0 Kreis merger: old and new Kreis codes agree --------------------------------
+# --- the 2016 Goettingen Kreis merger: old and new Kreis codes agree --------------------
 
 
-def test_slice_0_kreis_merger_old_and_new_codes_agree(real_crosswalk: NutsCrosswalk) -> None:
+def test_goettingen_merger_old_and_new_codes_agree(real_crosswalk: NutsCrosswalk) -> None:
     # The merged Kreis 03159 is in the crosswalk directly; the retired 03152 and 03156
     # are not (they predate NUTS 2024) and only resolve through the GV-ISys redirect. All
     # three land on the same NUTS-3 code: the pre- and post-merger Gebietsstand of the
@@ -153,8 +153,7 @@ def test_city_states_are_consistent() -> None:
 
 
 def test_gemeindefreies_gebiet_not_in_the_crosswalk_is_unmatched(real_crosswalk: NutsCrosswalk) -> None:
-    # A Gemeindefreies Gebiet outside the small ADR 0006 extract: general 8-digit
-    # Gemeinde/Gemeindefreies-Gebiet resolution beyond exact lookup is D4 stretch scope.
+    # A Gemeindefreies Gebiet outside the extract: 8-digit keys resolve by exact lookup only.
     result = map_ags_to_nuts(["09184901"], crosswalk=real_crosswalk, on_unmatched="flag")
     assert result.matched == ()
     assert "not found" in result.unmatched[0].reason

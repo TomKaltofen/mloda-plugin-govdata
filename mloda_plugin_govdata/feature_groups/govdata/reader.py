@@ -74,9 +74,9 @@ class BaseGovDataReader(ReadFile, Generic[LocatorT]):
 
     @classmethod
     def load_data(cls, data_access: Any, features: FeatureSet) -> Any:
-        # Overriding load_data wholesale classifies this as a final reader (mloda >=0.10.0
-        # is_final_reader, structural, no runtime probe).
-        # Sorted tuple since mloda 0.10.0 (deterministic column order). Names are FeatureName, a str subclass;
+        # Overriding load_data wholesale classifies this as a final reader (mloda's is_final_reader,
+        # structural, no runtime probe).
+        # get_all_names() is a sorted tuple (deterministic column order) of FeatureName, a str subclass;
         # normalized so messages print plain names.
         requested = [str(name) for name in features.get_all_names()]
         locator = cls._coerce_locator(data_access)

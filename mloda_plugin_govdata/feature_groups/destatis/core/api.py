@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 import os
 import threading
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -39,7 +39,6 @@ __all__ = [
     "GenesisClient",
     "Operation",
     "fetch_tablefile",
-    "tablefile_parameters",
 ]
 
 logger = logging.getLogger(__name__)
@@ -60,6 +59,9 @@ class Operation:
     fields: frozenset[str]  # form fields (POST) or query parameters (GET) the client may send
 
 
+CLASSIFYING_VARIABLES: tuple[str, ...] = tuple(f"classifyingvariable{i}" for i in range(1, 6))
+CLASSIFYING_KEYS: tuple[str, ...] = tuple(f"classifyingkey{i}" for i in range(1, 6))
+
 TABLEFILE_FIELDS: frozenset[str] = frozenset(
     {
         "name",
@@ -72,8 +74,8 @@ TABLEFILE_FIELDS: frozenset[str] = frozenset(
         "timeslices",
         "regionalvariable",
         "regionalkey",
-        *(f"classifyingvariable{i}" for i in range(1, 6)),
-        *(f"classifyingkey{i}" for i in range(1, 6)),
+        *CLASSIFYING_VARIABLES,
+        *CLASSIFYING_KEYS,
         "format",
         "quality",
         "job",
@@ -81,6 +83,13 @@ TABLEFILE_FIELDS: frozenset[str] = frozenset(
         "language",
     }
 )
+# Sent on every data/tablefile request; not locator fields (see docs/destatis-options.md).
+PINNED_TABLEFILE_FIELDS: Mapping[str, str] = {
+    "format": "ffcsv",
+    "job": "false",
+    "compress": "false",
+    "transpose": "false",
+}
 
 OPERATIONS: dict[str, Operation] = {
     "helloworld/whoami": Operation("helloworld/whoami", "GET", credentials=False, fields=frozenset()),
@@ -265,72 +274,6 @@ class GenesisClient(OwnedHttpClient):
         if not isinstance(reply, GenesisEnvelope):
             raise GenesisUnknownEnvelope(f"{endpoint} did not answer with the nested envelope", endpoint=endpoint)
         return reply
-
-
-def tablefile_parameters(
-    name: str,
-    *,
-    regionalvariable: str | None = None,
-    regionalkey: Sequence[str] | str | None = None,
-    classifyingvariable1: str | None = None,
-    classifyingkey1: Sequence[str] | str | None = None,
-    classifyingvariable2: str | None = None,
-    classifyingkey2: Sequence[str] | str | None = None,
-    classifyingvariable3: str | None = None,
-    classifyingkey3: Sequence[str] | str | None = None,
-    classifyingvariable4: str | None = None,
-    classifyingkey4: Sequence[str] | str | None = None,
-    classifyingvariable5: str | None = None,
-    classifyingkey5: Sequence[str] | str | None = None,
-    contents: Sequence[str] | str | None = None,
-    startyear: int | str | None = None,
-    endyear: int | str | None = None,
-    quality: bool = False,
-    language: str = DEFAULT_LANGUAGE,
-) -> dict[str, object]:
-    """``data/tablefile`` fields for one selection, the wire policy applied.
-
-    Pass the result as the ``fields`` argument of ``ParameterCache.get_or_fetch``, which
-    canonicalizes it (sorts selection lists, stringifies ints) before keying and calling ``fetch``.
-    ``format``, ``job``, ``compress``, and ``transpose`` are pinned; ``quality`` is sent as
-    ``on``/``off``. ``area``, ``stand``, and ``timeslices`` are not locator fields (server
-    defaults apply; see ``docs/destatis-options.md``) and never appear in the result.
-
-    ``language`` is pinned to ``"de"``: ``parse_ffcsv_bytes`` assumes German decimal-comma
-    formatting, and an ``en`` reply (dot decimals, same column names) would parse without error
-    but silently corrupt every value. Raises ``ValueError`` for anything else until the parser
-    also handles English replies.
-    """
-    if language != DEFAULT_LANGUAGE:
-        raise ValueError(f"tablefile_parameters: language must be {DEFAULT_LANGUAGE!r}, got {language!r}")
-    selection: dict[str, object | None] = {
-        "name": name,
-        "regionalvariable": regionalvariable,
-        "regionalkey": regionalkey,
-        "classifyingvariable1": classifyingvariable1,
-        "classifyingkey1": classifyingkey1,
-        "classifyingvariable2": classifyingvariable2,
-        "classifyingkey2": classifyingkey2,
-        "classifyingvariable3": classifyingvariable3,
-        "classifyingkey3": classifyingkey3,
-        "classifyingvariable4": classifyingvariable4,
-        "classifyingkey4": classifyingkey4,
-        "classifyingvariable5": classifyingvariable5,
-        "classifyingkey5": classifyingkey5,
-        "contents": contents,
-        "startyear": startyear,
-        "endyear": endyear,
-    }
-    fields: dict[str, object] = {k: v for k, v in selection.items() if v is not None}
-    fields.update(
-        language=language,
-        format="ffcsv",
-        job="false",
-        compress="false",
-        transpose="false",
-        quality="on" if quality else "off",
-    )
-    return fields
 
 
 def fetch_tablefile(client: GenesisClient, parameters: Mapping[str, str]) -> bytes:

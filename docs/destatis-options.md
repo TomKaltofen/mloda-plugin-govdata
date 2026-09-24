@@ -18,9 +18,9 @@ Feature("value", options={DestatisReader.__name__: DestatisLocator("12411-0015",
 Feature("value", options={DestatisReader.__name__: {"name": "12411-0015", "regionalvariable": "KREISE"}})
 ```
 
-Locator fields that are not `data/tablefile` parameters: `host` (`genesis`, the default, or
-`regionalstatistik`; registrations are per host, see [credentials.md](credentials.md)) and `language`
-(pinned `de`, see the table). The selection is validated at construction: an unknown table code shape, a
+The one locator field that is not a `data/tablefile` parameter is `host` (`genesis`, the default, or
+`regionalstatistik`; registrations are per host, see [credentials.md](credentials.md)); `language` is sent,
+pinned to `de` (see the table). The selection is validated at construction: an unknown table code shape, a
 year outside 1900 to 2100, `startyear` after `endyear`, or an unknown dict key fails before any request.
 
 ## `data/tablefile` parameters

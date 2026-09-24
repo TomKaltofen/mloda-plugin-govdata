@@ -1,4 +1,4 @@
-"""KreisRebaseFeature: matching, option forwarding, and the C2 cells through mloda.run_all."""
+"""KreisRebaseFeature: matching, option forwarding, and the expected re-based cells through mloda.run_all."""
 
 import csv
 import json
@@ -108,7 +108,7 @@ def test_the_destatis_reader_leaves_chained_names_to_the_derived_groups() -> Non
 
 
 @respx.mock
-def test_c2_goettingen_series_through_the_configuration_based_name(
+def test_goettingen_series_through_the_configuration_based_name(
     genesis: Callable[[str], respx.Route], extract_keys: None, expected_dir: Path
 ) -> None:
     route = genesis(GOETTINGEN_ZIP)
@@ -120,7 +120,7 @@ def test_c2_goettingen_series_through_the_configuration_based_name(
     table = result[0]
 
     assert sorted(table.schema.names) == sorted(f"{CONFIGURATION_BASED_NAME}~{part}" for part in PARTS)
-    assert _cells(table, CONFIGURATION_BASED_NAME) == _expected(expected_dir / "c2-goettingen-2016.csv")
+    assert _cells(table, CONFIGURATION_BASED_NAME) == _expected(expected_dir / "expected-goettingen-2016.csv")
     assert table.column(f"{CONFIGURATION_BASED_NAME}~value").to_pylist() == [
         322616.0,
         324013.0,
@@ -140,7 +140,7 @@ def test_the_chained_name_gives_the_same_rows(
 ) -> None:
     genesis(GOETTINGEN_ZIP)
     table = _run([Feature("value__rebased", options={DestatisReader.__name__: GOETTINGEN_LOCATOR, **YEARS})])[0]
-    assert _cells(table, "value__rebased") == _expected(expected_dir / "c2-goettingen-2016.csv")
+    assert _cells(table, "value__rebased") == _expected(expected_dir / "expected-goettingen-2016.csv")
 
 
 @respx.mock
@@ -326,7 +326,7 @@ def test_the_configuration_based_name_round_trips_through_a_recipe(
     )
     loaded = parse_recipe(recipe_to_json(build_recipe([feature], compliance)))
     table = _run(list(loaded.features))[0]
-    assert _cells(table, CONFIGURATION_BASED_NAME) == _expected(expected_dir / "c2-goettingen-2016.csv")
+    assert _cells(table, CONFIGURATION_BASED_NAME) == _expected(expected_dir / "expected-goettingen-2016.csv")
 
 
 @respx.mock
@@ -346,7 +346,7 @@ def test_the_fractional_case_matches_the_expected_values(
         "rebase_share": ShareKind.POPULATION.value,
     }
     table = _run([Feature("value__rebased", options=options)])[0]
-    assert _cells(table, "value__rebased") == _expected(expected_dir / "c2-cochem-zell-2014.csv")
+    assert _cells(table, "value__rebased") == _expected(expected_dir / "expected-cochem-zell-2014.csv")
     assert set(table.column("value__rebased~issues").to_pylist()) == {"[]"}
 
 

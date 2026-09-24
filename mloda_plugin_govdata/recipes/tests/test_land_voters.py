@@ -1,4 +1,4 @@
-"""Recipe 3: both sides run unjoined by default; the links block lets a consumer join them."""
+"""land_population_per_voter: both sides run unjoined by default; the links block lets a consumer join them."""
 
 import hashlib
 from collections.abc import Callable, Mapping

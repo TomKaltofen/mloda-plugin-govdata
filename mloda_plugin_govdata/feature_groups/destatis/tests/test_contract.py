@@ -92,7 +92,7 @@ def test_tablefile_defaults(fixtures_dir: Path, host: str) -> None:
     fields = _form_fields(_spec_operation(_load(fixtures_dir, host), OPERATIONS["data/tablefile"]))
     assert len(fields) == 25
     for name, default in TABLEFILE_DEFAULTS.items():
-        assert fields[name].get("default") == default, f"{name} default moved; revisit the wire policy"
+        assert fields[name].get("default") == default, f"{name} default moved; revisit docs/destatis-options.md"
 
 
 @pytest.mark.parametrize("host", sorted(SPECS))

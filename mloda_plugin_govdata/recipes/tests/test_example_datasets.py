@@ -1,4 +1,4 @@
-"""The three M1 retrofits run offline through mloda, each with its zero-vs-missing case."""
+"""The three example-dataset recipes run offline through mloda, each with its zero-vs-missing case."""
 
 import hashlib
 import json

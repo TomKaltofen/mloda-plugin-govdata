@@ -98,15 +98,15 @@ def goettingen(ffcsv_fixtures_dir: Path) -> list[Observation]:
     return _ffcsv_observations(ffcsv_fixtures_dir / GOETTINGEN_ZIP)
 
 
-# --- C2: the named multi-year Kreis series across the slice-0 Gebietsstand change ------------
+# --- the Goettingen Kreis series across the 2016 merger -------------------------------------
 
 
-def test_c2_goettingen_series_rebased_onto_gebietsstand_2016_cell_for_cell(
+def test_goettingen_series_rebased_onto_gebietsstand_2016_cell_for_cell(
     fixtures_dir: Path, goettingen: list[Observation], bbsr_keys: list[UmsteigeschluesselRow]
 ) -> None:
     result = _rebase(goettingen, bbsr_keys, source=EXTRACT, share="population")
 
-    assert _cells(result.rows) == _expected(fixtures_dir / "c2-goettingen-2016.csv")
+    assert _cells(result.rows) == _expected(fixtures_dir / "expected-goettingen-2016.csv")
     # Merger shares are exactly 1, so the re-based sums are exact, not merely rounded.
     assert [r.value for r in result.rows] == [322616.0, 324013.0, 329538.0, 327065.0, 328036.0]
     assert [r.marker for r in result.rows] == [""] * 5
@@ -183,7 +183,7 @@ def test_fractional_case_matches_the_expected_values_to_the_integer(
     inputs = _snapshot(observations)
     result = _rebase(observations, bbsr_keys, source=EXTRACT, from_year=2013, to_year=2014)
 
-    assert _cells(result.rows) == _expected(fixtures_dir / "c2-cochem-zell-2014.csv")
+    assert _cells(result.rows) == _expected(fixtures_dir / "expected-cochem-zell-2014.csv")
     values = {(r.key, r.year): r.value for r in result.rows}
     stays = values[("07135", 2013)]
     moved = (values[("07140", 2013)] or 0) - 100770

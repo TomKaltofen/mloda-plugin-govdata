@@ -135,7 +135,7 @@ def test_load_data_level2(fixtures_dir: Path, tmp_path: Path, monkeypatch: pytes
     assert set(table.schema.names) == {"Einwohner", "Stadtbezirk"}
     assert table.num_rows == 1000
     assert table.schema.field("Einwohner").type == pa.int64()
-    # RunResult.plan (mloda >=0.10.0): the resolved execution steps name our group and framework.
+    # RunResult.plan: the resolved execution steps name our group and framework.
     compute_steps = [step for step in result.plan if step.step_kind == "compute"]
     assert [step.feature_group_name for step in compute_steps] == ["GovDataFeature"]
     assert compute_steps[0].compute_framework_name == "PyArrowTable"
@@ -368,7 +368,7 @@ def test_peek_rejects_unusable_data_access() -> None:
     [BaseGovDataReader, GovDataReader, StuttgartPopulationReader, BundeswahlleiterinReader, UbaAirReader, FakeReader],
 )
 def test_readers_classify_as_final_readers(reader: type[BaseGovDataReader[Any]]) -> None:
-    # mloda >=0.10.0 classifies readers structurally: overriding load_data wholesale
+    # mloda classifies readers structurally: overriding load_data wholesale
     # relative to the ReadFile anchor makes each reader final; the ReadFile base is not.
     assert reader.final_reader_anchor() is ReadFile
     assert reader.is_final_reader() is True

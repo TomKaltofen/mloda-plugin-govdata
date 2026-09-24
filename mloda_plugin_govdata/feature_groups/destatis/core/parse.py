@@ -1,6 +1,6 @@
 """ffcsv: zip handling, the layout guard, and the typed parser for GENESIS ``data/tablefile`` replies.
 
-Shape pinned offline in week 0 against Destatis' own example zip (``Aenderung_Struktur_Flatfile-CSV.zip``,
+Shape pinned offline against Destatis' own example zip (``Aenderung_Struktur_Flatfile-CSV.zip``,
 sha256 ``46c5bb2f...``): fixed prefix ``statistics_code; statistics_label; time_code; time_label; time``,
 N repeated blocks ``{N}_variable_code; {N}_variable_label; {N}_variable_attribute_code;
 {N}_variable_attribute_label``, then a value block ``value; value_unit; value_variable_code;

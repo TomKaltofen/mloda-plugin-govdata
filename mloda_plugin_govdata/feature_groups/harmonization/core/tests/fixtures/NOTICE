@@ -3,7 +3,7 @@ are hand-computed, not payload captures: each cell is a BBSR share times a GENES
 2026-08-16 and re-checked 2026-09-12 against the captured inputs named below. Columns: key, year, value,
 flag (observed or rebased), sources (contributing Kreis keys, joined with "+", empty when observed).
 
-c2-goettingen-2016.csv
+expected-goettingen-2016.csv
 Kreis 03159 (Göttingen, Landkreis) re-based onto Gebietsstand 31.12.2016, 2013 to 2017. Inputs: the
 GENESIS-Online 12411-0015 cells for 03152, 03156, 03159
 (feature_groups/destatis/tests/fixtures/ffcsv/12411-0015_2013-2017_de_flat.zip) and the BBSR
@@ -11,7 +11,7 @@ Umsteigeschlüssel Kreise sheet 2015-2016, population-proportional share, which 
 into 03159 with share 1 each (feature_groups/harmonization/core/reference/tests/fixtures/bbsr-ref-kreise-extract.xlsx).
 2013 to 2015 are the sums of the two retired Kreise; 2016 and 2017 are observed.
 
-c2-cochem-zell-2014.csv
+expected-cochem-zell-2014.csv
 The fractional case: Kreise 07135 (Cochem-Zell) and 07140 (Rhein-Hunsrück-Kreis) re-based onto
 Gebietsstand 31.12.2014 with sheet 2013-2014, population share 0.9828486440302522 staying in 07135 and
 0.01715135596974779 moving to 07140. Inputs: 12411-0015_2013-2014_de_flat.zip (same folder as above).

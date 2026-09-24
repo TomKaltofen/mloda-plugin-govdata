@@ -23,8 +23,7 @@ def test_rejects_a_bad_table_code(bad: str) -> None:
 
 
 def test_rejects_a_table_code_over_the_documented_length() -> None:
-    # Structurally valid (three dash segments) but over the 15-char spec limit in
-    # docs/destatis-options.md; codex and an independent Opus review both flagged this.
+    # Structurally valid (three dash segments) but over the 15-char spec limit in docs/destatis-options.md.
     with pytest.raises(ValueError, match="not a recognized GENESIS table code"):
         DestatisLocator("12345-1234-1234-1234")
 
@@ -77,7 +76,7 @@ def test_selection_fields_normalize_to_a_tuple() -> None:
 
 
 def test_a_non_bool_quality_is_rejected() -> None:
-    # tablefile_parameters does "on" if quality else "off": any truthy non-bool (e.g. the string
+    # tablefile_fields() sends "on" if quality else "off": any truthy non-bool (e.g. the string
     # "false" from a config file) would silently send quality=on.
     with pytest.raises(TypeError, match="quality must be a bool"):
         DestatisLocator("12411-0015", quality="false")  # type: ignore[arg-type]

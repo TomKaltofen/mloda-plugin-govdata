@@ -112,8 +112,8 @@ def test_load_data_level2_class_key_locator(
 def test_resolves_without_explicit_compute_framework(
     fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    # M1 collision regression, mirrored for the Destatis reader: run_all with no compute_frameworks
-    # pin must still resolve to one group, the same guarantee govdata/tests/test_reader.py checks.
+    # As in govdata/tests/test_reader.py: GovDataFeature must not collide with the built-in ReadFileFeature,
+    # so run_all with no compute_frameworks pin still resolves to one group.
     monkeypatch.setattr(DestatisReader, "cache_dir", str(tmp_path))
     monkeypatch.setenv("GENESIS_TOKEN", TOKEN)
     zip_bytes = (fixtures_dir / "ffcsv" / FFCSV_FIXTURE).read_bytes()
@@ -131,7 +131,7 @@ def test_peek_and_fetch_without_credentials_on_a_cache_hit(
     monkeypatch.setattr(DestatisReader, "cache_dir", str(tmp_path))
     zip_bytes = (fixtures_dir / "ffcsv" / FFCSV_FIXTURE).read_bytes()
     locator = DestatisLocator(TABLE_CODE)
-    fields = DestatisReader._tablefile_fields(locator)
+    fields = locator.tablefile_fields()
     ParameterCache(tmp_path).store(GENESIS_ONLINE, "data/tablefile", fields, zip_bytes)
 
     columns = DestatisReader.peek(TABLE_CODE)
