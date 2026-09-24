@@ -41,6 +41,10 @@ class CacheMissError(RuntimeError):
     """Raised when revalidate=False and the URL is not cached; no request is made."""
 
 
+class PinMismatchError(RuntimeError):
+    """Raised when a downloaded body's sha256 is not the pinned one; the cache is left as it was."""
+
+
 @dataclass(frozen=True)
 class CachedFile:
     path: Path
@@ -79,16 +83,20 @@ class DownloadCache(OwnedHttpClient):
             return None  # unreadable metadata: treat as a cache miss and re-download
         return loaded if isinstance(loaded, dict) else None
 
-    def get_or_download(self, url: str, *, revalidate: bool = True) -> CachedFile:
+    def get_or_download(self, url: str, *, revalidate: bool = True, sha256: str | None = None) -> CachedFile:
+        """``sha256`` pins the body: a cached body with another hash is a miss, and a download with another
+        hash raises ``PinMismatchError`` before the cache is touched."""
         meta = self._read_meta(url)
         cached = self._cached_from_meta(url, meta) if meta is not None else None
+        if cached is not None and sha256 is not None and cached.sha256 != sha256:
+            cached = None
 
         if not revalidate:
             if cached is not None:
                 return cached
             raise CacheMissError(
-                f"{url} has no usable cache entry in {self.cache_dir} "
-                "(missing, corrupted, or without a retrieval time); no request made because revalidate=False"
+                f"{url} has no usable cache entry in {self.cache_dir} (missing, corrupted, without a retrieval "
+                "time, or not the pinned body); no request made because revalidate=False"
             )
 
         # Only revalidate conditionally when there is a valid body to fall back on;
@@ -106,7 +114,7 @@ class DownloadCache(OwnedHttpClient):
                 return cached
             raise RuntimeError(f"server returned 304 for {url} but no cached body is available")
         response.raise_for_status()
-        return self._store(url, response)
+        return self._store(url, response, sha256)
 
     def _cached_from_meta(self, url: str, meta: dict[str, Any]) -> CachedFile | None:
         sha = meta.get("sha256")
@@ -126,9 +134,11 @@ class DownloadCache(OwnedHttpClient):
             return None  # naive timestamp; treat as a miss
         return CachedFile(path=data_path, url=url, sha256=digest, etag=meta.get("etag"), retrieved_at=retrieved_at)
 
-    def _store(self, url: str, response: httpx.Response) -> CachedFile:
+    def _store(self, url: str, response: httpx.Response, pinned: str | None) -> CachedFile:
         body = response.content
         digest = hashlib.sha256(body).hexdigest()
+        if pinned is not None and digest != pinned:
+            raise PinMismatchError(f"{url}: downloaded sha256 {digest} does not match the pinned {pinned}")
         data_path = self.cache_dir / f"{digest}.bin"
         write_atomic(data_path, body)
         retrieved_at = datetime.now(timezone.utc)

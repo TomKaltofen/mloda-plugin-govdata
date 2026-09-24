@@ -1,13 +1,17 @@
 from pathlib import Path
 
+import httpx
 import openpyxl
 import pytest
+import respx
 
 from mloda_plugin_govdata.feature_groups.govdata.core.cache import DownloadCache
 from mloda_plugin_govdata.feature_groups.harmonization.core.reference.bbsr import (
     load_bbsr_kreise,
     parse_bbsr_kreise_workbook,
 )
+from mloda_plugin_govdata.feature_groups.harmonization.core.reference.download import SourceIntegrityError
+from mloda_plugin_govdata.feature_groups.harmonization.core.reference.sources import BBSR_KREISE
 
 
 def test_parses_all_three_fixture_sheets(fixtures_dir: Path) -> None:
@@ -146,9 +150,17 @@ def test_early_sheets_without_employee_columns_parse_with_none(tmp_path: Path) -
     assert (row.employee_share, row.svb_thousands) == (None, None)
 
 
+@respx.mock
+def test_a_drifted_upstream_file_is_refused_by_name_and_not_cached(tmp_path: Path) -> None:
+    respx.get(BBSR_KREISE.url).mock(return_value=httpx.Response(200, content=b"not the pinned workbook"))
+    with DownloadCache(tmp_path) as cache, pytest.raises(SourceIntegrityError, match=BBSR_KREISE.name):
+        load_bbsr_kreise(cache, revalidate=True)
+    assert list(tmp_path.iterdir()) == []
+
+
 @pytest.mark.live
 def test_the_pinned_real_file_parses_with_the_header_cross_check(tmp_path: Path) -> None:
     with DownloadCache(tmp_path) as cache:
         rows = load_bbsr_kreise(cache, revalidate=True)
-    assert {(r.from_year, r.to_year) for r in rows} == {(year, year + 1) for year in range(1990, 2024)}
+    assert {(r.from_year, r.to_year) for r in rows} == {(year, year + 1) for year in range(1990, 2025)}
     assert all(len(r.source_key) == 5 and len(r.target_key) == 5 for r in rows)

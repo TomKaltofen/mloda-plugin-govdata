@@ -24,6 +24,8 @@ Sources and licenses:
   https://www.govdata.de/dl-de/by-2-0. Attribution: (c) Statistisches Bundesamt (Destatis), 2026.
 - Bundesinstitut für Bau-, Stadt- und Raumforschung (BBSR) im Bundesamt für Bauwesen und Raumordnung
   (BBR), Laufende Raumbeobachtung des BBSR, Umsteigeschlüssel Kreise 1990 bis 2024
-  (ref-kreise-1990-2024.xlsx, sha256 68c4d001cc450115938d37c42aa8cc090fb9e6381e7e29d00f049cffdbcc8f1f).
+  (ref-kreise-1990-2024.xlsx, sha256 68c4d001cc450115938d37c42aa8cc090fb9e6381e7e29d00f049cffdbcc8f1f;
+  re-published 2026-09-23 as b7250207cae01268667426ba416312577ba207f0acd8df8048d80db8206a01af with
+  sheet 2024-2025 added and sheet 2015-2016 unchanged).
   Datenlizenz Deutschland - Namensnennung - Version 2.0 (dl-de/by-2-0); redistribution confirmed by
   BBSR Referat RS 6, 2026-06-17. Attribution: "Laufende Raumbeobachtung des BBSR".

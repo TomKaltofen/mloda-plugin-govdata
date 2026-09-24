@@ -44,8 +44,8 @@
         "license": "dl-de/by-2-0",
         "attribution": "Laufende Raumbeobachtung des BBSR",
         "dataset_uri": "https://www.bbsr.bund.de/BBSR/DE/forschung/raumbeobachtung/Raumabgrenzungen/umstiegsschluessel/ref-kreise-1990-2024.xlsx?__blob=publicationFile&v=2",
-        "retrieved_at": "2026-08-17T00:00:00Z",
-        "sha256": "68c4d001cc450115938d37c42aa8cc090fb9e6381e7e29d00f049cffdbcc8f1f",
+        "retrieved_at": "2026-09-24T00:00:00Z",
+        "sha256": "b7250207cae01268667426ba416312577ba207f0acd8df8048d80db8206a01af",
         "modifications": [
           "sheet 2015-2016 read; population-proportional shares applied to the source keys"
         ],
