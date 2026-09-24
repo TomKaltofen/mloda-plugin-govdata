@@ -76,7 +76,7 @@ def test_selection_fields_normalize_to_a_tuple() -> None:
 
 
 def test_a_non_bool_quality_is_rejected() -> None:
-    # tablefile_parameters does "on" if quality else "off": any truthy non-bool (e.g. the string
+    # tablefile_fields() sends "on" if quality else "off": any truthy non-bool (e.g. the string
     # "false" from a config file) would silently send quality=on.
     with pytest.raises(TypeError, match="quality must be a bool"):
         DestatisLocator("12411-0015", quality="false")  # type: ignore[arg-type]

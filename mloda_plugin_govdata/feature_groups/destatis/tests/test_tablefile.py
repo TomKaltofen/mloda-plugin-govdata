@@ -1,6 +1,6 @@
-"""tablefile_parameters (M2 wire policy) and fetch_tablefile (the zip-kind check)."""
+"""DestatisLocator.tablefile_fields (pinned and never-sent fields) and fetch_tablefile (the zip-kind check)."""
 
-import inspect
+import dataclasses
 from functools import partial
 from pathlib import Path
 from urllib.parse import parse_qs
@@ -10,15 +10,16 @@ import pytest
 import respx
 
 from mloda_plugin_govdata.feature_groups.destatis.core.api import (
+    PINNED_TABLEFILE_FIELDS,
     TABLEFILE_FIELDS,
     GenesisClient,
     fetch_tablefile,
-    tablefile_parameters,
 )
 from mloda_plugin_govdata.feature_groups.destatis.core.auth import DestatisCredentials
 from mloda_plugin_govdata.feature_groups.destatis.core.cache import ParameterCache
 from mloda_plugin_govdata.feature_groups.destatis.core.errors import GenesisUnknownEnvelope
 from mloda_plugin_govdata.feature_groups.destatis.core.hosts import GENESIS_ONLINE
+from mloda_plugin_govdata.feature_groups.destatis.locator import DestatisLocator
 
 BASE = GENESIS_ONLINE.base_url
 TOKEN = "t0kenAbCdEf0123456789abcdef012345"
@@ -33,7 +34,7 @@ def _client(tmp_path: Path) -> GenesisClient:
 
 
 def test_minimal_selection_sends_only_the_pinned_fields() -> None:
-    assert tablefile_parameters("12411-0015") == {
+    assert DestatisLocator("12411-0015").tablefile_fields() == {
         "name": "12411-0015",
         "language": "de",
         "format": "ffcsv",
@@ -44,26 +45,26 @@ def test_minimal_selection_sends_only_the_pinned_fields() -> None:
     }
 
 
-def test_full_selection_field_set_and_wire_policy() -> None:
-    fields = tablefile_parameters(
+def test_full_selection_field_set_and_pinned_values() -> None:
+    fields = DestatisLocator(
         "12411-0015",
         regionalvariable="DLAND",
-        regionalkey=["02", "01"],
+        regionalkey=("02", "01"),
         classifyingvariable1="GES",
-        classifyingkey1=["W", "M"],
+        classifyingkey1=("W", "M"),
         classifyingvariable2="ALT",
-        classifyingkey2="U18",
+        classifyingkey2=("U18",),
         classifyingvariable3="X3",
-        classifyingkey3="k3",
+        classifyingkey3=("k3",),
         classifyingvariable4="X4",
-        classifyingkey4="k4",
+        classifyingkey4=("k4",),
         classifyingvariable5="X5",
-        classifyingkey5="k5",
-        contents=["BEVSTD"],
+        classifyingkey5=("k5",),
+        contents=("BEVSTD",),
         startyear=2015,
         endyear=2022,
         quality=True,
-    )
+    ).tablefile_fields()
     assert set(fields) == {
         "name",
         "regionalvariable",
@@ -98,17 +99,13 @@ def test_full_selection_field_set_and_wire_policy() -> None:
     assert fields["job"] == "false"
 
 
-def test_non_german_language_is_rejected() -> None:
-    # parse_ffcsv_bytes assumes German decimal-comma formatting; an "en" reply (dot decimals, same
-    # column names) would pass the layout guard and silently corrupt every value if allowed through.
-    with pytest.raises(ValueError, match="language must be 'de'"):
-        tablefile_parameters("12411-0015", language="en")
-
-
-def test_area_compress_transpose_timeslices_job_stand_are_not_parameters() -> None:
-    # Not locator fields in M2 (docs/destatis-options.md): there is no way to send anything but the
-    # pinned wire value for them through this function.
-    assert NOT_CALLER_CONFIGURABLE.isdisjoint(inspect.signature(tablefile_parameters).parameters)
+def test_area_compress_transpose_timeslices_job_stand_are_not_locator_fields() -> None:
+    # docs/destatis-options.md: a caller cannot send anything but the pinned value, or nothing, for these.
+    names = {f.name for f in dataclasses.fields(DestatisLocator)}
+    assert NOT_CALLER_CONFIGURABLE.isdisjoint(names)
+    # tablefile_fields() sends every locator field but host, so each must be a tablefile field and none pinned.
+    assert names - {"host"} <= TABLEFILE_FIELDS
+    assert names.isdisjoint(PINNED_TABLEFILE_FIELDS)
 
 
 @respx.mock
@@ -137,13 +134,13 @@ def test_fetch_tablefile_raises_on_a_non_zip_reply(tmp_path: Path) -> None:
 
 
 @respx.mock
-def test_tablefile_parameters_round_trip_through_parameter_cache(tmp_path: Path) -> None:
-    # The intended composition: tablefile_parameters builds `fields`, ParameterCache.get_or_fetch
+def test_tablefile_fields_round_trip_through_parameter_cache(tmp_path: Path) -> None:
+    # The intended composition: tablefile_fields() builds `fields`, ParameterCache.get_or_fetch
     # canonicalizes them and calls `fetch` (fetch_tablefile bound to a client) only on a miss.
     route = respx.post(BASE + "data/tablefile").mock(
         return_value=httpx.Response(200, content=ZIP_BODY, headers={"content-type": "application/octet-stream"})
     )
-    fields = tablefile_parameters("12411-0015", regionalkey=["02", "01"], quality=True)
+    fields = DestatisLocator("12411-0015", regionalkey=("02", "01"), quality=True).tablefile_fields()
     cache = ParameterCache(tmp_path / "cache")
     with _client(tmp_path) as client:
         fetch = partial(fetch_tablefile, client)

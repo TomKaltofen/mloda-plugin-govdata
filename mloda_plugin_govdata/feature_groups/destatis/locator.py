@@ -8,7 +8,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, fields
 from typing import Any
 
-from .core.api import DEFAULT_LANGUAGE
+from .core.api import CLASSIFYING_KEYS, CLASSIFYING_VARIABLES, DEFAULT_LANGUAGE, PINNED_TABLEFILE_FIELDS
 from .core.hosts import GENESIS_ONLINE, resolve_host
 
 # Both known shapes: GENESIS-Online "12411-0015" (5 digits, one 1-4 digit segment) and
@@ -17,6 +17,11 @@ from .core.hosts import GENESIS_ONLINE, resolve_host
 _TABLE_CODE = re.compile(r"^\d{5}(-\d{1,4}){1,3}$")
 _MAX_NAME_LENGTH = 15
 _YEAR_RANGE = range(1900, 2101)
+# Selection fields by shape: one dimension code each, or a list of keys (measure codes for contents).
+_CODE_FIELDS = ("regionalvariable", *CLASSIFYING_VARIABLES)
+_LIST_FIELDS = ("regionalkey", *CLASSIFYING_KEYS, "contents")
+# Locator fields that are not sent as themselves: host picks the URL, quality goes out as on/off.
+_NOT_SENT_AS_IS = frozenset({"host", "quality"})
 
 
 def _as_tuple(value: object, field_name: str) -> tuple[str, ...] | None:
@@ -107,24 +112,9 @@ class DestatisLocator:
         if len(name) > _MAX_NAME_LENGTH or not _TABLE_CODE.fullmatch(name):
             raise ValueError(f"DestatisLocator: {self.name!r} is not a recognized GENESIS table code")
         object.__setattr__(self, "name", name)
-        for scalar_field in (
-            "regionalvariable",
-            "classifyingvariable1",
-            "classifyingvariable2",
-            "classifyingvariable3",
-            "classifyingvariable4",
-            "classifyingvariable5",
-        ):
+        for scalar_field in _CODE_FIELDS:
             object.__setattr__(self, scalar_field, _clean_scalar(getattr(self, scalar_field), scalar_field))
-        for tuple_field in (
-            "regionalkey",
-            "classifyingkey1",
-            "classifyingkey2",
-            "classifyingkey3",
-            "classifyingkey4",
-            "classifyingkey5",
-            "contents",
-        ):
+        for tuple_field in _LIST_FIELDS:
             object.__setattr__(self, tuple_field, _as_tuple(getattr(self, tuple_field), tuple_field))
         object.__setattr__(self, "startyear", _clean_year(self.startyear, "startyear"))
         object.__setattr__(self, "endyear", _clean_year(self.endyear, "endyear"))
@@ -133,6 +123,7 @@ class DestatisLocator:
         if not isinstance(self.quality, bool):
             raise TypeError(f"DestatisLocator: quality must be a bool, got {type(self.quality).__name__}")
         object.__setattr__(self, "host", resolve_host(self.host).name)
+        # The ffcsv parser reads German decimal commas; an "en" reply would parse cleanly into wrong values.
         if self.language != DEFAULT_LANGUAGE:
             raise ValueError(f"DestatisLocator: language must be {DEFAULT_LANGUAGE!r}, got {self.language!r}")
 
@@ -167,6 +158,18 @@ class DestatisLocator:
         """JSON-safe round trip: tuples become lists so ``json.dumps`` needs no custom encoder."""
         raw = dataclasses.asdict(self)
         return {k: (list(v) if isinstance(v, tuple) else v) for k, v in raw.items()}
+
+    def tablefile_fields(self) -> dict[str, object]:
+        """``data/tablefile`` form fields: the set locator fields plus the pinned ones.
+
+        Pass it as ``fields`` to ``ParameterCache.get_or_fetch``, which sorts the key lists and stringifies the years.
+        """
+        wire: dict[str, object] = {
+            f.name: value
+            for f in fields(self)
+            if f.name not in _NOT_SENT_AS_IS and (value := getattr(self, f.name)) is not None
+        }
+        return {**wire, **PINNED_TABLEFILE_FIELDS, "quality": "on" if self.quality else "off"}
 
     def describe(self) -> str:
         """Label for messages: the table code, qualified by host when it is not the default."""

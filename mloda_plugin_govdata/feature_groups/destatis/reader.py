@@ -2,7 +2,7 @@
 
 Flow, on the shared ``BaseGovDataReader`` seam:
     match_subclass_data_access  option value -> DestatisLocator; declines chained and ``~part`` names
-    _fetch                      locator -> tablefile wire fields -> ParameterCache hit, or a
+    _fetch                      locator.tablefile_fields() -> ParameterCache hit, or a
                                 GenesisClient POST on a miss (credentials: Options.context, then env)
     _parse                      zip on disk -> parse_ffcsv_zip -> typed Arrow table
 """
@@ -19,7 +19,7 @@ from mloda.user import Options
 
 from ..govdata.core.provenance import FetchedPayload, Provenance
 from ..govdata.reader import BaseGovDataReader
-from .core.api import GenesisClient, fetch_tablefile, tablefile_parameters
+from .core.api import GenesisClient, fetch_tablefile
 from .core.auth import explicit_credentials_from_options
 from .core.cache import ParameterCache
 from .core.hosts import resolve_host
@@ -49,34 +49,11 @@ class DestatisReader(BaseGovDataReader[DestatisLocator]):
         return super().match_subclass_data_access(data_access, feature_names, options)
 
     @classmethod
-    def _tablefile_fields(cls, locator: DestatisLocator) -> dict[str, object]:
-        return tablefile_parameters(
-            locator.name,
-            regionalvariable=locator.regionalvariable,
-            regionalkey=locator.regionalkey,
-            classifyingvariable1=locator.classifyingvariable1,
-            classifyingkey1=locator.classifyingkey1,
-            classifyingvariable2=locator.classifyingvariable2,
-            classifyingkey2=locator.classifyingkey2,
-            classifyingvariable3=locator.classifyingvariable3,
-            classifyingkey3=locator.classifyingkey3,
-            classifyingvariable4=locator.classifyingvariable4,
-            classifyingkey4=locator.classifyingkey4,
-            classifyingvariable5=locator.classifyingvariable5,
-            classifyingkey5=locator.classifyingkey5,
-            contents=locator.contents,
-            startyear=locator.startyear,
-            endyear=locator.endyear,
-            quality=locator.quality,
-            language=locator.language,
-        )
-
-    @classmethod
     def _fetch(cls, locator: DestatisLocator, *, options: Options | None = None) -> FetchedPayload:
         """POSTs (or reuses a cached reply for) the selection; credentials resolve lazily on a miss only."""
         host = resolve_host(locator.host)
         explicit = explicit_credentials_from_options(options)
-        fields = cls._tablefile_fields(locator)
+        fields = locator.tablefile_fields()
         cache = ParameterCache(cls.cache_dir)
         with GenesisClient(host, credentials=explicit, lock_dir=cls.cache_dir) as client:
             fetch = functools.partial(fetch_tablefile, client)

@@ -131,7 +131,7 @@ def test_peek_and_fetch_without_credentials_on_a_cache_hit(
     monkeypatch.setattr(DestatisReader, "cache_dir", str(tmp_path))
     zip_bytes = (fixtures_dir / "ffcsv" / FFCSV_FIXTURE).read_bytes()
     locator = DestatisLocator(TABLE_CODE)
-    fields = DestatisReader._tablefile_fields(locator)
+    fields = locator.tablefile_fields()
     ParameterCache(tmp_path).store(GENESIS_ONLINE, "data/tablefile", fields, zip_bytes)
 
     columns = DestatisReader.peek(TABLE_CODE)
