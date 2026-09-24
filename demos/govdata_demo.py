@@ -256,12 +256,12 @@ def _(DestatisReader, Feature, mloda):
 def _(mo):
     mo.md(
         """
-        ## 6. Join two sources with a recipe: population per eligible voter by Land
+        ## 6. Join two sources with a recipe: population per eligible voter by Land (`land_population_per_voter.json`)
 
         A recipe file under `recipes/` names the features of one run, the joins, and where the data
         came from; `load_recipe` returns what `mloda.run_all` needs plus the compliance block.
-        Requesting the features of `land_population_per_voter.json` returns two frames, one per
-        source. `check_land_names` verifies the AGS-2 codes and names on each side.
+        Requesting the recipe's own features returns two frames, one per source.
+        `check_land_names` verifies the AGS-2 codes and names on each side.
         `LandPopulationPerVoter` is a consumer FeatureGroup needing a column from each side and
         declares the recipe's link on both inputs, so mloda's join fires for it: no manual merge.
         """

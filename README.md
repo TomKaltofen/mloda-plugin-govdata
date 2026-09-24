@@ -114,11 +114,11 @@ result = mloda.run_all(
 )
 ```
 
-The option value is a bare table code, a `DestatisLocator`, or its dict form, which narrows the region and years and round-trips through a recipe file; see [docs/destatis-options.md](docs/destatis-options.md) for the full parameter table. `peek` lists the ffcsv columns the same way as the other readers.
+The option value is a bare table code (the server's default years), a `DestatisLocator`, or its dict form; the latter two narrow the selection by region, years, and classifying variables, and the dict form round-trips through a recipe file. See [docs/destatis-options.md](docs/destatis-options.md) for the full parameter table. `peek` lists the ffcsv columns the same way as the other readers.
 
 ### Harmonization
 
-Harmonized features chain an operation onto a reader column (`<column>__<operation>`): `value__rebased` re-bases a Kreis series onto a later Gebietsstand with the BBSR keys, `1_variable_attribute_code__nuts2024` adds NUTS codes to Kreis and Gemeinde keys, and `time__year_period` types the period. A feature with several output columns returns them as `<name>~<part>`, mloda's multi-output convention: `value__rebased~key`, `value__rebased~flag`, and so on. `value__rebased` needs the BBSR key file in the download cache first; see [docs/harmonization.md](docs/harmonization.md) for the example, the options, and the cache.
+Harmonized features chain an operation onto a reader column (`<column>__<operation>`): `value__rebased` re-bases a Kreis series onto a later Gebietsstand with the BBSR keys, `1_variable_attribute_code__nuts2024` adds NUTS codes to Kreis and Gemeinde keys, and `time__year_period` types the period. A feature with several output columns returns them as `<name>~<part>`, mloda's multi-output convention: `value__rebased~key`, `value__rebased~flag`, and so on. `value__rebased` and `__nuts2024` read their reference tables offline from `HarmonizationFeature.cache_dir`, so fetch them once first; see [docs/harmonization.md](docs/harmonization.md) for the example, the options, and the one-time fetch.
 
 ### Recipes
 
