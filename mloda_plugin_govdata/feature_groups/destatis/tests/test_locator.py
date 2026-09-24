@@ -23,8 +23,7 @@ def test_rejects_a_bad_table_code(bad: str) -> None:
 
 
 def test_rejects_a_table_code_over_the_documented_length() -> None:
-    # Structurally valid (three dash segments) but over the 15-char spec limit in
-    # docs/destatis-options.md; codex and an independent Opus review both flagged this.
+    # Structurally valid (three dash segments) but over the 15-char spec limit in docs/destatis-options.md.
     with pytest.raises(ValueError, match="not a recognized GENESIS table code"):
         DestatisLocator("12345-1234-1234-1234")
 

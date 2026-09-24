@@ -45,9 +45,8 @@ def test_goettingen_merger_direction_is_old_to_new(fixtures_dir: Path) -> None:
 
 
 def test_known_upstream_defect_is_reproduced_not_fixed(fixtures_dir: Path) -> None:
-    # ADR 0006 / fixture NOTICE: sheet 2015-2016 carries the 2013-2014 split shares on
-    # identity rows for 07135 and 07137; this loader loads them faithfully (no share-sum
-    # assertion here, that is the slice-9 re-basing loader's job).
+    # Fixture NOTICE: sheet 2015-2016 carries the 2013-2014 split shares on identity rows for
+    # 07135 and 07137; this loader loads them faithfully (core/rebase.py checks the share sums).
     rows = parse_bbsr_kreise_workbook(fixtures_dir / "bbsr-ref-kreise-extract.xlsx")
     cochem_2015_2016 = next(r for r in rows if r.from_year == 2015 and r.source_key == "07135")
     assert cochem_2015_2016.target_key == "07135"  # identity row

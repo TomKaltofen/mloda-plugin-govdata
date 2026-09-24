@@ -1,4 +1,4 @@
-"""Recipe 1: the re-based Kreis series through mloda, and a '-' before the merger is never a zero."""
+"""kreis_population_rebased: the re-based Kreis series through mloda, and a '-' before the merger is never a zero."""
 
 import csv
 import hashlib
@@ -45,7 +45,7 @@ def test_the_recipe_runs_to_the_expected_cells(recipes_dir: Path, genesis: Genes
     route = genesis({"12411-0015": GOETTINGEN_ZIP})
     result = run(_features(recipes_dir))
     table = result[0]
-    with (EXPECTED_DIR / "c2-goettingen-2016.csv").open(encoding="utf-8", newline="") as handle:
+    with (EXPECTED_DIR / "expected-goettingen-2016.csv").open(encoding="utf-8", newline="") as handle:
         expected = [
             (r["key"], int(r["year"]), int(r["value"]), r["flag"], r["sources"]) for r in csv.DictReader(handle)
         ]

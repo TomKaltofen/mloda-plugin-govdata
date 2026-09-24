@@ -202,7 +202,7 @@ def test_parse_new_format_two_blocks_dash_and_dot_markers(fixtures_dir: Path) ->
     values = table.column("value").to_pylist()
     dash_count = sum(1 for m in markers if m == "-")
     dot_count = sum(1 for m in markers if m == ".")
-    assert (dash_count, dot_count) == (5, 8)  # pinned against the week-0 characterization
+    assert (dash_count, dot_count) == (5, 8)  # as recorded in the ffcsv NOTICE
     for marker, value in zip(markers, values):
         if marker == "-":
             assert value == 0.0  # a dash still parses to zero, nothing is lost
@@ -255,8 +255,8 @@ def test_parse_ffcsv_zip_rejects_over_the_size_cap(fixtures_dir: Path) -> None:
 
 
 def test_stag_time_label_parses_through_the_period_model() -> None:
-    # Live-only finding (checklist): whether webservice STAG tables send "2015-12-31" or "31.12.2015".
-    # Both forms already work through core.period.parse_genesis_time; pin the ffcsv wiring here.
+    # Live GENESIS-Online replies send ISO (the 12411-0010 capture: 2024-12-31); both forms parse through
+    # core.period.parse_genesis_time, so pin the ffcsv wiring for each.
     header = ";".join(ONE_BLOCK_HEADER) + "\n"
     row_iso = "12411;Bevoelkerung;STAG;Stichtag;2015-12-31;DINSG;Deutschland insgesamt;DG;Deutschland;100;Anzahl;BEVSTD;Bevoelkerung\n"
     row_de = "12411;Bevoelkerung;STAG;Stichtag;31.12.2015;DINSG;Deutschland insgesamt;DG;Deutschland;100;Anzahl;BEVSTD;Bevoelkerung\n"
@@ -293,7 +293,7 @@ def test_value_q_column_survives_when_the_table_declares_it(fixtures_dir: Path) 
 
 
 def test_qualitysigns_legend_is_covered_by_zero_null_or_a_flag(fixtures_dir: Path) -> None:
-    # D9/checklist pin: every code in the captured legend is either a value marker this parser
+    # Every code in the captured legend is either a value marker this parser
     # recognizes, or a value_q flag (p/r/s) that never appears in the value cell itself.
     payload = json.loads((fixtures_dir / "genesis-guest-qualitysigns.json").read_text(encoding="utf-8"))
     flags = {"p", "r", "s"}

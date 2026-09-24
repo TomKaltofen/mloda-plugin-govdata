@@ -19,7 +19,7 @@ from .model import Compliance, JoinSide, LinkSpec, Recipe, RecipeError, error_su
 # mloda's DefaultOptionKeys.in_features is a str enum equal to this; the loader stores it in Options.context.
 IN_FEATURES = "in_features"
 # Feature constructor parameters the mloda feature config can carry (the rest must be at their defaults).
-# domain rides in the "domain" option key: mloda reads it from there and, since 0.11.3, pops it on construction.
+# domain rides in the "domain" option key: mloda reads it from there and pops it on construction.
 SUPPORTED_FEATURE_PARAMETERS: frozenset[str] = frozenset({"name", "options", "link", "feature_group", "domain"})
 # Attribute name, its default, and the option key mloda also reads it from (then it round-trips with the options).
 _UNSUPPORTED: tuple[tuple[str, Any, str | None], ...] = (
