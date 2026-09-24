@@ -9,10 +9,16 @@ import httpx
 import pytest
 import respx
 
-from mloda_plugin_govdata.feature_groups.govdata.core.cache import CacheMissError, DownloadCache, write_atomic
+from mloda_plugin_govdata.feature_groups.govdata.core.cache import (
+    CacheMissError,
+    DownloadCache,
+    PinMismatchError,
+    write_atomic,
+)
 
 URL = "https://example.org/data.csv"
 BODY = b"Stichtag;Wert\r\n30.06.2020;1\r\n"
+BODY_V2 = b"Stichtag;Wert\r\n30.06.2021;2\r\n"
 ETAG = '"v1"'
 
 
@@ -83,6 +89,44 @@ def test_offline_miss_raises_naming_url(tmp_path: Path) -> None:
         cache.get_or_download(URL, revalidate=False)
     assert URL in str(excinfo.value)
     assert respx.calls.call_count == 0
+
+
+@respx.mock
+def test_a_drifted_download_is_refused_and_the_pinned_body_stays_reachable(tmp_path: Path) -> None:
+    # Re-published upstream: the conditional GET gets a 200 with the new body.
+    respx.get(URL).mock(
+        side_effect=[
+            httpx.Response(200, content=BODY, headers={"ETag": ETAG}),
+            httpx.Response(200, content=BODY_V2, headers={"ETag": '"v2"'}),
+        ]
+    )
+    pinned, drifted = hashlib.sha256(BODY).hexdigest(), hashlib.sha256(BODY_V2).hexdigest()
+    with DownloadCache(tmp_path) as cache:
+        cache.get_or_download(URL, sha256=pinned)
+        with pytest.raises(PinMismatchError, match=f"downloaded sha256 {drifted} does not match the pinned {pinned}"):
+            cache.get_or_download(URL, sha256=pinned)
+        offline = cache.get_or_download(URL, revalidate=False, sha256=pinned)
+    assert offline.path.read_bytes() == BODY
+    assert not (tmp_path / f"{drifted}.bin").exists()
+
+
+@respx.mock
+def test_under_a_new_pin_the_old_cached_body_is_a_miss_and_is_downloaded_in_full(tmp_path: Path) -> None:
+    calls: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        return httpx.Response(200, content=BODY if len(calls) == 1 else BODY_V2, headers={"ETag": ETAG})
+
+    respx.get(URL).mock(side_effect=handler)
+    repinned = hashlib.sha256(BODY_V2).hexdigest()
+    with DownloadCache(tmp_path) as cache:
+        cache.get_or_download(URL, sha256=hashlib.sha256(BODY).hexdigest())
+        with pytest.raises(CacheMissError, match="not the pinned body"):
+            cache.get_or_download(URL, revalidate=False, sha256=repinned)
+        fetched = cache.get_or_download(URL, sha256=repinned)
+    assert fetched.path.read_bytes() == BODY_V2
+    assert "If-None-Match" not in calls[1].headers  # a 304 would hand back the old body
 
 
 @respx.mock

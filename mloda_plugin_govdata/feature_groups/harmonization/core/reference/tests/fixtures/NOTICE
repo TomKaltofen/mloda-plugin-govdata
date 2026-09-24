@@ -18,6 +18,8 @@ trust them.
 Original: https://www.bbsr.bund.de/BBSR/DE/forschung/raumbeobachtung/Raumabgrenzungen/umstiegsschluessel/ref-kreise-1990-2024.xlsx?__blob=publicationFile&v=2
 Original sha256: 68c4d001cc450115938d37c42aa8cc090fb9e6381e7e29d00f049cffdbcc8f1f (fetched 2026-08-17,
 matches the 2026-08-16 week-0 pin)
+Re-published 2026-09-23 at the same URL, sha256 b7250207cae01268667426ba416312577ba207f0acd8df8048d80db8206a01af
+(the current pin): sheet 2024-2025 added, the 34 sheets above unchanged cell for cell.
 Extract sha256: 5784d7da0cffc2f0643529531bafa34a764753202955c3b35dbf5335a3e47fb0
 License: Datenlizenz Deutschland - Namensnennung - Version 2.0 (dl-de/by-2-0). Redistribution
 confirmed by BBSR Referat RS 6, 2026-06-17: BBSR grants the Umsteigeschluessel tables the same

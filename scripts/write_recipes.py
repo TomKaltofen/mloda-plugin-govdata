@@ -139,7 +139,7 @@ KREIS_POPULATION_REBASED = ShippedRecipe(
                 license=DESTATIS,
                 attribution=BBSR_KREISE.attribution,
                 dataset_uri=BBSR_KREISE.url,
-                retrieved_at=_at(2026, 8, 17),
+                retrieved_at=_at(2026, 9, 24),
                 sha256=BBSR_KREISE.sha256 or "",
                 modifications=["sheet 2015-2016 read; population-proportional shares applied to the source keys"],
             ),

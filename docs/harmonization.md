@@ -129,7 +129,7 @@ row carries. Abridged (the cell is one line, the URL is cut, and only one record
     {"detail": "03152 does not exist from 31.12.2016 on per key sheet 2015-2016; its 2016 cell ('-') is excluded",
      "key": "03152", "kind": "not_applicable", "target": null, "year": 2016}
   ],
-  "sha256": "68c4d001cc450115938d37c42aa8cc090fb9e6381e7e29d00f049cffdbcc8f1f",
+  "sha256": "b7250207cae01268667426ba416312577ba207f0acd8df8048d80db8206a01af",
   "share": "population",
   "sheet": "2015-2016",
   "source": "BBSR Umsteigeschluessel Kreise",
