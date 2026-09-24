@@ -9,12 +9,12 @@ from pathlib import Path
 import pytest
 
 from mloda_plugin_govdata.recipes import load_recipe
-from scripts.write_recipes import LAND_POPULATION, RECIPES_DIR
+from scripts.write_recipes import RECIPES_DIR
 
 from .conftest import FFCSV_FIXTURES, GOETTINGEN_ZIP, LAND_ZIP, REFERENCE_FIXTURES
 
 LAND_TABLE_ZIP = FFCSV_FIXTURES / LAND_ZIP
-LAND_RECIPE = RECIPES_DIR / LAND_POPULATION.file
+LAND_RECIPE = RECIPES_DIR / "land_population.json"
 
 _RUN_SCRIPT = textwrap.dedent(
     """

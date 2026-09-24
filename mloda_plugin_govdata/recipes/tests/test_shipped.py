@@ -7,7 +7,7 @@ import pytest
 
 from mloda_plugin_govdata.feature_groups.govdata import build_client
 from mloda_plugin_govdata.recipes import build_recipe, load_recipe, recipe_to_json
-from scripts.write_recipes import BUNDESTAGSWAHL_2025, RECIPES, RECIPES_DIR, STUTTGART_POPULATION, ShippedRecipe, main
+from scripts.write_recipes import BUNDESTAGSWAHL_2025, RECIPES, STUTTGART_POPULATION, ShippedRecipe, main
 
 IDS = [r.file for r in RECIPES]
 
@@ -33,9 +33,9 @@ def _texts(directory: Path) -> dict[str, str]:
     return {path.name: path.read_text(encoding="utf-8") for path in directory.glob("*.json")}
 
 
-def test_the_script_rewrites_every_file_under_recipes_unchanged(tmp_path: Path) -> None:
+def test_the_script_writes_exactly_the_files_under_recipes(recipes_dir: Path, tmp_path: Path) -> None:
     assert main(["--out", str(tmp_path / "out")]) == 0
-    assert _texts(tmp_path / "out") == _texts(RECIPES_DIR)
+    assert _texts(tmp_path / "out") == _texts(recipes_dir)
 
 
 # The kerg and Stuttgart payloads are too large to commit, so their pins are checked against the live source.

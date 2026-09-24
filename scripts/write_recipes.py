@@ -1,7 +1,7 @@
 """Write the shipped recipe files from their definitions below, the source of truth (repo tooling, not shipped).
 
 Usage:
-    uv run python scripts/write_recipes.py [--out recipes]
+    uv run python scripts/write_recipes.py [--out DIR]
 """
 
 from __future__ import annotations
@@ -302,7 +302,9 @@ RECIPES: tuple[ShippedRecipe, ...] = (
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--out", type=Path, default=RECIPES_DIR)
+    parser.add_argument(
+        "--out", type=Path, default=RECIPES_DIR, help="output directory (default: the repo-root recipes/)"
+    )
     args = parser.parse_args(argv)
     args.out.mkdir(parents=True, exist_ok=True)
     for recipe in RECIPES:

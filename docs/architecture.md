@@ -12,7 +12,7 @@ How the packages fit together and where to start reading for a change. Paths are
 | `feature_groups/harmonization/` | The chained FeatureGroups on `HarmonizationFeature`: `value__rebased`, `<key>__nuts2024`, `<time>__year_period`. `core/` holds the logic behind the re-basing and NUTS groups (keys, NUTS crosswalk, NUTS mapping, re-basing) and the Land codes `land_population_per_voter.py` uses; `core/reference/` holds the BBSR, GV-ISys and Eurostat loaders. `<time>__year_period` wraps the Destatis time-label model. |
 | `feature_groups/land_population_per_voter.py` | `LandPopulationPerVoter`, the consumer FeatureGroup that makes mloda run the Land-level join of a Destatis table and `kerg.csv`. |
 | `recipes/` | The recipe model, JSON load and write, the credential scan, `frames_by_column`. |
-| `recipes/*.json` (repository root) | The shipped recipe files, generated from their definitions in `scripts/write_recipes.py`. |
+| `recipes/*.json` (repository root) | The shipped recipe files, generated from their definitions in the repository-root `scripts/write_recipes.py`. |
 
 ## Dependency direction
 
@@ -60,7 +60,7 @@ reader loads nothing outside entries 1 to 3.
   `HarmonizationFeature` subclass in `feature_groups/harmonization/` (model it on `nuts.py`, which wraps
   `core/nuts.py`), exported from that package's `__init__.py`, since importing it is what registers it.
   Document it in [harmonization.md](harmonization.md).
-- **Add a recipe:** [recipes.md](recipes.md). Add its definition to `RECIPES` in `scripts/write_recipes.py`
+- **Add a recipe:** [recipes.md](recipes.md). Add its definition to `RECIPES` in the repository-root `scripts/write_recipes.py`
   and run `uv run python scripts/write_recipes.py`; `recipes/tests/test_shipped.py` pins each file to its
   definition and fails on a file under the root `recipes/` that has none.
 

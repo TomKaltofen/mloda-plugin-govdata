@@ -60,6 +60,8 @@ exclude = ["*.tests", "*.tests.*"]
 
 [tool.pytest.ini_options]
 testpaths = ["mloda_plugin_govdata", "tests"]
+# Tests import the repo-root scripts package, whatever the import mode.
+pythonpath = ["."]
 python_files = ["test_*.py"]
 markers = [
     "live: tests that reach the live GovData / publisher network (deselected by default)",
