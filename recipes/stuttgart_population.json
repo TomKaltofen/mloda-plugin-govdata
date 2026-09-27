@@ -1,0 +1,45 @@
+{
+  "features": [
+    {
+      "name": "Stichtag",
+      "options": {
+        "StuttgartPopulationReader": "einwohner-nach-altersgruppen-und-stadtbezirken"
+      }
+    },
+    {
+      "name": "Stadtbezirk",
+      "options": {
+        "StuttgartPopulationReader": "einwohner-nach-altersgruppen-und-stadtbezirken"
+      }
+    },
+    {
+      "name": "Alter in 10 Gruppen",
+      "options": {
+        "StuttgartPopulationReader": "einwohner-nach-altersgruppen-und-stadtbezirken"
+      }
+    },
+    {
+      "name": "Einwohner",
+      "options": {
+        "StuttgartPopulationReader": "einwohner-nach-altersgruppen-und-stadtbezirken"
+      }
+    }
+  ],
+  "links": [],
+  "compliance": {
+    "sources": [
+      {
+        "license": "CC-BY-4.0",
+        "attribution": "Statistisches Amt der Landeshauptstadt Stuttgart",
+        "dataset_uri": "https://opendata.stuttgart.de/dataset/85a06c70-d65e-46fd-861b-2de52c008579/resource/2842140d-8787-475d-b1b9-35a496b503e3/download/einwohner-in-stuttgart-nach-altersgruppen-und-stadtbezirken-seit-1986.csv",
+        "retrieved_at": "2026-09-12T00:00:00Z",
+        "sha256": "f3c190288370eb3e4421eaed9d996aa157ee0f710cb382ef10ea1a07fde899e3",
+        "modifications": [
+          "German CSV parsed into a typed table: Stichtag as a date, Einwohner as an integer"
+        ],
+        "credential_env": []
+      }
+    ],
+    "notes": "Residents by age group and city district since 1986 (GovData dataset einwohner-nach-altersgruppen-und-stadtbezirken, distribution resolved through CKAN). The Stichtag is 30 June; which annual period a mid-year Stichtag joins to is not decided here."
+  }
+}

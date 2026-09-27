@@ -1,0 +1,70 @@
+{
+  "features": [
+    {
+      "name": "Nr",
+      "options": {
+        "BundeswahlleiterinReader": "https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata/btw25/csv/kerg.csv"
+      }
+    },
+    {
+      "name": "Gebiet",
+      "options": {
+        "BundeswahlleiterinReader": "https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata/btw25/csv/kerg.csv"
+      }
+    },
+    {
+      "name": "gehört zu",
+      "options": {
+        "BundeswahlleiterinReader": "https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata/btw25/csv/kerg.csv"
+      }
+    },
+    {
+      "name": "Wahlberechtigte Erststimmen Endgültig",
+      "options": {
+        "BundeswahlleiterinReader": "https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata/btw25/csv/kerg.csv"
+      }
+    },
+    {
+      "name": "Wählende Erststimmen Endgültig",
+      "options": {
+        "BundeswahlleiterinReader": "https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata/btw25/csv/kerg.csv"
+      }
+    },
+    {
+      "name": "Gültige Stimmen Zweitstimmen Endgültig",
+      "options": {
+        "BundeswahlleiterinReader": "https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata/btw25/csv/kerg.csv"
+      }
+    },
+    {
+      "name": "Christlich-Soziale Union in Bayern e.V. Zweitstimmen Endgültig",
+      "options": {
+        "BundeswahlleiterinReader": "https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata/btw25/csv/kerg.csv"
+      }
+    },
+    {
+      "name": "Übrige Erststimmen Vorperiode",
+      "options": {
+        "BundeswahlleiterinReader": "https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata/btw25/csv/kerg.csv"
+      }
+    }
+  ],
+  "links": [],
+  "compliance": {
+    "sources": [
+      {
+        "license": "dl-de/by-2-0",
+        "attribution": "(c) Die Bundeswahlleiterin, Wiesbaden 2025",
+        "dataset_uri": "https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata/btw25/csv/kerg.csv",
+        "retrieved_at": "2026-09-12T00:00:00Z",
+        "sha256": "31ab27391d5753a6a972936d436092879f5c9cca11570272cd72e3e272d16731",
+        "modifications": [
+          "three-row merged header flattened to one column name per measure",
+          "vote counts read as integers"
+        ],
+        "credential_env": []
+      }
+    ],
+    "notes": "Amtliches Endergebnis of the Bundestagswahl 2025. Wahlkreis rows carry a three-digit Nr and their Land in gehört zu, Land rows have gehört zu = 99, the Bundesgebiet row has Nr 99. An empty vote cell means the party was not on the ballot there and stays null; Übrige is 0 where no other candidates ran. Re-fetched on 2026-09-12: unchanged since the first capture on 2026-09-08."
+  }
+}
