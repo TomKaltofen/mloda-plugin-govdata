@@ -1,0 +1,59 @@
+{
+  "Ident": {
+    "Service": "catalogue",
+    "Method": "qualitysigns"
+  },
+  "Status": {
+    "Code": 0,
+    "Content": "erfolgreich",
+    "Type": "Information"
+  },
+  "Parameter": {
+    "language": "de",
+    "username": "********************",
+    "password": "********************"
+  },
+  "List": [
+    {
+      "Code": "0",
+      "Content": "weniger als die Hälfte von 1 in der letzten besetzten Stelle, jedoch mehr als nichts"
+    },
+    {
+      "Code": "-",
+      "Content": "nichts vorhanden"
+    },
+    {
+      "Code": "...",
+      "Content": "Angabe fällt später an"
+    },
+    {
+      "Code": "/",
+      "Content": "keine Angaben, da Zahlenwert nicht sicher genug"
+    },
+    {
+      "Code": ".",
+      "Content": "Zahlenwert unbekannt oder geheimzuhalten"
+    },
+    {
+      "Code": "x",
+      "Content": "Tabellenfach gesperrt, weil Aussage nicht sinnvoll"
+    },
+    {
+      "Code": "()",
+      "Content": "Aussagewert eingeschränkt, da der Zahlenwert statistisch relativ unsicher ist"
+    },
+    {
+      "Code": "p",
+      "Content": "vorläufige Zahl"
+    },
+    {
+      "Code": "r",
+      "Content": "berichtigte Zahl"
+    },
+    {
+      "Code": "s",
+      "Content": "geschätzte Zahl"
+    }
+  ],
+  "Copyright": "© Statistische Ämter des Bundes und der Länder, Deutschland, 2026.\nDieses Werk ist lizenziert unter der Datenlizenz Deutschland\n- Namensnennung - Version 2.0."
+}

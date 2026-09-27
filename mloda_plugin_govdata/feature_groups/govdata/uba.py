@@ -1,6 +1,6 @@
 """Umweltbundesamt (UBA) Air Data v4 ``measures`` endpoint: reader, URL builder, JSON flatten.
 
-The environment dataset (M1 environment theme) is publisher-direct REST JSON, not a CSV
+The dataset (environment theme) is publisher-direct REST JSON, not a CSV
 distribution, so it has a distinct shape from the GovData / Bundeswahlleiterin CSV readers.
 The response is ``{request, indices, data}`` where ``data`` is keyed by station then by
 measurement start datetime, and each leaf is ``[component id, scope id, value, date end, index]``.
@@ -22,7 +22,6 @@ import pyarrow as pa
 from mloda.provider import PropertySpec, is_positive_int
 from mloda.user import Options
 
-from .core.discovery import ResolvedDistribution
 from .core.locator import GovDataLocator
 from .core.parse import ColumnType
 from .reader import BaseGovDataReader
@@ -231,7 +230,7 @@ def parse_uba_measures(path: str | os.PathLike[str]) -> pa.Table:
     return parse_uba_measures_bytes(data)
 
 
-class UbaAirReader(BaseGovDataReader):
+class UbaAirReader(BaseGovDataReader[GovDataLocator]):
     """Reads the UBA Air Data v4 ``measures`` endpoint into a typed Arrow table.
 
     Query parameters are per-feature ``OPTION_UBA_*`` options, not a pre-built URL. The response
@@ -296,7 +295,5 @@ class UbaAirReader(BaseGovDataReader):
         return GovDataLocator(distribution_url=url)
 
     @classmethod
-    def _parse(
-        cls, path: Path, locator: GovDataLocator, distribution: ResolvedDistribution, options: Options | None = None
-    ) -> pa.Table:
+    def _parse(cls, path: Path, locator: GovDataLocator, *, options: Options | None = None) -> pa.Table:
         return parse_uba_measures(path)

@@ -1,0 +1,198 @@
+{
+  "features": [
+    {
+      "name": "1_variable_attribute_code",
+      "options": {
+        "DestatisReader": {
+          "name": "12521-0040",
+          "regionalvariable": "KREISE",
+          "regionalkey": [
+            "03152",
+            "03156",
+            "03159"
+          ],
+          "startyear": 2013,
+          "endyear": 2017
+        }
+      }
+    },
+    {
+      "name": "2_variable_attribute_code",
+      "options": {
+        "DestatisReader": {
+          "name": "12521-0040",
+          "regionalvariable": "KREISE",
+          "regionalkey": [
+            "03152",
+            "03156",
+            "03159"
+          ],
+          "startyear": 2013,
+          "endyear": 2017
+        }
+      }
+    },
+    {
+      "name": "2_variable_attribute_label",
+      "options": {
+        "DestatisReader": {
+          "name": "12521-0040",
+          "regionalvariable": "KREISE",
+          "regionalkey": [
+            "03152",
+            "03156",
+            "03159"
+          ],
+          "startyear": 2013,
+          "endyear": 2017
+        }
+      }
+    },
+    {
+      "name": "time",
+      "options": {
+        "DestatisReader": {
+          "name": "12521-0040",
+          "regionalvariable": "KREISE",
+          "regionalkey": [
+            "03152",
+            "03156",
+            "03159"
+          ],
+          "startyear": 2013,
+          "endyear": 2017
+        }
+      }
+    },
+    {
+      "name": "value",
+      "options": {
+        "DestatisReader": {
+          "name": "12521-0040",
+          "regionalvariable": "KREISE",
+          "regionalkey": [
+            "03152",
+            "03156",
+            "03159"
+          ],
+          "startyear": 2013,
+          "endyear": 2017
+        }
+      }
+    },
+    {
+      "name": "value_marker",
+      "options": {
+        "DestatisReader": {
+          "name": "12521-0040",
+          "regionalvariable": "KREISE",
+          "regionalkey": [
+            "03152",
+            "03156",
+            "03159"
+          ],
+          "startyear": 2013,
+          "endyear": 2017
+        }
+      }
+    },
+    {
+      "name": "1_variable_attribute_code",
+      "options": {
+        "DestatisReader": {
+          "name": "12411-0015",
+          "regionalvariable": "KREISE",
+          "regionalkey": [
+            "03152",
+            "03156",
+            "03159"
+          ],
+          "startyear": 2013,
+          "endyear": 2017
+        }
+      }
+    },
+    {
+      "name": "time",
+      "options": {
+        "DestatisReader": {
+          "name": "12411-0015",
+          "regionalvariable": "KREISE",
+          "regionalkey": [
+            "03152",
+            "03156",
+            "03159"
+          ],
+          "startyear": 2013,
+          "endyear": 2017
+        }
+      }
+    },
+    {
+      "name": "value",
+      "options": {
+        "DestatisReader": {
+          "name": "12411-0015",
+          "regionalvariable": "KREISE",
+          "regionalkey": [
+            "03152",
+            "03156",
+            "03159"
+          ],
+          "startyear": 2013,
+          "endyear": 2017
+        }
+      }
+    },
+    {
+      "name": "value_marker",
+      "options": {
+        "DestatisReader": {
+          "name": "12411-0015",
+          "regionalvariable": "KREISE",
+          "regionalkey": [
+            "03152",
+            "03156",
+            "03159"
+          ],
+          "startyear": 2013,
+          "endyear": 2017
+        }
+      }
+    }
+  ],
+  "links": [],
+  "compliance": {
+    "sources": [
+      {
+        "license": "dl-de/by-2-0",
+        "attribution": "(c) Statistisches Bundesamt (Destatis), 2026",
+        "dataset_uri": "https://genesis.destatis.de/datenbank/online/statistic/12521/table/12521-0040",
+        "retrieved_at": "2026-09-12T00:00:00Z",
+        "sha256": "d678a529575b6f550d44b403d260a25eeccdba8ca4178e465d1778dee35b4023",
+        "modifications": [
+          "ffcsv reply parsed into a typed table; the raw value sign is kept in value_marker",
+          "time normalized to the calendar year of the Stichtag"
+        ],
+        "credential_env": [
+          "GENESIS_TOKEN"
+        ]
+      },
+      {
+        "license": "dl-de/by-2-0",
+        "attribution": "(c) Statistisches Bundesamt (Destatis), 2026",
+        "dataset_uri": "https://genesis.destatis.de/datenbank/online/statistic/12411/table/12411-0015",
+        "retrieved_at": "2026-09-12T00:00:00Z",
+        "sha256": "39e590f654fd92f20306ef5a52ed59ef04bb757b1331e5216df2cfafcddd7411",
+        "modifications": [
+          "ffcsv reply parsed into a typed table; the raw value sign is kept in value_marker",
+          "time normalized to the calendar year of the Stichtag"
+        ],
+        "credential_env": [
+          "GENESIS_TOKEN"
+        ]
+      }
+    ],
+    "notes": "Rate with denominator: Ausländer (BEV027) over Bevölkerungsstand (BEVSTD) per Kreis and Stichtag, the same three Göttingen keys and years as the re-basing recipe, so both sides carry '-' for a key outside its validity: the parser reads it as 0 with value_marker '-', a genuine count has an empty marker, so a consumer checks the marker before dividing. The foreigners table breaks down by sex: the total rows have an empty 2_variable_attribute_code and the label Insgesamt, GESM and GESW are the parts. The two selections come back as two frames; dividing is a consumer's job. Stand-in for the Regionalstatistik table 13211-02-05-4 (Arbeitslose and Arbeitslosenquote in one file), which needs its own registration."
+  }
+}
