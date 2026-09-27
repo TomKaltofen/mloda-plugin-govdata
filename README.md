@@ -8,13 +8,15 @@
 
 Connectors for German open government data, built on [mloda](https://github.com/mloda-ai/mloda). Request the columns you want as mloda features; the plugin handles CKAN discovery, download with caching and retries, and parsing (German CSV or publisher JSON) into a typed Arrow table.
 
-Three example datasets cover the M1 themes: population (GovData CSV), elections (Bundeswahlleiterin `kerg.csv`), and environment (UBA Air Data JSON).
+Three example datasets cover population (GovData CSV), elections (Bundeswahlleiterin `kerg.csv`), and environment (UBA Air Data JSON); the Destatis connector adds GENESIS tables, with harmonization features and recipe files on top.
 
 ## Status
 
-Young but working. All three example readers run end to end, with paginated dataset search, cached downloads with retries, and unit plus property-based tests behind them. Every reader is a thin subclass of `BaseGovDataReader` that overrides only the parse step; new datasets follow the same path (see [docs/adding-a-reader.md](https://github.com/mloda-ai/mloda-plugin-govdata/blob/main/docs/adding-a-reader.md)). Development happens in a 6-month Prototype Fund stage (June to November 2026), so the API may still shift between releases.
+Young but working. The three example readers and the Destatis connector run end to end, with paginated dataset search, cached downloads with retries, and unit plus property-based tests behind them. Every reader is a thin subclass of `BaseGovDataReader` that overrides the parse step (and the fetch step for a source with its own locator type); new datasets follow the same path (see [docs/adding-a-reader.md](https://github.com/mloda-ai/mloda-plugin-govdata/blob/main/docs/adding-a-reader.md)). How the packages fit together, and where to start for a change: [docs/architecture.md](https://github.com/mloda-ai/mloda-plugin-govdata/blob/main/docs/architecture.md). Development happens in a 6-month Prototype Fund stage (June to November 2026), so the API may still shift between releases.
 
 ## Usage
+
+### GovData readers
 
 Read the Stuttgart population dataset (via GovData) as a typed PyArrow table:
 
@@ -34,7 +36,7 @@ table = result[0]  # pyarrow.Table with the requested columns
 result.plan  # resolved execution steps: which FeatureGroup ran on which framework
 ```
 
-The options key is the reader class or its class-name string; both select the same reader. The option value is a GovData dataset slug or a direct distribution URL. The license is read from the CKAN distribution metadata. Set `BaseGovDataReader.cache_dir` to control where downloads are cached. For any other GovData CSV dataset, `GovDataReader` works out of the box and reads every column as a string; subclass it and set `schema` for typed columns.
+The options key is the reader class or its class-name string; both select the same reader. The option value is a GovData dataset slug or a direct distribution URL. The license is read from the CKAN distribution metadata. Set `BaseGovDataReader.cache_dir` to control where downloads are cached (harmonized features below use a separate `HarmonizationFeature.cache_dir`). For any other GovData CSV dataset, `GovDataReader` works out of the box and reads every column as a string; subclass it and set `schema` for typed columns.
 
 Don't know the slug yet? Search GovData with the paginated CKAN `package_search` API:
 
@@ -99,9 +101,40 @@ result = mloda.run_all(
 
 Columns are `station_id`, `date_start`, `component_id`, `scope_id`, `value`, `date_end`, and `index` (the air-quality index). Component and scope ids come from the UBA `components` and `scopes` endpoints.
 
+### Destatis
+
+The Destatis connector reads a GENESIS table (Statistisches Bundesamt or a Regionalstatistik installation) by table code, needs a free registration (`GENESIS_TOKEN` or `GENESIS_USER` / `GENESIS_PASSWORD`; see [docs/credentials.md](docs/credentials.md)), and parses the ffcsv reply:
+
+```python
+from mloda_plugin_govdata.feature_groups.destatis import DestatisReader
+
+result = mloda.run_all(
+    [Feature("value", options={DestatisReader: "12411-0010"})],  # population by Land
+    compute_frameworks=["PyArrowTable"],
+)
+```
+
+The option value is a bare table code (the server's default years), a `DestatisLocator`, or its dict form; the latter two narrow the selection by region, years, and classifying variables, and the dict form round-trips through a recipe file. See [docs/destatis-options.md](docs/destatis-options.md) for the full parameter table. `peek` lists the ffcsv columns the same way as the other readers.
+
+### Harmonization
+
+Harmonized features chain an operation onto a reader column (`<column>__<operation>`): `value__rebased` re-bases a Kreis series onto a later Gebietsstand with the BBSR keys, `1_variable_attribute_code__nuts2024` adds NUTS codes to Kreis and Gemeinde keys, and `time__year_period` types the period. A feature with several output columns returns them as `<name>~<part>`, mloda's multi-output convention: `value__rebased~key`, `value__rebased~flag`, and so on. `value__rebased` and `__nuts2024` read their reference tables offline from `HarmonizationFeature.cache_dir`, so fetch them once first; see [docs/harmonization.md](docs/harmonization.md) for the example, the options, and the one-time fetch.
+
+### Recipes
+
+A recipe file bundles the features, joins, and provenance of one run as JSON; `load_recipe` returns what `mloda.run_all` needs plus the compliance block (license, attribution, payload sha256, credential env names). Recipes ship under `recipes/` in the repository, not in the published package: the Land table, the re-based Kreis series, a rate with its denominator, the Land-level join, and the three example datasets above. See [docs/recipes.md](docs/recipes.md).
+
+```python
+from mloda_plugin_govdata.recipes import load_recipe
+
+recipe = load_recipe("recipes/land_population.json")
+result = mloda.run_all(recipe.features, compute_frameworks=["PyArrowTable"], links=set(recipe.links))
+recipe.compliance.sources[0].attribution  # what to print next to the result
+```
+
 ## Demo
 
-An interactive [marimo](https://marimo.io) notebook walks through dataset discovery and all three example datasets. The notebook lives in the repository (not in the published package), so run it from a source checkout:
+An interactive [marimo](https://marimo.io) notebook walks through dataset discovery, all three example datasets, a Destatis table, a recipe joining two sources (population per eligible voter by Land), and a Kreis series re-based across a merger. The notebook lives in the repository (not in the published package), so run it from a source checkout:
 
 ```bash
 git clone https://github.com/mloda-ai/mloda-plugin-govdata.git
@@ -110,7 +143,7 @@ uv sync --all-extras
 uv run marimo edit demos/govdata_demo.py
 ```
 
-The notebook hits the live GovData, Bundeswahlleiterin, and UBA endpoints; downloads are cached locally after the first run.
+The notebook hits the live GovData, Bundeswahlleiterin, UBA, and GENESIS-Online endpoints and fetches the BBSR key file; downloads are cached locally after the first run. The Destatis chapters need GENESIS-Online credentials in the environment (`GENESIS_TOKEN`, or `GENESIS_USER` and `GENESIS_PASSWORD`; see [docs/credentials.md](docs/credentials.md)) and skip themselves without them.
 
 ## Related Repositories
 

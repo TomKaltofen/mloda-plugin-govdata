@@ -1,15 +1,18 @@
 """Level 2 (recorded) and Level 3 (live) tests for the GovData reader."""
 
+import hashlib
 import json
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
 import httpx
 import pyarrow as pa
 import pytest
 import respx
 from mloda.provider import FeatureSet
-from mloda.user import Feature, Options, mloda
+from mloda.user import Feature, FeatureName, Options, mloda
 from mloda_plugins.feature_group.input_data.read_file import ReadFile
 
 from mloda_plugin_govdata.feature_groups.govdata.bundeswahlleiterin import (
@@ -19,8 +22,9 @@ from mloda_plugin_govdata.feature_groups.govdata.bundeswahlleiterin import (
     OPTION_WAHL_VALUE_TYPE,
     BundeswahlleiterinReader,
 )
-from mloda_plugin_govdata.feature_groups.govdata.core.discovery import ResolvedDistribution
 from mloda_plugin_govdata.feature_groups.govdata.core.locator import GovDataLocator
+from mloda_plugin_govdata.feature_groups.govdata.core.parse import parse_german_csv
+from mloda_plugin_govdata.feature_groups.govdata.core.provenance import FetchedPayload, Provenance
 from mloda_plugin_govdata.feature_groups.govdata.feature import GovDataFeature
 from mloda_plugin_govdata.feature_groups.govdata.population import StuttgartPopulationReader
 from mloda_plugin_govdata.feature_groups.govdata.reader import BaseGovDataReader, GovDataReader
@@ -51,14 +55,54 @@ def _mock_population_endpoints(fixtures_dir: Path) -> None:
 
 
 class _FakeFeatureSet:
-    """Just enough FeatureSet surface for load_data; mirrors the sorted-tuple contract."""
+    """Just enough FeatureSet surface for load_data: sorted tuple of FeatureName, like the real one."""
 
     def __init__(self, names: set[str], options: Options | None = None) -> None:
-        self._names = tuple(sorted(names))
+        self._names = tuple(sorted(FeatureName(name) for name in names))
         self.options = options  # FeatureSet leaves this None until a feature is added
 
     def get_all_names(self) -> tuple[str, ...]:
         return self._names
+
+
+@dataclass(frozen=True)
+class _FakeLocator:
+    """Throwaway second locator type; proves the reader is generic over its locator."""
+
+    code: str
+
+    def describe(self) -> str:
+        return f"fake:{self.code}"
+
+    @classmethod
+    def coerce(cls, value: object) -> "_FakeLocator | None":
+        return cls(value) if isinstance(value, str) and value else None
+
+
+class FakeReader(BaseGovDataReader[_FakeLocator]):
+    """Reads from a locator the base class knows nothing about, proving _fetch is a real seam."""
+
+    seen_fetches: ClassVar[list[tuple[_FakeLocator, Options | None]]] = []
+
+    @classmethod
+    def locator_type(cls) -> type[_FakeLocator]:
+        return _FakeLocator
+
+    @classmethod
+    def _fetch(cls, locator: _FakeLocator, *, options: Options | None = None) -> FetchedPayload:
+        cls.seen_fetches.append((locator, options))
+        path = Path(cls.cache_dir) / f"{locator.code}.csv"
+        path.write_text("a;b\n1;2\n", encoding="utf-8")
+        return FetchedPayload(
+            path=path,
+            sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
+            retrieved_at=datetime.now(timezone.utc),
+            provenance=Provenance(source="fake", url=locator.describe()),
+        )
+
+    @classmethod
+    def _parse(cls, path: Path, locator: _FakeLocator, *, options: Options | None = None) -> pa.Table:
+        return parse_german_csv(path, None)
 
 
 def test_feature_group_uses_base_govdata_reader() -> None:
@@ -91,7 +135,7 @@ def test_load_data_level2(fixtures_dir: Path, tmp_path: Path, monkeypatch: pytes
     assert set(table.schema.names) == {"Einwohner", "Stadtbezirk"}
     assert table.num_rows == 1000
     assert table.schema.field("Einwohner").type == pa.int64()
-    # RunResult.plan (mloda >=0.10.0): the resolved execution steps name our group and framework.
+    # RunResult.plan: the resolved execution steps name our group and framework.
     compute_steps = [step for step in result.plan if step.step_kind == "compute"]
     assert [step.feature_group_name for step in compute_steps] == ["GovDataFeature"]
     assert compute_steps[0].compute_framework_name == "PyArrowTable"
@@ -140,7 +184,7 @@ def test_elections_reader_level2(fixtures_dir: Path, tmp_path: Path, monkeypatch
     )
     table = result[0]
     assert set(table.schema.names) == {"Gebiet", KERG_MEASURE}
-    assert table.num_rows == 16
+    assert table.num_rows == 31  # 15 Wahlkreis rows plus all 16 Land rows
     assert table.column("Gebiet").to_pylist()[0] == "Flensburg – Schleswig"
     assert table.schema.field(KERG_MEASURE).type == pa.int64()
 
@@ -210,10 +254,9 @@ def test_geometry_options_default_to_btw25(fixtures_dir: Path, tmp_path: Path, m
 
 def test_bad_geometry_option_raises(fixtures_dir: Path) -> None:
     locator = GovDataLocator.from_string(KERG_URL)
-    distribution = ResolvedDistribution(url=KERG_URL, license=None, dataset=None)
     options = Options({OPTION_WAHL_SKIPROWS: "five"})
     with pytest.raises(ValueError):
-        BundeswahlleiterinReader._parse(fixtures_dir / "kerg_sample.csv", locator, distribution, options)
+        BundeswahlleiterinReader._parse(fixtures_dir / "kerg_sample.csv", locator, options=options)
 
 
 @pytest.mark.parametrize(
@@ -322,10 +365,10 @@ def test_peek_rejects_unusable_data_access() -> None:
 
 @pytest.mark.parametrize(
     "reader",
-    [BaseGovDataReader, GovDataReader, StuttgartPopulationReader, BundeswahlleiterinReader, UbaAirReader],
+    [BaseGovDataReader, GovDataReader, StuttgartPopulationReader, BundeswahlleiterinReader, UbaAirReader, FakeReader],
 )
-def test_readers_classify_as_final_readers(reader: type[BaseGovDataReader]) -> None:
-    # mloda >=0.10.0 classifies readers structurally: overriding load_data wholesale
+def test_readers_classify_as_final_readers(reader: type[BaseGovDataReader[Any]]) -> None:
+    # mloda classifies readers structurally: overriding load_data wholesale
     # relative to the ReadFile anchor makes each reader final; the ReadFile base is not.
     assert reader.final_reader_anchor() is ReadFile
     assert reader.is_final_reader() is True
@@ -348,6 +391,21 @@ def test_unknown_feature_names_available_columns(
 
 
 @respx.mock
+def test_unknown_feature_message_prints_plain_names(
+    fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # FeatureSet names are FeatureName; the message must not leak the wrapper repr.
+    monkeypatch.setattr(GovDataReader, "cache_dir", str(tmp_path))
+    _mock_population_endpoints(fixtures_dir)
+    features = cast(FeatureSet, _FakeFeatureSet({"Nr", "Stadtbezirk"}))
+    with pytest.raises(ValueError) as excinfo:
+        GovDataReader.load_data(SLUG, features)
+    message = str(excinfo.value)
+    assert "Unknown feature(s) 'Nr'" in message
+    assert "FeatureName" not in message
+
+
+@respx.mock
 def test_unknown_feature_suggestion_only_for_close_matches(
     fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -360,3 +418,68 @@ def test_unknown_feature_suggestion_only_for_close_matches(
     assert "Unknown feature(s) 'Einwohner_', 'zzzzz'" in message
     assert message.count("Did you mean") == 1  # no suggestion for 'zzzzz'
     assert "Did you mean 'Einwohner' instead of 'Einwohner_'?" in message
+
+
+def test_fake_reader_option_never_yields_govdata_locator() -> None:
+    fake_locator = FakeReader.match_subclass_data_access("x", ["a"], Options({}))
+    assert fake_locator == _FakeLocator("x")
+    assert not isinstance(fake_locator, GovDataLocator)
+    assert FakeReader._coerce_locator("x") == _FakeLocator("x")
+    assert FakeReader.match_subclass_data_access(123, ["a"], Options({})) is None
+    assert isinstance(GovDataReader.match_subclass_data_access("x", ["a"], Options({})), GovDataLocator)
+    assert FakeReader.match_subclass_data_access(_FakeLocator("x"), ["a"], Options({})) == _FakeLocator("x")
+    assert FakeReader._coerce_locator(_FakeLocator("x")) == _FakeLocator("x")
+
+
+@respx.mock
+def test_fake_reader_end_to_end_makes_no_http_calls(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(FakeReader, "cache_dir", str(tmp_path))
+    FakeReader.seen_fetches.clear()
+    result = mloda.run_all(
+        [Feature("a", options={FakeReader.__name__: "x"})],
+        compute_frameworks=["PyArrowTable"],
+    )
+    table = result[0]
+    assert table.column("a").to_pylist() == ["1"]
+    assert respx.calls.call_count == 0
+    [(locator, options)] = FakeReader.seen_fetches
+    assert locator == _FakeLocator("x")
+    assert options is not None
+    assert options.get(FakeReader.__name__) == "x"
+
+
+@respx.mock
+def test_unknown_feature_message_uses_locator_describe(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(FakeReader, "cache_dir", str(tmp_path))
+    features = cast(FeatureSet, _FakeFeatureSet({"zz"}))
+    with pytest.raises(ValueError) as excinfo:
+        FakeReader.load_data("x", features)
+    message = str(excinfo.value)
+    assert "'fake:x'" in message
+    assert "Available: a, b." in message
+
+
+def test_base_reader_declines_unusable_data_access() -> None:
+    assert BaseGovDataReader.match_subclass_data_access(object(), ["a"], Options({})) is None
+    assert isinstance(BaseGovDataReader.match_subclass_data_access(SLUG, ["a"], Options({})), GovDataLocator)
+
+
+@respx.mock
+def test_fetch_returns_payload_with_provenance(
+    fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(GovDataReader, "cache_dir", str(tmp_path))
+    _mock_population_endpoints(fixtures_dir)
+    payload = GovDataReader._fetch(GovDataLocator(dataset_id=SLUG))
+    assert payload.path.exists()
+    assert payload.sha256 == hashlib.sha256(payload.path.read_bytes()).hexdigest()
+    assert payload.provenance.source == "ckan"
+    assert payload.provenance.license == "CC-BY-4.0"
+    assert payload.provenance.dataset is not None
+    assert payload.retrieved_at.tzinfo is not None
+
+
+@respx.mock
+def test_base_fetch_rejects_foreign_locator() -> None:
+    with pytest.raises(NotImplementedError):
+        BaseGovDataReader._fetch(_FakeLocator("x"))

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import importlib.metadata
-from typing import Any
+from collections.abc import Callable
+from types import TracebackType
+from typing import Any, TypeVar
 
 import httpx
 from tenacity import RetryCallState, retry, retry_if_exception, stop_after_attempt, wait_exponential_jitter
@@ -16,6 +18,31 @@ MAX_RETRY_AFTER = 60.0  # cap a server's Retry-After so it cannot stall the clie
 
 _BASE_WAIT = wait_exponential_jitter(initial=0.5, max=10.0)
 
+_T = TypeVar("_T", bound="OwnedHttpClient")
+
+
+class OwnedHttpClient:
+    """Closes ``self._client`` on exit, but only when this instance built it rather than received it.
+
+    ``__enter__`` returns the subclass via a bound TypeVar rather than ``Self``: the package floor
+    is Python 3.10, one release before ``typing.Self``, and typing_extensions is not a dependency.
+    """
+
+    _owns_client: bool
+    _client: httpx.Client
+
+    def __enter__(self: _T) -> _T:  # noqa: PYI019  (see class docstring)
+        return self
+
+    def __exit__(
+        self, exc_type: type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None
+    ) -> None:
+        self.close()
+
+    def close(self) -> None:
+        if self._owns_client:
+            self._client.close()
+
 
 def _user_agent() -> str:
     try:
@@ -25,9 +52,13 @@ def _user_agent() -> str:
     return f"mloda-plugin-govdata/{version} (+https://github.com/mloda-ai/mloda-plugin-govdata)"
 
 
-def build_client(*, timeout: httpx.Timeout = DEFAULT_TIMEOUT) -> httpx.Client:
-    """A pooled httpx client with the polite User-Agent and timeout budget."""
-    return httpx.Client(timeout=timeout, headers={"User-Agent": _user_agent()}, follow_redirects=True)
+def build_client(*, timeout: httpx.Timeout = DEFAULT_TIMEOUT, follow_redirects: bool = True) -> httpx.Client:
+    """A pooled httpx client with the polite User-Agent and timeout budget.
+
+    ``follow_redirects=False`` for clients that send credentials in headers, so a redirect
+    can never carry them to another host.
+    """
+    return httpx.Client(timeout=timeout, headers={"User-Agent": _user_agent()}, follow_redirects=follow_redirects)
 
 
 class RetryableStatusError(Exception):
@@ -64,9 +95,17 @@ def _wait(state: RetryCallState) -> float:
 
 
 @retry(retry=retry_if_exception(_is_retryable), wait=_wait, stop=stop_after_attempt(MAX_ATTEMPTS), reraise=True)
-def request_with_retry(client: httpx.Client, method: str, url: str, **kwargs: Any) -> httpx.Response:
-    """Issue a request, retrying transport errors and retryable status codes."""
-    response = client.request(method, url, **kwargs)
+def send_with_retry(send: Callable[[], httpx.Response]) -> httpx.Response:
+    """Call ``send`` once per attempt, retrying transport errors and retryable status codes.
+
+    Callers that must wrap each attempt (for example in a lock) pass the wrapped sender here.
+    """
+    response = send()
     if response.status_code in RETRYABLE_STATUS:
         raise RetryableStatusError(response)
     return response
+
+
+def request_with_retry(client: httpx.Client, method: str, url: str, **kwargs: Any) -> httpx.Response:
+    """Issue a request, retrying transport errors and retryable status codes."""
+    return send_with_retry(lambda: client.request(method, url, **kwargs))

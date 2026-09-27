@@ -1,4 +1,4 @@
-"""Stuttgart population dataset (M1 population theme, via GovData)."""
+"""Stuttgart population dataset (population theme, via GovData)."""
 
 from __future__ import annotations
 
