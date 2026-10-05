@@ -99,7 +99,7 @@ class HarmonizationFeature(FeatureChainParserMixin, FeatureGroup):
 
     @classmethod
     def declared(cls, feature: Feature, key: str) -> str:
-        """The operation from the name, checked against an explicit option that would otherwise be ignored.
+        """The operation from the name or the options; mloda rejects a name and option that disagree.
 
         Reads the name-parsed value positionally (mloda's legacy path), not by ``key``: correct as
         long as a subclass's ``PREFIX_PATTERN`` has exactly one capture group, as all current ones do.
@@ -107,7 +107,4 @@ class HarmonizationFeature(FeatureChainParserMixin, FeatureGroup):
         operation = cls._resolve_operation(feature, key)
         if operation is None:
             raise ValueError(f"{feature.name}: {key} is neither in the name nor in the options")
-        explicit = feature.options.get(key)
-        if explicit is not None and str(explicit) != operation:
-            raise ValueError(f"{feature.name} names {key} {operation!r} but its option says {explicit!r}")
         return operation
