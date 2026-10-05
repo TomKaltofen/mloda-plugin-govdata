@@ -27,7 +27,10 @@ mloda = "2027-01-01T00:00:00Z"
 mloda-registry = "2027-01-01T00:00:00Z"
 
 [manifest]
-overrides = [{ name = "pymdown-extensions", specifier = ">=11.0.1" }]
+overrides = [
+    { name = "mloda", specifier = ">=0.15.0,<0.16.0" },
+    { name = "pymdown-extensions", specifier = ">=11.0.1" },
+]
 
 [[package]]
 name = "annotated-types"
@@ -688,10 +691,10 @@ wheels = [
 
 [[package]]
 name = "mloda"
-version = "0.14.0"
+version = "0.15.0"
 source = { registry = "https://pypi.org/simple" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9a/c3/cf2567d0c4f78ad7d3ea6c30efe67e5eb1e14e63e12d8009c6baa136f3ef/mloda-0.14.0-py3-none-any.whl", hash = "sha256:783313ed9cda0c25619085f4ce9e34eb3eec78425895963a6328ddf5d1045eb7", size = 599228, upload-time = "2026-09-24T11:20:23.5Z" },
+    { url = "https://files.pythonhosted.org/packages/aa/b7/170774c2423d2adfbb5cb4bf01b36d8a605a81cebfc1f022de9a30ca25c3/mloda-0.15.0-py3-none-any.whl", hash = "sha256:9f2a76d9310fffb4cd3e84ec314b146b676196d6a49487ea06515f162628cc82", size = 653649, upload-time = "2026-10-05T12:11:00.53Z" },
 ]
 
 [[package]]
@@ -737,7 +740,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.27" },
     { name = "hypothesis", marker = "extra == 'dev'" },
     { name = "marimo", marker = "extra == 'demo'", specifier = ">=0.14" },
-    { name = "mloda", specifier = ">=0.14.0,<0.15.0" },
+    { name = "mloda", specifier = ">=0.15.0,<0.16.0" },
     { name = "mloda-testing", marker = "extra == 'dev'", specifier = ">=0.5.0" },
     { name = "mypy", marker = "extra == 'dev'" },
     { name = "openpyxl", specifier = ">=3.1" },

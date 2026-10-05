@@ -12,7 +12,7 @@ readme = "README.md"
 license = "Apache-2.0"
 authors = [{ name = "Tom Kaltofen", email = "tomkaltofen@mloda.ai" }]
 dependencies = [
-    "mloda>=0.14.0,<0.15.0",
+    "mloda>=0.15.0,<0.16.0",
     "filelock>=3.12",
     "httpx>=0.27",
     "openpyxl>=3.1",
@@ -98,4 +98,6 @@ exclude-newer-package = { mloda = "2026-12-31", "mloda-testing" = "2026-12-31", 
 # pin, so the pin is overridden here. Drop this once marimo allows 11.x.
 override-dependencies = [
     "pymdown-extensions>=11.0.1",
+    # mloda-testing caps mloda below 0.15. Keep equal to `dependencies`; drop once it allows 0.15.
+    "mloda>=0.15.0,<0.16.0",
 ]

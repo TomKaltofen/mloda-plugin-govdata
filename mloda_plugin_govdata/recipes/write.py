@@ -30,6 +30,7 @@ _UNSUPPORTED: tuple[tuple[str, Any, str | None], ...] = (
     ("forward_group", None, None),
     ("forward_group_exclude", frozenset(), None),
     ("inherit_context_keys", frozenset(), None),
+    ("required_declarations", None, None),
 )
 
 
@@ -129,7 +130,8 @@ def _in_feature_names(value: Any, where: str) -> list[str]:
     names = [name.strip() for name in value.split(",")] if isinstance(value, str) else list(value)
     if not all(isinstance(name, str) and name for name in names):
         raise RecipeError(f"{where}: in_features must be feature names; a nested Feature has no config form")
-    return sorted(names)
+    # mloda keeps operand order, so only an unordered set is sorted (for a stable file).
+    return sorted(names) if isinstance(value, (set, frozenset)) else names
 
 
 def _json_value(value: Any, where: str) -> Any:
