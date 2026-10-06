@@ -148,6 +148,11 @@ class BaseGovDataReader(ReadFile, Generic[LocatorT]):
             raise NotImplementedError(f"{cls.__name__} must implement _fetch for {type(locator).__name__}")
         with build_client() as client:
             distribution = resolve_distribution(locator, client)
+            if cls.LICENSE and distribution.license and distribution.license != cls.LICENSE:
+                raise ValueError(
+                    f"{cls.__name__} declares license {cls.LICENSE!r}, but {locator.describe()!r} is published "
+                    f"under {distribution.license!r}; read it with a reader that declares no license."
+                )
             cached = DownloadCache(cls.cache_dir, client=client).get_or_download(distribution.url)
         return FetchedPayload(
             path=cached.path,

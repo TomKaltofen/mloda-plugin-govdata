@@ -167,8 +167,8 @@ def test_data_access_identity_is_the_table_code(locator: DestatisLocator, identi
     assert DestatisReader.data_access_identity(locator) == identity
 
 
-def _requiring_license(license: str) -> Feature:
-    return Feature("value", options={DestatisReader.__name__: TABLE_CODE}, required_declarations={"license": license})
+def _requiring_license(value: str) -> Feature:
+    return Feature("value", options={DestatisReader.__name__: TABLE_CODE}, required_declarations={"license": value})
 
 
 def test_a_required_license_the_reader_declares_plans() -> None:
