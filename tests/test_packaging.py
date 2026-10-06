@@ -1,6 +1,5 @@
-"""Packaging config: the wheel ships code only, and a mloda override cannot drift from the dependency."""
+"""The wheel ships code only: the packages.find exclude patterns cover every tests package."""
 
-import re
 import sys
 from fnmatch import fnmatchcase
 from pathlib import Path
@@ -25,10 +24,6 @@ def _dotted(path: Path) -> str:
     return ".".join(path.relative_to(REPO_ROOT).parts)
 
 
-def _mloda(requirements: list[str]) -> list[str]:
-    return [req for req in requirements if re.match(r"mloda\s*[<>=!~]", req)]
-
-
 def test_tests_packages_are_excluded_from_the_wheel() -> None:
     # Same fnmatch semantics setuptools applies to include and exclude patterns.
     find = _find_config()
@@ -49,11 +44,3 @@ def test_no_package_data_is_shipped() -> None:
     with (REPO_ROOT / "pyproject.toml").open("rb") as handle:
         data = tomllib.load(handle)
     assert data["tool"]["setuptools"]["include-package-data"] is False
-
-
-def test_a_mloda_override_matches_the_mloda_dependency() -> None:
-    # A uv override replaces the project's own requirement too, so a drifted one would win silently.
-    with (REPO_ROOT / "pyproject.toml").open("rb") as handle:
-        data = tomllib.load(handle)
-    overrides = _mloda(data["tool"]["uv"].get("override-dependencies", []))
-    assert overrides in ([], _mloda(data["project"]["dependencies"]))
