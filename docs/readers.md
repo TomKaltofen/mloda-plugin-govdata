@@ -2,6 +2,8 @@
 
 Every reader turns one source into a typed PyArrow table. The option key is the reader class or its class-name string; the option value says what to read.
 
+A reader whose source has one fixed license declares it to extenders as `license` (`DestatisReader` `DL-DE-BY-2.0`, `StuttgartPopulationReader` `CC-BY-4.0`, `UbaAirReader` the UBA terms), so `Feature(..., required_declarations={"license": "DL-DE-BY-2.0"})` is checked at plan time. `GovDataReader` and `BundeswahlleiterinReader` declare none, so such a requirement rejects them.
+
 ## GovData
 
 The option value is a GovData dataset slug or a direct distribution URL. The license is read from the CKAN distribution metadata.

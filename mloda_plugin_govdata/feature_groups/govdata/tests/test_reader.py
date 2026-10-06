@@ -398,6 +398,23 @@ def test_data_access_identity_names_the_dataset_never_a_url_query(
 
 
 @pytest.mark.parametrize(
+    ("reader", "declared"),
+    [
+        (GovDataReader, {}),  # the CKAN license is only known after discovery
+        (BundeswahlleiterinReader, {}),  # reads any election CSV, not one publisher's
+        (StuttgartPopulationReader, {"license": "CC-BY-4.0"}),
+        (UbaAirReader, {"license": "§ 12a EGovG (Umweltbundesamt data terms, attribution required)"}),
+        (FakeReader, {}),
+    ],
+)
+def test_declared_license_is_the_same_at_plan_and_load_time(
+    reader: type[BaseGovDataReader[Any]], declared: dict[str, str]
+) -> None:
+    assert reader.declared_attributes(None) == declared
+    assert reader.declared_attributes(FeatureSet()) == declared
+
+
+@pytest.mark.parametrize(
     "reader",
     [BaseGovDataReader, GovDataReader, StuttgartPopulationReader, BundeswahlleiterinReader, UbaAirReader, FakeReader],
 )
@@ -508,7 +525,7 @@ def test_fetch_returns_payload_with_provenance(
     assert payload.path.exists()
     assert payload.sha256 == hashlib.sha256(payload.path.read_bytes()).hexdigest()
     assert payload.provenance.source == "ckan"
-    assert payload.provenance.license == "CC-BY-4.0"
+    assert payload.provenance.license == "CC-BY-4.0" == StuttgartPopulationReader.LICENSE
     assert payload.provenance.dataset is not None
     assert payload.retrieved_at.tzinfo is not None
 
