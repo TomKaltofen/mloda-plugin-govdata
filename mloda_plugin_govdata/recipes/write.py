@@ -129,6 +129,8 @@ def _same(value: Any, other: Any) -> bool:
 def _in_feature_names(value: Any, where: str) -> list[str]:
     if isinstance(value, Feature):
         raise RecipeError(f"{where}: in_features must be feature names; a nested Feature has no config form")
+    if not isinstance(value, (str, list, tuple, set, frozenset)):
+        raise RecipeError(f"{where}: in_features must be a name, or a list, tuple or set of names")
     names = [name.strip() for name in value.split(",")] if isinstance(value, str) else list(value)
     if not all(isinstance(name, str) and name for name in names):
         raise RecipeError(f"{where}: in_features must be feature names; a nested Feature has no config form")

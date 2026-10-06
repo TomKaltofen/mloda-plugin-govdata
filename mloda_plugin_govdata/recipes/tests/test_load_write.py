@@ -256,10 +256,18 @@ def test_a_govdata_locator_without_a_string_form_raises(locator: GovDataLocator,
         build_recipe([Feature("a", options={"GovDataReader": locator})], COMPLIANCE)
 
 
-@pytest.mark.parametrize("value", [frozenset({Feature("a", options={"k": 1})}), Feature("a")])
-def test_a_nested_feature_inside_in_features_raises(value: Any) -> None:
+@pytest.mark.parametrize(
+    ("value", "message"),
+    [
+        (frozenset({Feature("a", options={"k": 1})}), "in_features must be feature names"),
+        (Feature("a"), "in_features must be feature names"),
+        ({"a": 1}, "in_features must be a name, or a list"),
+        (3, "in_features must be a name, or a list"),
+    ],
+)
+def test_in_features_that_are_not_names_raise(value: Any, message: str) -> None:
     feature = Feature("d", options=Options(context={"in_features": value}))
-    with pytest.raises(RecipeError, match="in_features must be feature names"):
+    with pytest.raises(RecipeError, match=message):
         build_recipe([feature], COMPLIANCE)
 
 
