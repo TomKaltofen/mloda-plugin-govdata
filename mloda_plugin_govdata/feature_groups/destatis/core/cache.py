@@ -36,19 +36,26 @@ _SHA256 = re.compile(r"[0-9a-f]{64}")
 
 # Comma-separated selections the server treats as sets: sorted for the key and on the wire.
 SELECTION_FIELDS: frozenset[str] = frozenset({"regionalkey", *CLASSIFYING_KEYS})
+# Numeric fields; anywhere else an int would drop a code's leading zeros.
+_INT_FIELDS: frozenset[str] = frozenset({"startyear", "endyear", "timeslices"})
 
 
 def _wire_scalar(name: str, value: object) -> str:
-    """One value as it travels: strings stripped, ints as digits; bools refused."""
+    """One value as it travels: strings stripped, ints as digits (``_INT_FIELDS`` only); bools refused."""
     if isinstance(value, bool):
         # The spec spells booleans per field ("true"/"false" for compress, "on"/"off" for quality).
         raise TypeError(f"parameter {name!r}: pass the wire string for booleans, not a bool")
     if isinstance(value, int):
-        return str(value)
+        if name in _INT_FIELDS:
+            return str(value)
+        raise TypeError(f"parameter {name!r} must be a str: an int loses a code's leading zeros")
     if isinstance(value, str):
         return value.strip()
     # Named by field only: a value could be a secret pasted into the wrong place.
-    raise TypeError(f"parameter {name!r} must be a str, int, or a flat sequence of those, got {type(value).__name__}")
+    raise TypeError(
+        f"parameter {name!r} must be a str (an int for {', '.join(sorted(_INT_FIELDS))}) "
+        f"or a flat sequence of those, got {type(value).__name__}"
+    )
 
 
 def canonical_parameters(endpoint: str, parameters: Mapping[str, object]) -> dict[str, str]:
