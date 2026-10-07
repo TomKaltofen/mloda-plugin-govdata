@@ -76,7 +76,7 @@ uv sync --all-extras
 uv run marimo edit demos/govdata_demo.py
 ```
 
-The Destatis chapters skip themselves without GENESIS credentials.
+The Destatis chapters skip themselves without GENESIS credentials. A second notebook, `demos/berlin_wahl_2026_demo.py`, reads Berlin's AGH 2023, EU 2024, BT 2025 and AGH 2026 results with one set of reader options.
 
 ## Docs
 

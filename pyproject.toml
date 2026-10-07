@@ -31,7 +31,7 @@ Releases = "https://github.com/mloda-ai/mloda-plugin-govdata/releases"
 "Prototype Fund" = "https://www.prototypefund.de/projects/mloda-plugin-govdata"
 
 [project.optional-dependencies]
-demo = ["marimo>=0.14"]
+demo = ["marimo>=0.14", "altair>=5"]
 dev = [
     "mloda-testing>=0.9.0",
     "tox",
