@@ -239,6 +239,8 @@ class UbaAirReader(BaseGovDataReader[GovDataLocator]):
     CSV readers.
     """
 
+    # No SPDX id exists for the UBA terms, so the label is free text.
+    LICENSE: ClassVar[str | None] = "§ 12a EGovG (Umweltbundesamt data terms, attribution required)"
     READER_OPTIONS: ClassVar[dict[str, PropertySpec]] = {
         OPTION_UBA_STATION: PropertySpec("UBA station id.", strict_validation=True, element_validator=is_positive_int),
         OPTION_UBA_COMPONENT: PropertySpec(

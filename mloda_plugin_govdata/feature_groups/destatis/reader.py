@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import functools
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 import pyarrow as pa
 from mloda.provider import CHAIN_SEPARATOR, COLUMN_SEPARATOR
@@ -29,6 +29,9 @@ from .locator import DestatisLocator
 
 class DestatisReader(BaseGovDataReader[DestatisLocator]):
     """Reads one GENESIS table selection into a typed Arrow table, ffcsv parsed."""
+
+    # The reader resolves only the known GENESIS hosts, and both publish under dl-de/by-2-0.
+    LICENSE: ClassVar[str | None] = "DL-DE-BY-2.0"
 
     @classmethod
     def suffix(cls) -> tuple[str, ...]:

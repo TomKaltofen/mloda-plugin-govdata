@@ -167,6 +167,19 @@ def test_data_access_identity_is_the_table_code(locator: DestatisLocator, identi
     assert DestatisReader.data_access_identity(locator) == identity
 
 
+def _requiring_license(value: str) -> Feature:
+    return Feature("value", options={DestatisReader.__name__: TABLE_CODE}, required_declarations={"license": value})
+
+
+def test_a_required_license_the_reader_declares_plans() -> None:
+    assert mloda.explain([_requiring_license("DL-DE-BY-2.0")], compute_frameworks=["PyArrowTable"])
+
+
+def test_a_required_license_the_reader_does_not_declare_is_refused_at_plan_time() -> None:
+    with pytest.raises(ValueError, match="requires declared 'license' == 'CC-BY-4.0'"):
+        mloda.explain([_requiring_license("CC-BY-4.0")], compute_frameworks=["PyArrowTable"])
+
+
 @respx.mock
 def test_explicit_credentials_from_options_are_used_over_env(
     fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

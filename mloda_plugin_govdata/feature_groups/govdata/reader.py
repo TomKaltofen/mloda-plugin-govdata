@@ -9,6 +9,7 @@ the cache, parse it into a typed Arrow table. One module per data source impleme
 from __future__ import annotations
 
 import difflib
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, ClassVar, Generic, TypeVar, cast
 
@@ -51,6 +52,8 @@ class BaseGovDataReader(ReadFile, Generic[LocatorT]):
 
     # Persistent, content-addressed cache location (override per environment).
     cache_dir: ClassVar[str] = str(DEFAULT_CACHE_DIR)
+    # The one license every payload of this reader carries, as normalize_license labels it; None when it varies.
+    LICENSE: ClassVar[str | None] = None
 
     @classmethod
     def suffix(cls) -> tuple[str, ...]:
@@ -114,6 +117,11 @@ class BaseGovDataReader(ReadFile, Generic[LocatorT]):
         return super().data_access_identity(label) if label.startswith(("http://", "https://")) else label
 
     @classmethod
+    def declared_attributes(cls, features: FeatureSet | None) -> Mapping[str, str | int | float | bool]:
+        """``license`` for extenders and ``required_declarations``, the same at plan and load time."""
+        return {"license": cls.LICENSE} if cls.LICENSE else {}
+
+    @classmethod
     def _scalar_reader_option(cls, key: str, options: Any) -> Any:
         """Reject a collection value, since strict_validation only checks list elements individually."""
         value = cls.reader_option(key, options)
@@ -140,6 +148,11 @@ class BaseGovDataReader(ReadFile, Generic[LocatorT]):
             raise NotImplementedError(f"{cls.__name__} must implement _fetch for {type(locator).__name__}")
         with build_client() as client:
             distribution = resolve_distribution(locator, client)
+            if cls.LICENSE and distribution.license and distribution.license != cls.LICENSE:
+                raise ValueError(
+                    f"{cls.__name__} declares license {cls.LICENSE!r}, but {locator.describe()!r} is published "
+                    f"under {distribution.license!r}; read it with a reader that declares no license."
+                )
             cached = DownloadCache(cls.cache_dir, client=client).get_or_download(distribution.url)
         return FetchedPayload(
             path=cached.path,

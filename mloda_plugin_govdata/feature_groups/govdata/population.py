@@ -20,3 +20,4 @@ class StuttgartPopulationReader(GovDataReader):
     """Residents by age group and city district, with typed columns."""
 
     schema: ClassVar[dict[str, ColumnType] | None] = POPULATION_SCHEMA
+    LICENSE: ClassVar[str | None] = "CC-BY-4.0"
