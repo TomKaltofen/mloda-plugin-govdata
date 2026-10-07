@@ -2,9 +2,9 @@
 
 One declarative recipe connects Berlin's open voting data: three past elections
 (AGH 2023, EU 2024, BT 2025) at Wahlbezirk level, demographics per district,
-and the official 2023-on-2026-geometry baseline. One config slot waited for
-the election on 20 September 2026; filled with the 2026 export URL, the same
-recipe reads the new results with zero code changes.
+and the official 2023-on-2026-geometry baseline. After the election on
+20 September 2026, one config slot holds the 2026 export URL, and the same
+recipe reads the new results.
 
 Run with: marimo edit demos/berlin_wahl_2026_demo.py (needs network access;
 install the "demo" extra).
@@ -30,9 +30,9 @@ def _(mo):
 
     On **20 September 2026** Berlin elected its 20. Abgeordnetenhaus. This
     notebook connects the open voting data before and after that day
-    through one declarative mloda recipe. At the end waited a single config
-    slot; pasting the 2026 export URL into it was the only change needed to
-    read the new results. A new election is configuration, not code.
+    through one declarative mloda recipe. At the end, one config slot holds
+    the 2026 export URL, and the same recipe reads the new results. A new
+    election is configuration, not code.
 
     Part of the Prototype Fund project mloda-plugin-govdata (FKZ 16IS26S11).
     """)
@@ -41,10 +41,10 @@ def _(mo):
 
 @app.cell
 def _(mo):
-    mo.md(
-        "The Wahl zum 20. Abgeordnetenhaus von Berlin took place on **20 September 2026**. "
-        "Everything below runs on published open data, the 2026 results included."
-    )
+    mo.md("""
+    The Wahl zum 20. Abgeordnetenhaus von Berlin took place on **20 September 2026**.
+    Everything below runs on published open data, the 2026 results included.
+    """)
     return
 
 
@@ -219,7 +219,7 @@ def _(mo):
 @app.cell
 def _(elections):
     party_cols = [_c for _c in elections.columns if _c not in ("Bezirksname", "OstWest", "Gueltig", "Wahl")]
-    _sums = elections.groupby("Wahl")[[*party_cols, "Gueltig"]].sum()
+    _sums = elections.groupby("Wahl")[[*party_cols, "Gueltig"]].sum(min_count=1)  # a party that did not run stays empty
     wahl_shares = (100 * _sums[party_cols].div(_sums["Gueltig"], axis=0)).round(1)
     wahl_shares
     return (party_cols,)
@@ -235,7 +235,7 @@ def _(elections, mo):
 @app.cell
 def _(alt, bezirk_pick, elections, party_cols):
     _bezirk = elections[elections["Bezirksname"] == bezirk_pick.value]
-    _sums = _bezirk.groupby("Wahl")[[*party_cols, "Gueltig"]].sum()
+    _sums = _bezirk.groupby("Wahl")[[*party_cols, "Gueltig"]].sum(min_count=1)
     _long = (
         (100 * _sums[party_cols].div(_sums["Gueltig"], axis=0))
         .reset_index()
@@ -259,7 +259,7 @@ def _(mo):
 
     The statistics office publishes Strukturdaten for the 2026 Wahlbezirke
     and, crucially, the 2023 results recalculated onto the 2026 boundaries
-    (the official swing baseline for election night). Joined on the district
+    (the official baseline for the 2026 swing). Joined on the district
     key, demographics meet votes. The fact that every export still carries
     an Ost/West field is itself part of the story: color by it and the two
     clouds separate.
@@ -374,7 +374,7 @@ def _(mo):
     This is the cell this notebook exists for. Before 20 September 2026 it
     held `None`; afterwards the Landeswahlleiterin published the 2026 export
     at the path predicted from BE2023 and BU2025, with the same columns. The
-    URL below is the only change: no release, no code change.
+    URL below is the only new input: no release, no change to the reader.
     """)
     return
 
@@ -390,14 +390,15 @@ def _():
 @app.cell
 def _(ELECTION_2026_URL, Feature, berlin_options, mloda, mo, pd):
     _opts = berlin_options(ELECTION_2026_URL)
-    _positions = ["P01", "P02", "P03", "P04", "P05", "P06"]
+    _positions = [f"P{_i:02d}" for _i in range(1, 121)]  # the 2026 export has 120 ballot columns
     _table = mloda.run_all(
         [Feature(_column, options=_opts) for _column in ["Bezirksname", "Gueltig", *_positions]],
         compute_frameworks=["PyArrowTable"],
     )[0]
     _frame = _table.to_pandas()
-    _shares = (100 * _frame[_positions].sum() / _frame["Gueltig"].sum()).round(1)
-    wartende_zelle = pd.DataFrame({"Listenplatz": _shares.index, "Stimmenanteil %": _shares.values})
+    _votes = _frame[_positions].sum()
+    _shares = (100 * _votes[_votes > 0] / _frame["Gueltig"].sum()).round(1)
+    wartende_zelle = pd.DataFrame({"Stimmzettelplatz": _shares.index, "Stimmenanteil %": _shares.values})
     mo.vstack(
         [
             mo.md(f"**AGH-Wahl 2026**: {len(_frame)} Wahlbezirke im Export."),
@@ -410,10 +411,9 @@ def _(ELECTION_2026_URL, Feature, berlin_options, mloda, mo, pd):
 @app.cell
 def _(mo):
     mo.md("""
-    The table shows ballot positions (Listenplatz), not yet decoded to
-    parties for 2026; that works the same way as in section 2, city-wide sums
-    against the official result. At the Prototype Fund Demo Day in November
-    2026, this cell is no longer waiting; it shows the notebook that called it.
+    The table shows every ballot position that received votes
+    (Stimmzettelplatz), not yet decoded to parties for 2026; that works the
+    same way as in section 2, city-wide sums against the official result.
 
     Sources: Die Landeswahlleiterin für Berlin (wahlen-berlin.de) and the Amt
     für Statistik Berlin-Brandenburg.

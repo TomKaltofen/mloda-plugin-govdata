@@ -12,12 +12,12 @@ import pytest
 
 DEMO_PATH = Path(__file__).resolve().parents[1] / "demos" / "govdata_demo.py"
 RECIPES_DIR = DEMO_PATH.parents[1] / "recipes"
-DEMO_PATHS = sorted(DEMO_PATH.parent.glob("*.py"))
+DEMO_PATHS = sorted(path for path in DEMO_PATH.parent.glob("*.py") if not path.name.startswith("_"))
 
 
 def test_demo_glob_finds_all_demos() -> None:
     # A silently empty glob must fail, not skip the parametrized tests.
-    assert DEMO_PATH in DEMO_PATHS and len(DEMO_PATHS) >= 2
+    assert {DEMO_PATH, DEMO_PATH.with_name("berlin_wahl_2026_demo.py")} <= set(DEMO_PATHS)
 
 
 @pytest.mark.parametrize("demo_path", DEMO_PATHS, ids=lambda path: path.stem)
@@ -31,12 +31,12 @@ def test_demo_defines_marimo_app(demo_path: Path) -> None:
 
 
 @pytest.mark.parametrize("demo_path", DEMO_PATHS, ids=lambda path: path.stem)
-def test_every_plugin_name_a_demo_imports_exists(demo_path: Path) -> None:
+def test_every_mloda_name_a_demo_imports_exists(demo_path: Path) -> None:
     # Cell bodies never run here, so a moved module or a renamed export only shows up this way.
     imports = [
         node
         for node in ast.walk(_demo_tree(demo_path))
-        if isinstance(node, ast.ImportFrom) and (node.module or "").startswith("mloda_plugin_govdata")
+        if isinstance(node, ast.ImportFrom) and (node.module or "").split(".")[0] in {"mloda", "mloda_plugin_govdata"}
     ]
     assert imports
     missing = [
