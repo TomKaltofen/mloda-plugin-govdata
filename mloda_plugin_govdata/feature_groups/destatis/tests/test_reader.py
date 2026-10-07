@@ -142,6 +142,7 @@ def test_peek_and_fetch_without_credentials_on_a_cache_hit(
     assert payload.provenance.source == "genesis"
     assert payload.provenance.url == GENESIS_ONLINE.url("data/tablefile")
     assert payload.provenance.parameters["name"] == TABLE_CODE
+    assert payload.provenance.license == DestatisReader.LICENSE == "DL-DE-BY-2.0"
     assert respx.calls.call_count == 0
 
 
@@ -165,6 +166,19 @@ def test_peek_without_credentials_raises_on_a_cache_miss(tmp_path: Path, monkeyp
 )
 def test_data_access_identity_is_the_table_code(locator: DestatisLocator, identity: str) -> None:
     assert DestatisReader.data_access_identity(locator) == identity
+
+
+def _requiring_license(value: str) -> Feature:
+    return Feature("value", options={DestatisReader.__name__: TABLE_CODE}, required_declarations={"license": value})
+
+
+def test_a_required_license_the_reader_declares_plans() -> None:
+    assert mloda.explain([_requiring_license("DL-DE-BY-2.0")], compute_frameworks=["PyArrowTable"])
+
+
+def test_a_required_license_the_reader_does_not_declare_is_refused_at_plan_time() -> None:
+    with pytest.raises(ValueError, match="requires declared 'license' == 'CC-BY-4.0'"):
+        mloda.explain([_requiring_license("CC-BY-4.0")], compute_frameworks=["PyArrowTable"])
 
 
 @respx.mock

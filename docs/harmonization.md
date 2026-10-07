@@ -113,9 +113,9 @@ Re-bases Kreis observations onto a later Gebietsstand with the BBSR Umsteigeschl
 Output, one row per Kreis and year: `~key`, `~year`, `~value` (float, never rounded), `~flag`
 (`observed` or `rebased`), `~sources` (the contributing keys), `~marker` (the raw GENESIS sign of an
 observed cell), `~issues` (the records of the issues that touch that row: `kind`, `key`, `year`, `detail`,
-`target`), and `~provenance`. `~sources`, `~issues` and `~provenance` are JSON strings, not Arrow lists,
-since pyarrow joins refuse a list column. The input rows do not survive; a partial sum or a key the sheet
-does not know raises unless the policy says otherwise.
+`target`), and `~provenance`. `~sources` is a list of strings, `~issues` and `~provenance` are JSON strings.
+The input rows do not survive; a partial sum or a key the sheet does not know raises unless the policy says
+otherwise.
 
 `~provenance` is the same on every row: the key sheet's `source`, `url`, `sha256`, `from_year`, `to_year`,
 `sheet` and `share`, the `census_breaks` the years span, and `issues_elsewhere`, the records of the issues no

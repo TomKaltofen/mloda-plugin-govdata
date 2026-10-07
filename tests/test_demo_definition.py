@@ -1,4 +1,4 @@
-"""The marimo demo must define its app without running any cell (no network)."""
+"""The marimo demos must define their apps without running any cell (no network)."""
 
 import ast
 import importlib.util
@@ -8,13 +8,21 @@ from typing import TypeGuard
 # A hard import on purpose: tox installs the demo extra, so a broken marimo
 # dependency set must fail this test instead of skipping it.
 import marimo
+import pytest
 
 DEMO_PATH = Path(__file__).resolve().parents[1] / "demos" / "govdata_demo.py"
 RECIPES_DIR = DEMO_PATH.parents[1] / "recipes"
+DEMO_PATHS = sorted(path for path in DEMO_PATH.parent.glob("*.py") if not path.name.startswith("_"))
 
 
-def test_demo_defines_marimo_app() -> None:
-    spec = importlib.util.spec_from_file_location("govdata_demo", DEMO_PATH)
+def test_demo_glob_finds_all_demos() -> None:
+    # A silently empty glob must fail, not skip the parametrized tests.
+    assert {DEMO_PATH, DEMO_PATH.with_name("berlin_wahl_2026_demo.py")} <= set(DEMO_PATHS)
+
+
+@pytest.mark.parametrize("demo_path", DEMO_PATHS, ids=lambda path: path.stem)
+def test_demo_defines_marimo_app(demo_path: Path) -> None:
+    spec = importlib.util.spec_from_file_location(demo_path.stem, demo_path)
     assert spec is not None
     assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
@@ -22,8 +30,26 @@ def test_demo_defines_marimo_app() -> None:
     assert isinstance(module.app, marimo.App)
 
 
-def _demo_tree() -> ast.Module:
-    return ast.parse(DEMO_PATH.read_text(encoding="utf-8"))
+@pytest.mark.parametrize("demo_path", DEMO_PATHS, ids=lambda path: path.stem)
+def test_every_mloda_name_a_demo_imports_exists(demo_path: Path) -> None:
+    # Cell bodies never run here, so a moved module or a renamed export only shows up this way.
+    imports = [
+        node
+        for node in ast.walk(_demo_tree(demo_path))
+        if isinstance(node, ast.ImportFrom) and (node.module or "").split(".")[0] in {"mloda", "mloda_plugin_govdata"}
+    ]
+    assert imports
+    missing = [
+        f"{node.module}.{alias.name}"
+        for node in imports
+        for alias in node.names
+        if not hasattr(importlib.import_module(str(node.module)), alias.name)
+    ]
+    assert missing == []
+
+
+def _demo_tree(path: Path = DEMO_PATH) -> ast.Module:
+    return ast.parse(path.read_text(encoding="utf-8"))
 
 
 def _recipe_files_the_demo_loads() -> set[str]:

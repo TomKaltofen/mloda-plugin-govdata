@@ -21,12 +21,12 @@ class Provenance:
     dataset: Dataset | None = None
 
     @classmethod
-    def from_distribution(cls, distribution: ResolvedDistribution) -> Provenance:
-        """``ckan`` when discovery ran, ``url`` for a direct distribution."""
+    def from_distribution(cls, distribution: ResolvedDistribution, default_license: str | None = None) -> Provenance:
+        """``ckan`` when discovery ran, ``url`` for a direct distribution; ``default_license`` when it reports none."""
         return cls(
             source="ckan" if distribution.dataset is not None else "url",
             url=distribution.url,
-            license=distribution.license,
+            license=distribution.license or default_license,
             dataset=distribution.dataset,
         )
 

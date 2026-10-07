@@ -60,8 +60,8 @@ Göttingen on today's borders, with `value__rebased` ([full example](https://git
 
 ```
 ~key   ~year  ~value    ~flag     ~sources
-03159  2013   322616.0  rebased   ["03152", "03156"]
-03159  2015   329538.0  rebased   ["03152", "03156"]
+03159  2013   322616.0  rebased   [03152, 03156]
+03159  2015   329538.0  rebased   [03152, 03156]
 03159  2016   327065.0  observed  []
 ```
 
@@ -76,7 +76,7 @@ uv sync --all-extras
 uv run marimo edit demos/govdata_demo.py
 ```
 
-The Destatis chapters skip themselves without GENESIS credentials.
+The Destatis chapters skip themselves without GENESIS credentials. A second notebook, `demos/berlin_wahl_2026_demo.py`, reads four Berlin elections with one set of reader options.
 
 ## Docs
 

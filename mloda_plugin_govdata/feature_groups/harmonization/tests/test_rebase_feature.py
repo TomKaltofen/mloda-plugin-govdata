@@ -41,10 +41,7 @@ def _expected(path: Path) -> list[tuple[str, int, int, str, str]]:
 
 def _cells(table: pa.Table, name: str) -> list[tuple[str, int, int, str, str]]:
     columns = [table.column(f"{name}~{part}").to_pylist() for part in ("key", "year", "value", "flag", "sources")]
-    return [
-        (key, year, round(value), flag, "+".join(json.loads(sources)))
-        for key, year, value, flag, sources in zip(*columns)
-    ]
+    return [(key, year, round(value), flag, "+".join(sources)) for key, year, value, flag, sources in zip(*columns)]
 
 
 def _run(features: list[Feature | str]) -> Any:
@@ -282,7 +279,7 @@ def test_a_missing_feeder_is_explained_on_the_null_target_row(
     options = {DestatisReader.__name__: GOETTINGEN_LOCATOR, **YEARS, "rebase_on_incomplete": "flag"}
     table = _run([Feature("value__rebased", options=options)])[0]
     rows = {
-        year: (value, json.loads(sources), json.loads(issues))
+        year: (value, sources, json.loads(issues))
         for year, value, sources, issues in zip(
             *(table.column(f"value__rebased~{part}").to_pylist() for part in ("year", "value", "sources", "issues"))
         )
@@ -302,6 +299,7 @@ def test_an_empty_selection_keeps_the_schema(
     genesis(ffcsv_zip_with_rows((ffcsv_fixtures_dir / GOETTINGEN_ZIP).read_bytes(), lambda row: False))
     table = _run([Feature("value__rebased", options={DestatisReader.__name__: GOETTINGEN_LOCATOR, **YEARS})])[0]
     assert sorted(table.schema.names) == sorted(f"value__rebased~{part}" for part in PARTS)
+    assert table.schema.field("value__rebased~sources").type == pa.list_(pa.string())
     assert table.num_rows == 0
 
 
@@ -317,7 +315,7 @@ def test_the_configuration_based_name_round_trips_through_a_recipe(
     compliance = Compliance(
         sources=[
             SourceCompliance(
-                license="dl-de/by-2-0",
+                license="DL-DE-BY-2.0",
                 attribution="(c) Statistisches Bundesamt (Destatis), 2026",
                 dataset_uri="https://genesis.destatis.de/datenbank/online/statistic/12411/table/12411-0015",
                 retrieved_at=datetime(2026, 9, 12, tzinfo=timezone.utc),

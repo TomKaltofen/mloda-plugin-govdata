@@ -13,6 +13,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 from mloda.user import Feature, mloda
 
+from mloda_plugin_govdata.feature_groups.govdata.core.locator import GovDataLocator
 from mloda_plugin_govdata.feature_groups.govdata.uba import (
     OPTION_UBA_COMPONENT,
     OPTION_UBA_DATE_FROM,
@@ -23,6 +24,7 @@ from mloda_plugin_govdata.feature_groups.govdata.uba import (
     OPTION_UBA_TIME_FROM,
     OPTION_UBA_TIME_TO,
     UBA_AIR_BASE,
+    UBA_LICENSE,
     UbaAirReader,
     parse_uba_measures_bytes,
     uba_measures_url,
@@ -195,6 +197,8 @@ def test_uba_reader_level2(fixtures_dir: Path, tmp_path: Path, monkeypatch: pyte
     assert table.num_rows == 24
     assert table.schema.field("value").type == pa.float64()
     assert table.column("value").to_pylist()[0] == 37.0
+    # A direct URL reports no license, so the payload carries the declared one.
+    assert UbaAirReader._fetch(GovDataLocator(distribution_url=_demo_url())).provenance.license == UBA_LICENSE
 
 
 @respx.mock
@@ -231,6 +235,7 @@ def test_uba_reader_level2_with_non_default_time_and_lang(
         (OPTION_UBA_DATE_TO, date(2025, 1, 1)),
         (OPTION_UBA_TIME_FROM, 0),
         (OPTION_UBA_TIME_TO, 25),
+        (OPTION_UBA_LANG, ""),
     ],
 )
 @respx.mock
@@ -249,11 +254,24 @@ def test_missing_required_uba_option_rejected_before_any_network_call() -> None:
         mloda.run_all([Feature("value", options=options)], compute_frameworks=["PyArrowTable"])
 
 
+@pytest.mark.parametrize(
+    ("collection_option", "collection_value"),
+    [
+        (OPTION_UBA_STATION, [143, 144]),
+        (OPTION_UBA_COMPONENT, [3, 5]),
+        (OPTION_UBA_SCOPE, [2, 1]),
+        (OPTION_UBA_DATE_FROM, ["2025-01-01", "2025-01-02"]),
+        (OPTION_UBA_DATE_TO, ["2025-01-01", "2025-01-02"]),
+        (OPTION_UBA_TIME_FROM, [1, 2]),
+        (OPTION_UBA_TIME_TO, [23, 24]),
+        (OPTION_UBA_LANG, ["en", "de"]),
+    ],
+)
 @respx.mock
-def test_station_collection_value_rejected_before_any_network_call() -> None:
+def test_collection_value_rejected_before_any_network_call(collection_option: str, collection_value: list[Any]) -> None:
     options = dict(_demo_options())
-    options[OPTION_UBA_STATION] = [143, 144]
-    with pytest.raises(ValueError, match="takes a single value"):
+    options[collection_option] = collection_value
+    with pytest.raises(ValueError, match=f"reader option '{collection_option}' value is a list.*scalar_only"):
         mloda.run_all([Feature("value", options=options)], compute_frameworks=["PyArrowTable"])
 
 

@@ -6,9 +6,11 @@ from pathlib import Path
 import httpx
 import pytest
 import respx
+from packaging.licenses import canonicalize_license_expression
 
 from mloda_plugin_govdata.feature_groups.govdata.core.client import build_client
 from mloda_plugin_govdata.feature_groups.govdata.core.discovery import (
+    LICENSE_LABELS,
     Dataset,
     Resource,
     _select_resource,
@@ -27,6 +29,10 @@ def test_normalize_license_known_and_free_text() -> None:
     assert normalize_license("http://dcat-ap.de/def/licenses/cc-by/4.0") == "CC-BY-4.0"
     # dataset-level spelling drift (underscore) normalizes to the resource-level label.
     assert normalize_license("http://dcat-ap.de/def/licenses/dl-by-de/2_0") == "DL-DE-BY-2.0"
+    assert normalize_license("http://dcat-ap.de/def/licenses/dl-zero-de/2.0") == "DL-DE-ZERO-2.0"
+    assert normalize_license("http://dcat-ap.de/def/licenses/geonutz/20130319") == "LicenseRef-GeoNutzV"
+    # Every label is an SPDX id in its canonical spelling, or a LicenseRef- id.
+    assert all(canonicalize_license_expression(label) == label for label in LICENSE_LABELS.values())
     assert normalize_license("Es gelten keine Zugriffsbeschränkungen") == "Es gelten keine Zugriffsbeschränkungen"
     assert normalize_license(None) is None
 

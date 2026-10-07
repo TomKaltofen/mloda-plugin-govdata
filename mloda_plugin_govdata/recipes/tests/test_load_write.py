@@ -31,7 +31,7 @@ BERLIN_URL = "https://www.wahlen-berlin.de/wahlen/BE2023/AFSPRAES/agh/Datenexpor
 COMPLIANCE = Compliance(
     sources=[
         SourceCompliance(
-            license="dl-de/by-2-0",
+            license="DL-DE-BY-2.0",
             attribution="(c) Statistisches Bundesamt (Destatis), 2026",
             dataset_uri="https://genesis.destatis.de/datenbank/online/statistic/12411/table/12411-0010",
             retrieved_at=datetime(2026, 9, 8, tzinfo=timezone.utc),
@@ -90,7 +90,7 @@ def test_round_trip_keeps_names_options_context_scope_and_plain_strings(tmp_path
     )
     assert nr.options.group == {BundeswahlleiterinReader.__name__: KERG_URL}
     assert derived.options.group == {"k": 1, "keys": ["03159", "03152"]}
-    assert derived.options.context == {"in_features": frozenset({"a", "b"}), "flag": True}
+    assert derived.options.context == {"in_features": ("a", "b"), "flag": True}
     assert derived.options.propagate_context_keys == frozenset({"flag"})
     assert derived.feature_group_scope == "GovDataFeature"
     assert scoped.feature_group_scope == "GovDataFeature" and scoped.options.group == {}
@@ -207,6 +207,7 @@ def test_every_feature_constructor_parameter_is_either_carried_or_refused() -> N
         (Feature("x", forward_group=["k"]), "forward_group"),
         (Feature("x", forward_group_exclude=["k"]), "forward_group_exclude"),
         (Feature("x", inherit_context_keys=["k"]), "inherit_context_keys"),
+        (Feature("x", required_declarations={"k": "v"}), "required_declarations"),
     ],
 )
 def test_feature_attributes_without_a_config_field_raise_instead_of_being_dropped(
@@ -255,9 +256,18 @@ def test_a_govdata_locator_without_a_string_form_raises(locator: GovDataLocator,
         build_recipe([Feature("a", options={"GovDataReader": locator})], COMPLIANCE)
 
 
-def test_a_nested_feature_inside_in_features_raises() -> None:
-    feature = Feature("d", options=Options(context={"in_features": frozenset({Feature("a", options={"k": 1})})}))
-    with pytest.raises(RecipeError, match="in_features must be feature names"):
+@pytest.mark.parametrize(
+    ("value", "message"),
+    [
+        (frozenset({Feature("a", options={"k": 1})}), "in_features must be feature names"),
+        (Feature("a"), "in_features must be feature names"),
+        ({"a": 1}, "in_features must be a name, or a list"),
+        (3, "in_features must be a name, or a list"),
+    ],
+)
+def test_in_features_that_are_not_names_raise(value: Any, message: str) -> None:
+    feature = Feature("d", options=Options(context={"in_features": value}))
+    with pytest.raises(RecipeError, match=message):
         build_recipe([feature], COMPLIANCE)
 
 
@@ -268,10 +278,21 @@ def test_in_features_in_the_group_options_raises() -> None:
         build_recipe([feature], COMPLIANCE)
 
 
-def test_comma_separated_in_features_become_a_list() -> None:
-    feature = Feature("d", options=Options(context={"in_features": "b, a"}))
+@pytest.mark.parametrize(
+    ("value", "names"),
+    [
+        ("b, a", ["b", "a"]),
+        (("b", "a"), ["b", "a"]),
+        (["b", "a"], ["b", "a"]),
+        (frozenset({"b", "a"}), ["a", "b"]),
+    ],
+)
+def test_in_features_keep_their_order_and_a_set_is_sorted(value: Any, names: list[str]) -> None:
+    feature = Feature("d", options=Options(context={"in_features": value}))
     recipe = build_recipe([feature], COMPLIANCE)
-    assert recipe.features == [{"name": "d", "in_features": ["a", "b"]}]
+    assert recipe.features == [{"name": "d", "in_features": names}]
+    (loaded,) = _features(parse_recipe(recipe_to_json(recipe)).features)
+    assert loaded.options.context["in_features"] == tuple(names)
 
 
 @pytest.mark.parametrize(

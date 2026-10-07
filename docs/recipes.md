@@ -33,7 +33,7 @@ recipe.compliance.sources[0].attribution  # what to print next to the result
   "compliance": {
     "sources": [
       {
-        "license": "dl-de/by-2-0",
+        "license": "DL-DE-BY-2.0",
         "attribution": "(c) Statistisches Bundesamt (Destatis), 2026",
         "dataset_uri": "https://genesis.destatis.de/datenbank/online/statistic/12411/table/12411-0010",
         "retrieved_at": "2026-09-08T00:00:00Z",
@@ -66,9 +66,10 @@ recipe.compliance.sources[0].attribution  # what to print next to the result
 
 The writer covers the option values this plugin produces: strings, finite numbers, booleans, lists, dicts,
 a `DestatisLocator` (its dict form, `None` fields omitted), a `GovDataLocator` with default `ckan_base` and
-`resource_index` and one of slug or URL (that string), `in_features`, the `feature_group` scope, and
-`propagate_context_keys`. Anything else raises instead of being dropped: a tuple or set value (pass a list),
-a `Feature` with `data_type`, `index`, `initial_requested_data`, a forwarding directive, or a
+`resource_index` and one of slug or URL (that string), `in_features` (in the given order; a set is sorted),
+the `feature_group` scope, and `propagate_context_keys`. Anything else raises instead of being dropped: a
+tuple or set value (pass a list), a `Feature` with `data_type`, `index`, `initial_requested_data`,
+`required_declarations`, a forwarding directive, or a
 `compute_framework` set through the constructor that differs from the options, a nested `Feature` inside
 `in_features`, or an `asof` link. A `domain`, from the constructor or the options, is written to the `domain`
 option key, which mloda reads back. A link set on a `Feature` is hoisted into `links`. The writer runs its
@@ -89,6 +90,13 @@ see [credentials.md](credentials.md).
 
 Repo-root `recipes/`, outside the wheel: the package ships code only (no tests, no recipe files), the same
 policy as the reference tables in the harmonization package. The shipped files are listed below.
+
+## Plan locks
+
+`recipes/locks/` holds one mloda plan lock per shipped recipe: the feature group, compute framework and reader
+of each step that the documented call (`compute_frameworks=["PyArrowTable"]`) resolves to. The offline tests
+fail with a diff when a plan changes, a mloda upgrade included. Regenerate the recipes and locks with
+`uv run python scripts/write_recipes.py` and review the lock diff before committing.
 
 ## Shipped recipes
 

@@ -290,9 +290,9 @@ def test_invalid_geometry_option_rejected_before_any_network_call(bad_option: st
 def test_geometry_collection_value_rejected_before_any_network_call(
     collection_option: str, collection_value: list[Any]
 ) -> None:
-    # Each element is valid alone, so strict_validation admits the list; the scalar guard catches it first.
+    # Each element is valid alone; scalar_only refuses the list at match time anyway.
     options = {BundeswahlleiterinReader.__name__: KERG_URL, collection_option: collection_value}
-    with pytest.raises(ValueError, match="takes a single value"):
+    with pytest.raises(ValueError, match=f"reader option '{collection_option}' value is a list.*scalar_only"):
         mloda.run_all([Feature("Gebiet", options=options)], compute_frameworks=["PyArrowTable"])
 
 
@@ -395,6 +395,31 @@ def test_data_access_identity_names_the_dataset_never_a_url_query(
     reader: type[BaseGovDataReader[Any]], data_access: object, identity: str
 ) -> None:
     assert reader.data_access_identity(data_access) == identity
+
+
+@pytest.mark.parametrize(
+    ("reader", "declared"),
+    [
+        (GovDataReader, {}),  # the CKAN license is only known after discovery
+        (BundeswahlleiterinReader, {}),  # reads any election CSV, not one publisher's
+        (StuttgartPopulationReader, {"license": "CC-BY-4.0"}),
+        (UbaAirReader, {"license": "LicenseRef-UBA-EGovG-12a"}),
+        (FakeReader, {}),
+    ],
+)
+def test_declared_license_is_the_same_at_plan_and_load_time(
+    reader: type[BaseGovDataReader[Any]], declared: dict[str, str]
+) -> None:
+    assert reader.declared_attributes(None) == declared
+    assert reader.declared_attributes(FeatureSet()) == declared
+
+
+def test_a_required_license_refuses_a_reader_that_declares_none() -> None:
+    feature = Feature(
+        "Einwohner", options={GovDataReader.__name__: SLUG}, required_declarations={"license": "CC-BY-4.0"}
+    )
+    with pytest.raises(ValueError, match="requires declared 'license'; GovDataReader declares none"):
+        mloda.explain([feature], compute_frameworks=["PyArrowTable"])
 
 
 @pytest.mark.parametrize(
@@ -508,9 +533,20 @@ def test_fetch_returns_payload_with_provenance(
     assert payload.path.exists()
     assert payload.sha256 == hashlib.sha256(payload.path.read_bytes()).hexdigest()
     assert payload.provenance.source == "ckan"
-    assert payload.provenance.license == "CC-BY-4.0"
+    assert payload.provenance.license == "CC-BY-4.0" == StuttgartPopulationReader.LICENSE
     assert payload.provenance.dataset is not None
     assert payload.retrieved_at.tzinfo is not None
+
+
+@respx.mock
+def test_fetch_refuses_a_ckan_license_the_reader_does_not_declare(fixtures_dir: Path) -> None:
+    record = json.loads((fixtures_dir / "package_show.json").read_text(encoding="utf-8"))
+    record["result"]["resources"][0]["license"] = "http://dcat-ap.de/def/licenses/dl-by-de/2.0"
+    respx.get(PACKAGE_SHOW).mock(return_value=httpx.Response(200, json=record))
+    download = respx.get(record["result"]["resources"][0]["url"])
+    with pytest.raises(ValueError, match="declares license 'CC-BY-4.0'.*'DL-DE-BY-2.0'"):
+        StuttgartPopulationReader._fetch(GovDataLocator(dataset_id=SLUG))
+    assert not download.called  # refused before the download
 
 
 @respx.mock

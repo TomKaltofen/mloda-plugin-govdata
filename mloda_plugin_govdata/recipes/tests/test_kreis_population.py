@@ -20,7 +20,7 @@ from .conftest import EXPECTED_DIR, FFCSV_FIXTURES, GOETTINGEN_ZIP, ffcsv_zip_wi
 
 Genesis = Callable[[Mapping[str, str | bytes]], respx.Route]
 PARTS = ("key", "year", "value", "flag", "sources", "marker", "issues", "provenance")
-JSON_PARTS = ("sources", "issues", "provenance")
+JSON_PARTS = ("issues", "provenance")
 
 
 def _rows(table: Any) -> dict[int, dict[str, Any]]:

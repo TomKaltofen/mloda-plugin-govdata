@@ -102,6 +102,7 @@ class _LoadIdentities(Extender):
 
     def __init__(self) -> None:
         self.seen: dict[str | None, str | None] = {}
+        self.declared: dict[str | None, dict[str, Any] | None] = {}
 
     def wraps(self) -> set[ExtenderHook]:
         return {ExtenderHook.INPUT_DATA_LOAD}
@@ -110,6 +111,8 @@ class _LoadIdentities(Extender):
         context = HookContext.current()
         assert context is not None
         self.seen[context.data_access_format] = context.data_access_identity
+        declared = context.declared_attributes
+        self.declared[context.data_access_format] = None if declared is None else dict(declared)
         return func(*args, **kwargs)
 
 
@@ -127,3 +130,8 @@ def test_each_source_keeps_its_own_name_for_extenders(tmp_path: Path, monkeypatc
 
     # mloda's default would name both loads by their locator type alone.
     assert recorder.seen == {DestatisReader.__name__: LAND_LOCATOR["name"], BundeswahlleiterinReader.__name__: KERG_URL}
+    # An empty dict, not None: None would mean core swallowed a raise in declared_attributes.
+    assert recorder.declared == {
+        DestatisReader.__name__: {"license": "DL-DE-BY-2.0"},
+        BundeswahlleiterinReader.__name__: {},
+    }
