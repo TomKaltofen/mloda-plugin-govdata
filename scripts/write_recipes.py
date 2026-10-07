@@ -1,4 +1,5 @@
-"""Write the shipped recipe files from their definitions below, the source of truth (repo tooling, not shipped).
+"""Write the shipped recipe files from their definitions below, the source of truth (repo tooling, not shipped),
+and each recipe's plan lock under ``locks/``.
 
 Usage:
     uv run python scripts/write_recipes.py [--out DIR]
@@ -13,7 +14,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from mloda.user import Feature, Link, Options
+from mloda.steward import write_plan_lock
+from mloda.user import Feature, Link, Options, ParallelizationMode, PlanStep, mloda
 
 from mloda_plugin_govdata.feature_groups.destatis import DestatisReader
 from mloda_plugin_govdata.feature_groups.govdata import (
@@ -30,7 +32,7 @@ from mloda_plugin_govdata.feature_groups.govdata import (
 )
 from mloda_plugin_govdata.feature_groups.harmonization.core.reference.sources import BBSR_KREISE
 from mloda_plugin_govdata.feature_groups.land_population_per_voter import LAND_LINK
-from mloda_plugin_govdata.recipes import Compliance, SourceCompliance, write_recipe
+from mloda_plugin_govdata.recipes import Compliance, LoadedRecipe, SourceCompliance, load_recipe, write_recipe
 
 RECIPES_DIR = Path(__file__).resolve().parents[1] / "recipes"
 DESTATIS = "dl-de/by-2-0"
@@ -300,6 +302,20 @@ RECIPES: tuple[ShippedRecipe, ...] = (
 )
 
 
+def recipe_plan(recipe: LoadedRecipe) -> list[PlanStep]:
+    """The plan of the documented run call (PyArrowTable, run_all's SYNC mode), without running it."""
+    return mloda.explain(
+        recipe.features,
+        compute_frameworks=["PyArrowTable"],
+        links=set(recipe.links),
+        parallelization_modes={ParallelizationMode.SYNC},
+    )
+
+
+def lock_path(recipes_dir: Path, file: str) -> Path:
+    return recipes_dir / "locks" / file
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(
@@ -308,7 +324,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     args.out.mkdir(parents=True, exist_ok=True)
     for recipe in RECIPES:
-        print(write_recipe(args.out / recipe.file, recipe.features, recipe.compliance, recipe.links))
+        path = write_recipe(args.out / recipe.file, recipe.features, recipe.compliance, recipe.links)
+        print(path)
+        lock = lock_path(args.out, recipe.file)
+        write_plan_lock(recipe_plan(load_recipe(path)), lock)
+        print(lock)
     return 0
 
 

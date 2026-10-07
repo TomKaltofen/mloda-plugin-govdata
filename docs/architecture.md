@@ -13,6 +13,7 @@ How the packages fit together and where to start reading for a change. Paths are
 | `feature_groups/land_population_per_voter.py` | `LandPopulationPerVoter`, the consumer FeatureGroup that makes mloda run the Land-level join of a Destatis table and `kerg.csv`. |
 | `recipes/` | The recipe model, JSON load and write, the credential scan, `frames_by_column`. |
 | `recipes/*.json` (repository root) | The shipped recipe files, generated from their definitions in the repository-root `scripts/write_recipes.py`. |
+| `recipes/locks/*.json` (repository root) | One mloda plan lock per shipped recipe, written by the same script. |
 
 ## Dependency direction
 
@@ -62,7 +63,7 @@ reader loads nothing outside entries 1 to 3.
   Document it in [harmonization.md](harmonization.md).
 - **Add a recipe:** [recipes.md](recipes.md). Add its definition to `RECIPES` in the repository-root `scripts/write_recipes.py`
   and run `uv run python scripts/write_recipes.py`; `recipes/tests/test_shipped.py` pins each file to its
-  definition and fails on a file under the root `recipes/` that has none.
+  definition and its plan to its lock, and fails on a file under the root `recipes/` that has none.
 
 ## Outside the wheel
 

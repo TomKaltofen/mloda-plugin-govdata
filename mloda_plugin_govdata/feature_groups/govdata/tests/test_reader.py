@@ -290,9 +290,9 @@ def test_invalid_geometry_option_rejected_before_any_network_call(bad_option: st
 def test_geometry_collection_value_rejected_before_any_network_call(
     collection_option: str, collection_value: list[Any]
 ) -> None:
-    # Each element is valid alone, so strict_validation admits the list; the scalar guard catches it first.
+    # Each element is valid alone; scalar_only refuses the list at match time anyway.
     options = {BundeswahlleiterinReader.__name__: KERG_URL, collection_option: collection_value}
-    with pytest.raises(ValueError, match="takes a single value"):
+    with pytest.raises(ValueError, match=f"reader option '{collection_option}' value is a list.*scalar_only"):
         mloda.run_all([Feature("Gebiet", options=options)], compute_frameworks=["PyArrowTable"])
 
 

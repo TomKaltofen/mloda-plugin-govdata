@@ -91,6 +91,13 @@ see [credentials.md](credentials.md).
 Repo-root `recipes/`, outside the wheel: the package ships code only (no tests, no recipe files), the same
 policy as the reference tables in the harmonization package. The shipped files are listed below.
 
+## Plan locks
+
+`recipes/locks/` holds one mloda plan lock per shipped recipe: the feature group, compute framework and reader
+of each step that the documented call (`compute_frameworks=["PyArrowTable"]`) resolves to. The offline tests
+fail with a diff when a plan changes, a mloda upgrade included. Regenerate the recipes and locks with
+`uv run python scripts/write_recipes.py` and review the lock diff before committing.
+
 ## Shipped recipes
 
 | File | Reads | Scenario |
