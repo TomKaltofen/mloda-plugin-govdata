@@ -19,6 +19,7 @@ import io
 import json
 import sys
 import zipfile
+import zlib
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 from pathlib import Path
@@ -67,19 +68,17 @@ def _find_leak(data: bytes, secrets: Sequence[str]) -> str | None:
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as archive:
             members = [archive.read(info) for info in archive.infolist()]
-    except Exception:  # an archive that cannot be unpacked cannot be shown clean
-        return "cannot inspect zip"
+    except (zipfile.BadZipFile, zlib.error, EOFError, RuntimeError, ValueError):
+        return "cannot inspect zip"  # an archive that cannot be unpacked cannot be shown clean
     return "redaction failed" if any(_leaks(member, secrets) for member in members) else None
 
 
 def _write(out: Path, name: str, data: bytes, secrets: Sequence[str]) -> str:
-    """Write the fixture and refuse to leave it on disk if any secret variant survived redaction."""
-    path = out / name
-    path.write_bytes(data)
-    problem = _find_leak(path.read_bytes(), secrets)
+    """Write the fixture only if no secret variant survived redaction; checked before anything touches disk."""
+    problem = _find_leak(data, secrets)
     if problem is not None:
-        path.unlink()
-        raise SystemExit(f"{problem} for {name}; file removed, nothing else written")
+        raise SystemExit(f"{problem} for {name}; nothing written")
+    (out / name).write_bytes(data)
     return hashlib.sha256(data).hexdigest()
 
 

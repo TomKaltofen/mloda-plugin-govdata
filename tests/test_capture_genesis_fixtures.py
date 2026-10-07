@@ -102,7 +102,7 @@ def test_write_with_no_secrets_never_flags_anything(tmp_path: Path, data: bytes)
     ],
     ids=["plain", "url-encoded", "bad-zip"],
 )
-def test_write_fails_loudly_and_deletes_the_file_if_a_secret_variant_survives(
+def test_write_fails_loudly_and_writes_nothing_if_a_secret_variant_survives(
     tmp_path: Path, data: bytes, match: str
 ) -> None:
     with pytest.raises(SystemExit, match=match):
