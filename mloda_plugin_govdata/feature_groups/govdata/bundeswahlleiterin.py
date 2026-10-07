@@ -49,36 +49,31 @@ class BundeswahlleiterinReader(BaseGovDataReader[GovDataLocator]):
             "Preamble lines to skip before the header block.",
             default=5,
             strict_validation=True,
+            scalar_only=True,
             element_validator=_is_non_negative_int,
         ),
         OPTION_WAHL_HEADER_ROWS: PropertySpec(
             "Merged header rows flattened into column names.",
             default=3,
             strict_validation=True,
+            scalar_only=True,
             element_validator=is_positive_int,
         ),
         OPTION_WAHL_LABEL_COLUMNS: PropertySpec(
             "Leading columns typed as strings, not value_type.",
             default=4,
             strict_validation=True,
+            scalar_only=True,
             element_validator=_is_non_negative_int,
         ),
         OPTION_WAHL_VALUE_TYPE: PropertySpec(
             "ColumnType of the non-label columns.",
             default=ColumnType.INTEGER,
             strict_validation=True,
+            scalar_only=True,
             allowed_values=tuple(ColumnType),
         ),
     }
-
-    @classmethod
-    def match_subclass_data_access(cls, data_access: Any, feature_names: list[str], options: Any) -> Any:
-        locator = super().match_subclass_data_access(data_access, feature_names, options)
-        if locator is None:
-            return None
-        for key in cls.READER_OPTIONS:
-            cls._scalar_reader_option(key, options)
-        return locator
 
     @classmethod
     def _parse(cls, path: Path, locator: GovDataLocator, *, options: Options | None = None) -> pa.Table:
