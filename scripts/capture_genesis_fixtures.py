@@ -15,8 +15,10 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import io
 import json
 import sys
+import zipfile
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 from pathlib import Path
@@ -29,6 +31,8 @@ from mloda_plugin_govdata.feature_groups.destatis.core.envelope import inspect_r
 from mloda_plugin_govdata.feature_groups.destatis.core.errors import GenesisError
 from mloda_plugin_govdata.feature_groups.destatis.core.hosts import KNOWN_HOSTS
 from mloda_plugin_govdata.feature_groups.destatis.core.redact import redact_json, redact_text, secret_variants
+
+ZIP_MAGIC = b"PK\x03\x04"
 
 
 def _parse_pairs(pairs: Sequence[str]) -> dict[str, str]:
@@ -49,14 +53,33 @@ def _classify(response: httpx.Response, endpoint: str) -> str:
     return inspected.kind
 
 
+def _leaks(data: bytes, secrets: Sequence[str]) -> bool:
+    lowered = data.decode("utf-8", errors="replace").lower()
+    return any(variant.lower() in lowered for secret in secrets for variant in secret_variants(secret))
+
+
+def _find_leak(data: bytes, secrets: Sequence[str]) -> str | None:
+    """Why ``data`` must not be kept, or ``None``; zip members are scanned unpacked (names and comment are raw)."""
+    if _leaks(data, secrets):
+        return "redaction failed"
+    if not secrets or data[:4] != ZIP_MAGIC:
+        return None
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            members = [archive.read(info) for info in archive.infolist()]
+    except Exception:  # an archive that cannot be unpacked cannot be shown clean
+        return "cannot inspect zip"
+    return "redaction failed" if any(_leaks(member, secrets) for member in members) else None
+
+
 def _write(out: Path, name: str, data: bytes, secrets: Sequence[str]) -> str:
     """Write the fixture and refuse to leave it on disk if any secret variant survived redaction."""
     path = out / name
     path.write_bytes(data)
-    lowered = path.read_bytes().decode("utf-8", errors="replace").lower()
-    if any(variant.lower() in lowered for secret in secrets for variant in secret_variants(secret)):
+    problem = _find_leak(path.read_bytes(), secrets)
+    if problem is not None:
         path.unlink()
-        raise SystemExit(f"redaction failed for {name}; file removed, nothing else written")
+        raise SystemExit(f"{problem} for {name}; file removed, nothing else written")
     return hashlib.sha256(data).hexdigest()
 
 
@@ -84,7 +107,7 @@ def capture(
         return
     kind = _classify(response, endpoint)
     body = response.content
-    if body[:4] == b"PK\x03\x04":
+    if body[:4] == ZIP_MAGIC:
         file_name = f"{name}.zip"
         sha = _write(out, file_name, body, secrets)
     else:

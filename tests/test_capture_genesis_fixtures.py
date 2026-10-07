@@ -1,7 +1,9 @@
 """capture_genesis_fixtures.py: argument parsing, redaction, and the live-host call, mocked."""
 
 import hashlib
+import io
 import json
+import zipfile
 from pathlib import Path
 from urllib.parse import quote
 
@@ -25,6 +27,15 @@ def _instant_backoff(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def _client(tmp_path: Path) -> GenesisClient:
     return GenesisClient(GENESIS_ONLINE, None, lock_dir=tmp_path, environ={})
+
+
+def _zip(member: str = "data.csv", text: str = "", comment: bytes = b"") -> bytes:
+    """A real ffcsv-like archive with one deflated member."""
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.comment = comment
+        archive.writestr(member, "Statistik_Code;Zeit;Wert\n" * 50 + text + "12411;2022;84358845\n" * 50)
+    return buffer.getvalue()
 
 
 # --- argument parsing --------------------------------------------------------------------------
@@ -67,30 +78,34 @@ def test_no_credentials_and_not_guest_exits_with_a_clear_message(
 # --- _write: the redaction safety net ----------------------------------------------------------
 
 
-def test_write_returns_the_sha256_when_no_secret_survives(tmp_path: Path) -> None:
-    data = b'{"ok": true}'
-    sha = _write(tmp_path, "fixture.json", data, ["sub-token"])
+@pytest.mark.parametrize("data", [b'{"ok": true}', _zip()], ids=["json", "deflated-zip"])
+def test_write_returns_the_sha256_when_no_secret_survives(tmp_path: Path, data: bytes) -> None:
+    sha = _write(tmp_path, "fixture.bin", data, ["sub-token"])
     assert sha == hashlib.sha256(data).hexdigest()
-    assert (tmp_path / "fixture.json").read_bytes() == data
+    assert (tmp_path / "fixture.bin").read_bytes() == data
 
 
-def test_write_with_no_secrets_never_flags_anything(tmp_path: Path) -> None:
-    # --guest mode: secrets is empty, so the safety net is vacuously off.
-    data = b"anything at all, even a fake secret-looking string"
+@pytest.mark.parametrize("data", [b"anything at all, even a fake secret-looking string", b"PK\x03\x04 not a zip"])
+def test_write_with_no_secrets_never_flags_anything(tmp_path: Path, data: bytes) -> None:
+    # --guest mode: secrets is empty, so the safety net is vacuously off, even for an unreadable zip.
     sha = _write(tmp_path, "fixture.txt", data, [])
     assert sha == hashlib.sha256(data).hexdigest()
 
 
 @pytest.mark.parametrize(
-    "variant",
+    ("data", "match"),
     [
-        "p ss+w/rd",  # the plain secret, as sent
-        quote("p ss+w/rd", safe=""),  # fully URL-encoded (%20/%2B/%2F), as it can appear on the wire
+        (b"leaked: p ss+w/rd", "redaction failed"),  # the plain secret, as sent
+        # fully URL-encoded (%20/%2B/%2F), as it can appear on the wire
+        (f"leaked: {quote('p ss+w/rd', safe='')}".encode(), "redaction failed"),
+        (b"PK\x03\x04 truncated archive", "cannot inspect zip"),  # unreadable zip: fail closed
     ],
+    ids=["plain", "url-encoded", "bad-zip"],
 )
-def test_write_fails_loudly_and_deletes_the_file_if_a_secret_variant_survives(tmp_path: Path, variant: str) -> None:
-    data = f"leaked: {variant}".encode()
-    with pytest.raises(SystemExit, match="redaction failed"):
+def test_write_fails_loudly_and_deletes_the_file_if_a_secret_variant_survives(
+    tmp_path: Path, data: bytes, match: str
+) -> None:
+    with pytest.raises(SystemExit, match=match):
         _write(tmp_path, "fixture.txt", data, ["p ss+w/rd"])
     assert not (tmp_path / "fixture.txt").exists()
 
@@ -122,12 +137,19 @@ def test_capture_redacts_a_text_body_before_writing(tmp_path: Path) -> None:
     assert written == f"plain text with {REDACTED} inside"
 
 
+@pytest.mark.parametrize(
+    "body",
+    [
+        b"PK\x03\x04" + b"leaked sub-token inside the archive bytes",
+        _zip(text="leaked sub-token;2022;1\n"),
+        _zip(member="sub-token.csv"),
+        _zip(comment=b"sub-token"),
+    ],
+    ids=["raw", "deflated-member", "member-name", "zip-comment"],
+)
 @respx.mock
-def test_capture_fails_loudly_when_a_secret_survives_in_the_unredacted_zip_body(tmp_path: Path) -> None:
-    # The zip branch skips redact_json/redact_text; _write's post-hoc literal-byte scan is the
-    # sole guard here, and only sees stored/uncompressed bytes, not a secret inside a real
-    # deflated GENESIS zip payload (a known, separate limitation, not covered by this test).
-    body = b"PK\x03\x04" + b"leaked sub-token inside the archive bytes"
+def test_capture_fails_loudly_when_a_secret_survives_in_the_unredacted_zip_body(tmp_path: Path, body: bytes) -> None:
+    # The zip branch skips redact_json/redact_text; _write scans the raw bytes and every unpacked member.
     respx.get(GENESIS_ONLINE.base_url + "helloworld/whoami").mock(
         return_value=httpx.Response(200, content=body, headers={"content-type": "application/octet-stream"})
     )
@@ -135,6 +157,11 @@ def test_capture_fails_loudly_when_a_secret_survives_in_the_unredacted_zip_body(
         capture(client, "helloworld/whoami", {}, tmp_path, "whoami", ["sub-token"])
     assert not (tmp_path / "whoami.zip").exists()
     assert not (tmp_path / "NOTICE").exists()
+
+
+def test_deflated_member_hides_the_secret_from_a_raw_scan() -> None:
+    # Guards the deflated-member case above: it must exercise unpacking, not the raw scan.
+    assert b"sub-token" not in _zip(text="leaked sub-token;2022;1\n")
 
 
 @respx.mock
