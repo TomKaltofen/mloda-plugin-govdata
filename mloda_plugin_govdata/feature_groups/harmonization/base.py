@@ -80,8 +80,7 @@ class HarmonizationFeature(FeatureChainParserMixin, FeatureGroup):
     @classmethod
     def source_column(cls, feature: Feature) -> str:
         """The one input column, from the chained name (``x__op``) or from ``in_features``."""
-        (source,) = cls._extract_source_features(feature)
-        return str(source)
+        return cls._extract_single_source_feature(feature)
 
     @staticmethod
     def base_name(feature_name: str) -> str:
