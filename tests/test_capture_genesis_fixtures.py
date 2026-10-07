@@ -15,7 +15,7 @@ from mloda_plugin_govdata.feature_groups.destatis.core.api import GenesisClient
 from mloda_plugin_govdata.feature_groups.destatis.core.auth import ENV_SUFFIXES
 from mloda_plugin_govdata.feature_groups.destatis.core.hosts import GENESIS_ONLINE, KNOWN_HOSTS
 from mloda_plugin_govdata.feature_groups.destatis.core.redact import REDACTED
-from scripts.capture_genesis_fixtures import _parse_pairs, _write, capture, main
+from scripts.capture_genesis_fixtures import _leaks, _parse_pairs, _write, capture, main
 
 _CREDENTIAL_ENV_VARS = tuple(host.env_var(suffix) for host in KNOWN_HOSTS.values() for suffix in ENV_SUFFIXES)
 
@@ -29,11 +29,12 @@ def _client(tmp_path: Path) -> GenesisClient:
     return GenesisClient(GENESIS_ONLINE, None, lock_dir=tmp_path, environ={})
 
 
-def _zip(member: str = "data.csv", text: str = "", comment: bytes = b"") -> bytes:
+def _zip(member: str = "data.csv", text: str = "", comment: bytes = b"", encoding: str = "utf-8") -> bytes:
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         archive.comment = comment
-        archive.writestr(member, "Statistik_Code;Zeit;Wert\n" * 50 + text + "12411;2022;84358845\n" * 50)
+        rows = "Statistik_Code;Zeit;Wert\n" * 50 + text + "12411;2022;84358845\n" * 50
+        archive.writestr(member, rows.encode(encoding))
     return buffer.getvalue()
 
 
@@ -94,18 +95,19 @@ def test_write_with_no_secrets_never_flags_anything(tmp_path: Path, data: bytes)
 @pytest.mark.parametrize(
     ("data", "match"),
     [
-        (b"leaked: p ss+w/rd", "redaction failed"),  # the plain secret, as sent
+        ("leaked: p ss+w/rdö".encode(), "redaction failed"),  # the plain secret, as sent
         # fully URL-encoded (%20/%2B/%2F), as it can appear on the wire
-        (f"leaked: {quote('p ss+w/rd', safe='')}".encode(), "redaction failed"),
+        (f"leaked: {quote('p ss+w/rdö', safe='')}".encode(), "redaction failed"),
         (b"PK\x03\x04 truncated archive", "cannot inspect zip"),  # unreadable zip: fail closed
+        (_zip(text="p ss+w/rdö;2022;1\n", encoding="latin-1"), "redaction failed"),  # non-ASCII, latin-1
     ],
-    ids=["plain", "url-encoded", "bad-zip"],
+    ids=["plain", "url-encoded", "bad-zip", "latin-1-member"],
 )
 def test_write_fails_loudly_and_writes_nothing_if_a_secret_variant_survives(
     tmp_path: Path, data: bytes, match: str
 ) -> None:
     with pytest.raises(SystemExit, match=match):
-        _write(tmp_path, "fixture.txt", data, ["p ss+w/rd"])
+        _write(tmp_path, "fixture.txt", data, ["p ss+w/rdö"])
     assert not (tmp_path / "fixture.txt").exists()
 
 
@@ -160,7 +162,7 @@ def test_capture_fails_loudly_when_a_secret_survives_in_the_unredacted_zip_body(
 
 def test_deflated_member_hides_the_secret_from_a_raw_scan() -> None:
     # Guards the deflated-member case above: it must exercise unpacking, not the raw scan.
-    assert b"sub-token" not in _zip(text="leaked sub-token;2022;1\n")
+    assert not _leaks(_zip(text="leaked sub-token;2022;1\n"), ["sub-token"])
 
 
 @respx.mock

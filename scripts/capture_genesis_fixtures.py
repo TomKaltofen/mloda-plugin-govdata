@@ -17,6 +17,7 @@ import argparse
 import hashlib
 import io
 import json
+import lzma
 import sys
 import zipfile
 import zlib
@@ -55,8 +56,10 @@ def _classify(response: httpx.Response, endpoint: str) -> str:
 
 
 def _leaks(data: bytes, secrets: Sequence[str]) -> bool:
-    lowered = data.decode("utf-8", errors="replace").lower()
-    return any(variant.lower() in lowered for secret in secrets for variant in secret_variants(secret))
+    # ffcsv members may be latin-1 / cp1252, so a non-ASCII secret is looked for in both decodings.
+    texts = [data.decode(encoding, errors="replace").lower() for encoding in ("utf-8", "latin-1")]
+    variants = [variant.lower() for secret in secrets for variant in secret_variants(secret)]
+    return any(variant in text for text in texts for variant in variants)
 
 
 def _find_leak(data: bytes, secrets: Sequence[str]) -> str | None:
@@ -67,10 +70,10 @@ def _find_leak(data: bytes, secrets: Sequence[str]) -> str | None:
         return None
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as archive:
-            members = [archive.read(info) for info in archive.infolist()]
-    except (zipfile.BadZipFile, zlib.error, EOFError, RuntimeError, ValueError):
+            leaked = any(_leaks(archive.read(info), secrets) for info in archive.infolist())
+    except (zipfile.BadZipFile, zlib.error, lzma.LZMAError, EOFError, OSError, RuntimeError, ValueError):
         return "cannot inspect zip"  # an archive that cannot be unpacked cannot be shown clean
-    return "redaction failed" if any(_leaks(member, secrets) for member in members) else None
+    return "redaction failed" if leaked else None
 
 
 def _write(out: Path, name: str, data: bytes, secrets: Sequence[str]) -> str:
