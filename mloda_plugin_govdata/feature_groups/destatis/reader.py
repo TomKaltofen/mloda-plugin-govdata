@@ -31,7 +31,7 @@ from .locator import DestatisLocator
 class DestatisReader(BaseGovDataReader[DestatisLocator]):
     """Reads one GENESIS table selection into a typed Arrow table, ffcsv parsed."""
 
-    # The reader resolves only the known GENESIS hosts, and both publish under dl-de/by-2-0.
+    # The reader resolves only the known GENESIS hosts, and both publish under DL-DE-BY-2.0.
     LICENSE: ClassVar[str | None] = DL_DE_BY_2_0
 
     @classmethod

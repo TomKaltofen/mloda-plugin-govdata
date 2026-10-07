@@ -31,7 +31,7 @@ BERLIN_URL = "https://www.wahlen-berlin.de/wahlen/BE2023/AFSPRAES/agh/Datenexpor
 COMPLIANCE = Compliance(
     sources=[
         SourceCompliance(
-            license="dl-de/by-2-0",
+            license="DL-DE-BY-2.0",
             attribution="(c) Statistisches Bundesamt (Destatis), 2026",
             dataset_uri="https://genesis.destatis.de/datenbank/online/statistic/12411/table/12411-0010",
             retrieved_at=datetime(2026, 9, 8, tzinfo=timezone.utc),

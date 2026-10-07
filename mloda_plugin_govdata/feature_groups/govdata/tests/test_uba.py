@@ -197,7 +197,7 @@ def test_uba_reader_level2(fixtures_dir: Path, tmp_path: Path, monkeypatch: pyte
     assert table.num_rows == 24
     assert table.schema.field("value").type == pa.float64()
     assert table.column("value").to_pylist()[0] == 37.0
-    # A direct URL reports no license, so the payload carries the declared one (a cache hit, no second GET).
+    # A direct URL reports no license, so the payload carries the declared one.
     assert UbaAirReader._fetch(GovDataLocator(distribution_url=_demo_url())).provenance.license == UBA_LICENSE
 
 

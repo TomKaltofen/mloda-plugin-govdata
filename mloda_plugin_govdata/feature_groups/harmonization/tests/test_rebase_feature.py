@@ -315,7 +315,7 @@ def test_the_configuration_based_name_round_trips_through_a_recipe(
     compliance = Compliance(
         sources=[
             SourceCompliance(
-                license="dl-de/by-2-0",
+                license="DL-DE-BY-2.0",
                 attribution="(c) Statistisches Bundesamt (Destatis), 2026",
                 dataset_uri="https://genesis.destatis.de/datenbank/online/statistic/12411/table/12411-0015",
                 retrieved_at=datetime(2026, 9, 12, tzinfo=timezone.utc),

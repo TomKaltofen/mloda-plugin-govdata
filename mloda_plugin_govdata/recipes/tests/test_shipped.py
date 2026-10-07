@@ -8,9 +8,8 @@ import pytest
 import respx
 from mloda.steward import check_plan_lock
 
-from mloda_plugin_govdata.feature_groups.govdata import build_client
-from mloda_plugin_govdata.feature_groups.govdata.core.discovery import CC_BY_4_0, DL_DE_BY_2_0
-from mloda_plugin_govdata.feature_groups.govdata.uba import UBA_LICENSE
+from mloda_plugin_govdata.feature_groups.destatis import DestatisReader
+from mloda_plugin_govdata.feature_groups.govdata import StuttgartPopulationReader, UbaAirReader, build_client
 from mloda_plugin_govdata.feature_groups.harmonization.core.reference.sources import (
     BBSR_KREISE,
     EUROSTAT_LAU_NUTS,
@@ -29,7 +28,7 @@ from scripts.write_recipes import (
 )
 
 IDS = [r.file for r in RECIPES]
-LICENSES = {CC_BY_4_0, DL_DE_BY_2_0, UBA_LICENSE}  # the labels readers declare
+LICENSES = {reader.LICENSE for reader in (DestatisReader, StuttgartPopulationReader, UbaAirReader)}
 
 
 @pytest.mark.parametrize("shipped", RECIPES, ids=IDS)
