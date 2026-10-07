@@ -41,10 +41,7 @@ def _expected(path: Path) -> list[tuple[str, int, int, str, str]]:
 
 def _cells(table: pa.Table, name: str) -> list[tuple[str, int, int, str, str]]:
     columns = [table.column(f"{name}~{part}").to_pylist() for part in ("key", "year", "value", "flag", "sources")]
-    return [
-        (key, year, round(value), flag, "+".join(sources))
-        for key, year, value, flag, sources in zip(*columns)
-    ]
+    return [(key, year, round(value), flag, "+".join(sources)) for key, year, value, flag, sources in zip(*columns)]
 
 
 def _run(features: list[Feature | str]) -> Any:
