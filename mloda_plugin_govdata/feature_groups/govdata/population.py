@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import ClassVar
 
+from .core.discovery import CC_BY_4_0
 from .core.parse import ColumnType
 from .reader import GovDataReader
 
@@ -20,3 +21,4 @@ class StuttgartPopulationReader(GovDataReader):
     """Residents by age group and city district, with typed columns."""
 
     schema: ClassVar[dict[str, ColumnType] | None] = POPULATION_SCHEMA
+    LICENSE: ClassVar[str | None] = CC_BY_4_0

@@ -1,10 +1,19 @@
 """HarmonizationFeature.by_base: stable output order and collision resolution, independent of
-set iteration/hash seed."""
+set iteration/hash seed; source_column: exactly one source."""
 
+import pytest
 from mloda.provider import FeatureSet
 from mloda.user import Feature, Options
 
 from mloda_plugin_govdata.feature_groups.harmonization.base import HarmonizationFeature
+from mloda_plugin_govdata.feature_groups.harmonization.period import AnnualPeriodFeature
+
+
+def test_source_column_names_the_feature_on_a_wrong_source_count() -> None:
+    # Not a chained name, so the sources come from in_features.
+    feature = Feature("two_sources", Options(context={"in_features": ["a", "b"]}))
+    with pytest.raises(ValueError, match="Feature 'two_sources' allows at most 1 in_feature"):
+        AnnualPeriodFeature.source_column(feature)
 
 
 def test_by_base_orders_by_feature_name_not_set_iteration() -> None:

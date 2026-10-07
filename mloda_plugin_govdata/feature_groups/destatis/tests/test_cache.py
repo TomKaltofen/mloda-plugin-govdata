@@ -82,10 +82,11 @@ def test_canonical_parameters_are_the_wire_form() -> None:
         "endyear": "2022",
         "regionalkey": " 02, 01 ,",
         "classifyingkey1": {"B", "A"},
-        "classifyingkey2": ["10", 9],
+        "classifyingkey2": ["10", "09"],
         "contents": ["BEVSTD", "AAA"],
         "area": None,
         "regionalvariable": "01",
+        "timeslices": 3,
         "stand": "",
         "language": "de",
         "username": TOKEN,
@@ -97,9 +98,10 @@ def test_canonical_parameters_are_the_wire_form() -> None:
         "endyear": "2022",
         "regionalkey": "01,02",
         "classifyingkey1": "A,B",
-        "classifyingkey2": "10,9",
+        "classifyingkey2": "09,10",
         "contents": "BEVSTD,AAA",  # not a selection field: the caller's order stays
         "regionalvariable": "01",
+        "timeslices": "3",
         "stand": "",
         "language": "de",
     }
@@ -120,11 +122,22 @@ def test_undeclared_or_missing_fields_are_refused_by_name() -> None:
     assert canonical_parameters("helloworld/whoami", {}) == {}
 
 
-@pytest.mark.parametrize("bad", [True, 2020.0, {"a": 1}, [["01"]], b"01"])
-def test_unsupported_values_are_refused_by_field_name(bad: object) -> None:
+@pytest.mark.parametrize(
+    ("name", "bad"),
+    [
+        *(("startyear", bad) for bad in (True, 2020.0, {"a": 1}, [["01"]], b"01")),
+        # An int only fits the numeric fields; anywhere else it would drop a leading zero.
+        ("regionalkey", 1234567),
+        ("classifyingkey2", ["10", 1234567]),
+        ("contents", [1234567]),
+        ("name", 1234567),
+    ],
+)
+def test_unsupported_values_are_refused_by_field_name(name: str, bad: object) -> None:
     with pytest.raises(TypeError) as info:
-        canonical_parameters(ENDPOINT, dict(PARAMS, startyear=bad))
-    assert "'startyear'" in str(info.value) and "01" not in str(info.value)
+        canonical_parameters(ENDPOINT, dict(PARAMS, **{name: bad}))
+    assert f"'{name}'" in str(info.value)
+    assert "01" not in str(info.value) and "1234567" not in str(info.value)
 
 
 def test_key_is_stable_under_reordering_and_changes_per_parameter(tmp_path: Path) -> None:

@@ -45,8 +45,8 @@ class KreisRebaseFeature(HarmonizationFeature):
     the value column and ``value_marker``; the key sheets come from the BBSR file in the cache.
     Returns one row per (Kreis, year): ``~key``, ``~year``, ``~value``, ``~flag``, ``~sources`` (the
     contributing keys), ``~marker``, ``~issues`` (the issue records touching that row) and ``~provenance``
-    (the key sheet's source identity, census breaks and the issues no row carries). ``~sources``,
-    ``~issues`` and ``~provenance`` are JSON. The input rows do not survive.
+    (the key sheet's source identity, census breaks and the issues no row carries). ``~sources`` is a list
+    of strings, ``~issues`` and ``~provenance`` are JSON. The input rows do not survive.
     """
 
     PREFIX_PATTERN = rf".*__rebased{OPTIONAL_PART}$"
@@ -190,8 +190,7 @@ class KreisRebaseFeature(HarmonizationFeature):
             f"{name}~year": pa.array([r.year for r in rows], pa.int64()),
             f"{name}~value": pa.array([r.value for r in rows], pa.float64()),
             f"{name}~flag": pa.array([r.flag.value for r in rows], pa.string()),
-            # JSON, not an Arrow list: pyarrow joins refuse a list column that is not a key.
-            f"{name}~sources": pa.array([json.dumps(list(r.sources)) for r in rows], pa.string()),
+            f"{name}~sources": pa.array([list(r.sources) for r in rows], pa.list_(pa.string())),
             f"{name}~marker": pa.array([r.marker for r in rows], pa.string()),
             f"{name}~issues": pa.array(issues, pa.string()),
             f"{name}~provenance": pa.array([provenance_json] * len(rows), pa.string()),

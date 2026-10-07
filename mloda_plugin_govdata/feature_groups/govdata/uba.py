@@ -27,6 +27,8 @@ from .core.parse import ColumnType
 from .reader import BaseGovDataReader
 
 UBA_AIR_BASE = "https://luftdaten.umweltbundesamt.de/api/air-data/v4"
+# No SPDX id exists for the UBA data terms (section 12a EGovG, attribution required), hence a LicenseRef- id.
+UBA_LICENSE = "LicenseRef-UBA-EGovG-12a"
 
 OPTION_UBA_STATION = "govdata_uba_station"
 OPTION_UBA_COMPONENT = "govdata_uba_component"
@@ -54,6 +56,10 @@ def _is_iso_date(value: Any) -> bool:
     except ValueError:
         return False
     return True
+
+
+def _is_non_empty_str(value: Any) -> bool:
+    return isinstance(value, str) and bool(value)
 
 
 # Canonical, stable output schema. The v4 measures leaf array is fixed by the API contract as
@@ -239,31 +245,50 @@ class UbaAirReader(BaseGovDataReader[GovDataLocator]):
     CSV readers.
     """
 
+    LICENSE: ClassVar[str | None] = UBA_LICENSE
     READER_OPTIONS: ClassVar[dict[str, PropertySpec]] = {
-        OPTION_UBA_STATION: PropertySpec("UBA station id.", strict_validation=True, element_validator=is_positive_int),
+        OPTION_UBA_STATION: PropertySpec(
+            "UBA station id.", strict_validation=True, element_validator=is_positive_int, scalar_only=True
+        ),
         OPTION_UBA_COMPONENT: PropertySpec(
             "UBA component id (see the UBA components endpoint).",
             strict_validation=True,
             element_validator=is_positive_int,
+            scalar_only=True,
         ),
         OPTION_UBA_SCOPE: PropertySpec(
             "UBA scope id (see the UBA scopes endpoint).",
             strict_validation=True,
             element_validator=is_positive_int,
+            scalar_only=True,
         ),
         OPTION_UBA_DATE_FROM: PropertySpec(
-            "Query window start, YYYY-MM-DD.", strict_validation=True, element_validator=_is_iso_date
+            "Query window start, YYYY-MM-DD.", strict_validation=True, element_validator=_is_iso_date, scalar_only=True
         ),
         OPTION_UBA_DATE_TO: PropertySpec(
-            "Query window end, YYYY-MM-DD.", strict_validation=True, element_validator=_is_iso_date
+            "Query window end, YYYY-MM-DD.", strict_validation=True, element_validator=_is_iso_date, scalar_only=True
         ),
         OPTION_UBA_TIME_FROM: PropertySpec(
-            "Start hour slot (1-24).", default=1, strict_validation=True, element_validator=_is_hour_slot
+            "Start hour slot (1-24).",
+            default=1,
+            strict_validation=True,
+            element_validator=_is_hour_slot,
+            scalar_only=True,
         ),
         OPTION_UBA_TIME_TO: PropertySpec(
-            "End hour slot (1-24).", default=24, strict_validation=True, element_validator=_is_hour_slot
+            "End hour slot (1-24).",
+            default=24,
+            strict_validation=True,
+            element_validator=_is_hour_slot,
+            scalar_only=True,
         ),
-        OPTION_UBA_LANG: PropertySpec("UBA API response language.", default="en"),
+        OPTION_UBA_LANG: PropertySpec(
+            "UBA API response language.",
+            default="en",
+            strict_validation=True,
+            element_validator=_is_non_empty_str,
+            scalar_only=True,
+        ),
     }
 
     @classmethod
@@ -274,23 +299,23 @@ class UbaAirReader(BaseGovDataReader[GovDataLocator]):
     def match_subclass_data_access(cls, data_access: Any, feature_names: list[str], options: Any) -> Any:
         if data_access is not True:
             return None
-        date_from = cls._scalar_reader_option(OPTION_UBA_DATE_FROM, options)
-        date_to = cls._scalar_reader_option(OPTION_UBA_DATE_TO, options)
+        date_from = cls.reader_option(OPTION_UBA_DATE_FROM, options)
+        date_to = cls.reader_option(OPTION_UBA_DATE_TO, options)
         if date_from > date_to:
             raise ValueError(f"{cls.__name__}: date_from {date_from!r} is after date_to {date_to!r}.")
-        time_from = cls._scalar_reader_option(OPTION_UBA_TIME_FROM, options)
-        time_to = cls._scalar_reader_option(OPTION_UBA_TIME_TO, options)
+        time_from = cls.reader_option(OPTION_UBA_TIME_FROM, options)
+        time_to = cls.reader_option(OPTION_UBA_TIME_TO, options)
         if int(time_from) > int(time_to):
             raise ValueError(f"{cls.__name__}: time_from {time_from!r} is after time_to {time_to!r}.")
         url = uba_measures_url(
-            station=cls._scalar_reader_option(OPTION_UBA_STATION, options),
-            component=cls._scalar_reader_option(OPTION_UBA_COMPONENT, options),
-            scope=cls._scalar_reader_option(OPTION_UBA_SCOPE, options),
+            station=cls.reader_option(OPTION_UBA_STATION, options),
+            component=cls.reader_option(OPTION_UBA_COMPONENT, options),
+            scope=cls.reader_option(OPTION_UBA_SCOPE, options),
             date_from=date_from,
             date_to=date_to,
             time_from=time_from,
             time_to=time_to,
-            lang=cls._scalar_reader_option(OPTION_UBA_LANG, options),
+            lang=cls.reader_option(OPTION_UBA_LANG, options),
         )
         return GovDataLocator(distribution_url=url)
 

@@ -1,4 +1,5 @@
-"""Write the shipped recipe files from their definitions below, the source of truth (repo tooling, not shipped).
+"""Write the shipped recipe files from their definitions below, the source of truth (repo tooling, not shipped),
+and each recipe's plan lock under ``locks/``.
 
 Usage:
     uv run python scripts/write_recipes.py [--out DIR]
@@ -13,7 +14,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from mloda.user import Feature, Link, Options
+from mloda.steward import write_plan_lock
+from mloda.user import Feature, Link, Options, ParallelizationMode, PlanStep, mloda
 
 from mloda_plugin_govdata.feature_groups.destatis import DestatisReader
 from mloda_plugin_govdata.feature_groups.govdata import (
@@ -28,12 +30,13 @@ from mloda_plugin_govdata.feature_groups.govdata import (
     UbaAirReader,
     uba_measures_url,
 )
+from mloda_plugin_govdata.feature_groups.govdata.core.discovery import CC_BY_4_0, DL_DE_BY_2_0
+from mloda_plugin_govdata.feature_groups.govdata.uba import UBA_LICENSE
 from mloda_plugin_govdata.feature_groups.harmonization.core.reference.sources import BBSR_KREISE
 from mloda_plugin_govdata.feature_groups.land_population_per_voter import LAND_LINK
-from mloda_plugin_govdata.recipes import Compliance, SourceCompliance, write_recipe
+from mloda_plugin_govdata.recipes import Compliance, LoadedRecipe, SourceCompliance, load_recipe, write_recipe
 
 RECIPES_DIR = Path(__file__).resolve().parents[1] / "recipes"
-DESTATIS = "dl-de/by-2-0"
 DESTATIS_ATTRIBUTION = "(c) Statistisches Bundesamt (Destatis), 2026"
 DESTATIS_MODIFICATIONS = [
     "ffcsv reply parsed into a typed table; the raw value sign is kept in value_marker",
@@ -95,7 +98,7 @@ def _at(year: int, month: int, day: int) -> datetime:
 def _destatis(table: str, retrieved_at: datetime, sha256: str, *extra: str) -> SourceCompliance:
     statistic = table.split("-")[0]
     return SourceCompliance(
-        license=DESTATIS,
+        license=DL_DE_BY_2_0,
         attribution=DESTATIS_ATTRIBUTION,
         dataset_uri=f"https://genesis.destatis.de/datenbank/online/statistic/{statistic}/table/{table}",
         retrieved_at=retrieved_at,
@@ -110,7 +113,7 @@ def _destatis_features(locator: dict[str, Any], *names: str) -> list[Feature]:
 
 
 KERG_SOURCE = SourceCompliance(
-    license="dl-de/by-2-0",
+    license=DL_DE_BY_2_0,
     attribution="(c) Die Bundeswahlleiterin, Wiesbaden 2025",
     dataset_uri=KERG_URL,
     retrieved_at=_at(2026, 9, 12),
@@ -136,7 +139,7 @@ KREIS_POPULATION_REBASED = ShippedRecipe(
                 "flag, source keys, issues, and the key-sheet provenance",
             ),
             SourceCompliance(
-                license=DESTATIS,
+                license=BBSR_KREISE.license,
                 attribution=BBSR_KREISE.attribution,
                 dataset_uri=BBSR_KREISE.url,
                 retrieved_at=_at(2026, 9, 24),
@@ -223,7 +226,7 @@ STUTTGART_POPULATION = ShippedRecipe(
     Compliance(
         sources=[
             SourceCompliance(
-                license="CC-BY-4.0",
+                license=CC_BY_4_0,
                 attribution="Statistisches Amt der Landeshauptstadt Stuttgart",
                 dataset_uri=STUTTGART_URL,
                 retrieved_at=_at(2026, 9, 12),
@@ -271,7 +274,7 @@ UBA_OZONE_STATION_143 = ShippedRecipe(
     Compliance(
         sources=[
             SourceCompliance(
-                license="§ 12a EGovG (Umweltbundesamt data terms, attribution required)",
+                license=UBA_LICENSE,
                 attribution="Umweltbundesamt, Luftdaten API v4",
                 dataset_uri=UBA_URL,
                 retrieved_at=_at(2026, 8, 16),
@@ -284,7 +287,8 @@ UBA_OZONE_STATION_143 = ShippedRecipe(
         notes=(
             "Hourly ozone (component 3, scope 2) at station 143 on 2025-01-01. The endpoint re-serves revised "
             "values: a re-fetch on 2026-09-12 differed from the pinned payload in most hours by one unit, so the "
-            "sha256 identifies this retrieval, not the series."
+            "sha256 identifies this retrieval, not the series. Licensed under the UBA data terms (§ 12a EGovG), "
+            "attribution required."
         ),
     ),
 )
@@ -300,6 +304,20 @@ RECIPES: tuple[ShippedRecipe, ...] = (
 )
 
 
+def recipe_plan(recipe: LoadedRecipe) -> list[PlanStep]:
+    """The plan of the documented run call (PyArrowTable, run_all's SYNC mode), without running it."""
+    return mloda.explain(
+        recipe.features,
+        compute_frameworks=["PyArrowTable"],
+        links=set(recipe.links),
+        parallelization_modes={ParallelizationMode.SYNC},
+    )
+
+
+def lock_path(recipes_dir: Path, file: str) -> Path:
+    return recipes_dir / "locks" / file
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(
@@ -308,7 +326,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     args.out.mkdir(parents=True, exist_ok=True)
     for recipe in RECIPES:
-        print(write_recipe(args.out / recipe.file, recipe.features, recipe.compliance, recipe.links))
+        path = write_recipe(args.out / recipe.file, recipe.features, recipe.compliance, recipe.links)
+        print(path)
+        lock = lock_path(args.out, recipe.file)
+        write_plan_lock(recipe_plan(load_recipe(path)), lock)
+        print(lock)
     return 0
 
 
