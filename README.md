@@ -76,7 +76,7 @@ uv sync --all-extras
 uv run marimo edit demos/govdata_demo.py
 ```
 
-The Destatis chapters skip themselves without GENESIS credentials.
+The Destatis chapters skip themselves without GENESIS credentials. A second notebook, `demos/berlin_wahl_2026_demo.py`, reads four Berlin elections with one set of reader options.
 
 ## Docs
 
