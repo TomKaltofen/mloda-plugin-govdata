@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 import respx
 from mloda.steward import check_plan_lock
+from packaging.licenses import canonicalize_license_expression
 
 from mloda_plugin_govdata.feature_groups.destatis import DestatisReader
 from mloda_plugin_govdata.feature_groups.govdata import StuttgartPopulationReader, UbaAirReader, build_client
@@ -52,6 +53,7 @@ def test_the_file_loads_with_its_compliance_complete(recipes_dir: Path, shipped:
 def test_reference_sources_use_the_reader_license_labels() -> None:
     references = (BBSR_KREISE, EUROSTAT_LAU_NUTS, EUROSTAT_NUTS_CORRESPONDENCE, gv_isys_source(2016))
     assert {source.license for source in references} <= LICENSES
+    assert all(canonicalize_license_expression(label) == label for label in LICENSES if label)
 
 
 # No routes: resolving a plan must not reach the network.
