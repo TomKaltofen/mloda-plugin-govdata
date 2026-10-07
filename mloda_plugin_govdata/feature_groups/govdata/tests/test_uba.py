@@ -13,6 +13,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 from mloda.user import Feature, mloda
 
+from mloda_plugin_govdata.feature_groups.govdata.core.locator import GovDataLocator
 from mloda_plugin_govdata.feature_groups.govdata.uba import (
     OPTION_UBA_COMPONENT,
     OPTION_UBA_DATE_FROM,
@@ -23,6 +24,7 @@ from mloda_plugin_govdata.feature_groups.govdata.uba import (
     OPTION_UBA_TIME_FROM,
     OPTION_UBA_TIME_TO,
     UBA_AIR_BASE,
+    UBA_LICENSE,
     UbaAirReader,
     parse_uba_measures_bytes,
     uba_measures_url,
@@ -73,6 +75,8 @@ def test_flatten_real_fixture(fixtures_dir: Path) -> None:
     assert table.column("component_id").to_pylist()[0] == 3
     assert table.column("scope_id").to_pylist()[0] == 2
     assert table.column("value").to_pylist()[0] == 37.0
+    # A direct URL reports no license, so the payload carries the declared one (a cache hit, no second GET).
+    assert UbaAirReader._fetch(GovDataLocator(distribution_url=_demo_url())).provenance.license == UBA_LICENSE
     assert table.column("index").to_pylist()[0] == 2
     assert table.schema.field("station_id").type == pa.int64()
     assert table.schema.field("value").type == pa.float64()

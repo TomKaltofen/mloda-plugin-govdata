@@ -12,10 +12,13 @@ from pydantic import BaseModel, ConfigDict
 from .client import request_with_retry
 from .locator import DEFAULT_CKAN_BASE, GovDataLocator
 
+CC_BY_4_0 = "CC-BY-4.0"
+DL_DE_BY_2_0 = "DL-DE-BY-2.0"
+
 # dcat-ap.de license URIs observed across GovData distributions -> short labels.
 LICENSE_LABELS: dict[str, str] = {
-    "http://dcat-ap.de/def/licenses/cc-by/4.0": "CC-BY-4.0",
-    "http://dcat-ap.de/def/licenses/dl-by-de/2.0": "DL-DE-BY-2.0",
+    "http://dcat-ap.de/def/licenses/cc-by/4.0": CC_BY_4_0,
+    "http://dcat-ap.de/def/licenses/dl-by-de/2.0": DL_DE_BY_2_0,
     "http://dcat-ap.de/def/licenses/dl-zero-de/2.0": "DL-DE-Zero-2.0",
     "http://dcat-ap.de/def/licenses/cc-zero": "CC0-1.0",
     "http://dcat-ap.de/def/licenses/geonutz/20130319": "GeoNutzV",

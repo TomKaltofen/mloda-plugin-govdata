@@ -26,7 +26,7 @@
   "compliance": {
     "sources": [
       {
-        "license": "dl-de/by-2-0",
+        "license": "DL-DE-BY-2.0",
         "attribution": "(c) Statistisches Bundesamt (Destatis), 2026",
         "dataset_uri": "https://genesis.destatis.de/datenbank/online/statistic/12411/table/12411-0015",
         "retrieved_at": "2026-09-12T00:00:00Z",
@@ -41,7 +41,7 @@
         ]
       },
       {
-        "license": "dl-de/by-2-0",
+        "license": "DL-DE-BY-2.0",
         "attribution": "Laufende Raumbeobachtung des BBSR",
         "dataset_uri": "https://www.bbsr.bund.de/BBSR/DE/forschung/raumbeobachtung/Raumabgrenzungen/umstiegsschluessel/ref-kreise-1990-2024.xlsx?__blob=publicationFile&v=2",
         "retrieved_at": "2026-09-24T00:00:00Z",

@@ -403,7 +403,7 @@ def test_data_access_identity_names_the_dataset_never_a_url_query(
         (GovDataReader, {}),  # the CKAN license is only known after discovery
         (BundeswahlleiterinReader, {}),  # reads any election CSV, not one publisher's
         (StuttgartPopulationReader, {"license": "CC-BY-4.0"}),
-        (UbaAirReader, {"license": "§ 12a EGovG (Umweltbundesamt data terms, attribution required)"}),
+        (UbaAirReader, {"license": "LicenseRef-UBA-EGovG-12a"}),
         (FakeReader, {}),
     ],
 )

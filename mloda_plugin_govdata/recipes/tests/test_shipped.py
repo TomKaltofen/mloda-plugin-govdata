@@ -9,6 +9,14 @@ import respx
 from mloda.steward import check_plan_lock
 
 from mloda_plugin_govdata.feature_groups.govdata import build_client
+from mloda_plugin_govdata.feature_groups.govdata.core.discovery import CC_BY_4_0, DL_DE_BY_2_0
+from mloda_plugin_govdata.feature_groups.govdata.uba import UBA_LICENSE
+from mloda_plugin_govdata.feature_groups.harmonization.core.reference.sources import (
+    BBSR_KREISE,
+    EUROSTAT_LAU_NUTS,
+    EUROSTAT_NUTS_CORRESPONDENCE,
+    gv_isys_source,
+)
 from mloda_plugin_govdata.recipes import build_recipe, load_recipe, recipe_to_json
 from scripts.write_recipes import (
     BUNDESTAGSWAHL_2025,
@@ -21,6 +29,7 @@ from scripts.write_recipes import (
 )
 
 IDS = [r.file for r in RECIPES]
+LICENSES = {CC_BY_4_0, DL_DE_BY_2_0, UBA_LICENSE}  # the labels readers declare
 
 
 @pytest.mark.parametrize("shipped", RECIPES, ids=IDS)
@@ -38,6 +47,12 @@ def test_the_file_loads_with_its_compliance_complete(recipes_dir: Path, shipped:
     for source in loaded.compliance.sources:
         assert source.modifications, "every source lists what the reader changes"
         assert source.retrieved_at.tzinfo is not None
+        assert source.license in LICENSES
+
+
+def test_reference_sources_use_the_reader_license_labels() -> None:
+    references = (BBSR_KREISE, EUROSTAT_LAU_NUTS, EUROSTAT_NUTS_CORRESPONDENCE, gv_isys_source(2016))
+    assert {source.license for source in references} <= LICENSES
 
 
 # No routes: resolving a plan must not reach the network.

@@ -101,7 +101,7 @@
   "compliance": {
     "sources": [
       {
-        "license": "dl-de/by-2-0",
+        "license": "DL-DE-BY-2.0",
         "attribution": "(c) Statistisches Bundesamt (Destatis), 2026",
         "dataset_uri": "https://genesis.destatis.de/datenbank/online/statistic/12411/table/12411-0010",
         "retrieved_at": "2026-09-08T00:00:00Z",
@@ -115,7 +115,7 @@
         ]
       },
       {
-        "license": "dl-de/by-2-0",
+        "license": "DL-DE-BY-2.0",
         "attribution": "(c) Die Bundeswahlleiterin, Wiesbaden 2025",
         "dataset_uri": "https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata/btw25/csv/kerg.csv",
         "retrieved_at": "2026-09-12T00:00:00Z",

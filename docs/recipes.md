@@ -33,7 +33,7 @@ recipe.compliance.sources[0].attribution  # what to print next to the result
   "compliance": {
     "sources": [
       {
-        "license": "dl-de/by-2-0",
+        "license": "DL-DE-BY-2.0",
         "attribution": "(c) Statistisches Bundesamt (Destatis), 2026",
         "dataset_uri": "https://genesis.destatis.de/datenbank/online/statistic/12411/table/12411-0010",
         "retrieved_at": "2026-09-08T00:00:00Z",

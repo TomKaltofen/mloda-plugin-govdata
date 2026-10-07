@@ -27,6 +27,8 @@ from .core.parse import ColumnType
 from .reader import BaseGovDataReader
 
 UBA_AIR_BASE = "https://luftdaten.umweltbundesamt.de/api/air-data/v4"
+# No SPDX id exists for the UBA data terms (section 12a EGovG, attribution required), hence a LicenseRef- id.
+UBA_LICENSE = "LicenseRef-UBA-EGovG-12a"
 
 OPTION_UBA_STATION = "govdata_uba_station"
 OPTION_UBA_COMPONENT = "govdata_uba_component"
@@ -243,8 +245,7 @@ class UbaAirReader(BaseGovDataReader[GovDataLocator]):
     CSV readers.
     """
 
-    # No SPDX id exists for the UBA terms, so the label is free text.
-    LICENSE: ClassVar[str | None] = "§ 12a EGovG (Umweltbundesamt data terms, attribution required)"
+    LICENSE: ClassVar[str | None] = UBA_LICENSE
     READER_OPTIONS: ClassVar[dict[str, PropertySpec]] = {
         OPTION_UBA_STATION: PropertySpec(
             "UBA station id.", strict_validation=True, element_validator=is_positive_int, scalar_only=True
