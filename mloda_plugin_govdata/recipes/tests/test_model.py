@@ -11,7 +11,7 @@ from mloda_plugin_govdata.recipes.credential_scan import TOKEN_RUN_LENGTH, envir
 
 LOCATOR = {"name": "12411-0010", "startyear": 2024, "endyear": 2024}
 SOURCE: dict[str, Any] = {
-    "license": "dl-de/by-2-0",
+    "license": "DL-DE-BY-2.0",
     "attribution": "(c) Statistisches Bundesamt (Destatis), 2026",
     "dataset_uri": "https://genesis.destatis.de/datenbank/online/statistic/12411/table/12411-0010",
     "retrieved_at": "2026-09-08T00:00:00Z",

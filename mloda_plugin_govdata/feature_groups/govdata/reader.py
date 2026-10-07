@@ -150,7 +150,7 @@ class BaseGovDataReader(ReadFile, Generic[LocatorT]):
             path=cached.path,
             sha256=cached.sha256,
             retrieved_at=cached.retrieved_at,
-            provenance=Provenance.from_distribution(distribution),
+            provenance=Provenance.from_distribution(distribution, cls.LICENSE),
         )
 
     @classmethod

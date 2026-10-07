@@ -142,6 +142,7 @@ def test_peek_and_fetch_without_credentials_on_a_cache_hit(
     assert payload.provenance.source == "genesis"
     assert payload.provenance.url == GENESIS_ONLINE.url("data/tablefile")
     assert payload.provenance.parameters["name"] == TABLE_CODE
+    assert payload.provenance.license == DestatisReader.LICENSE == "DL-DE-BY-2.0"
     assert respx.calls.call_count == 0
 
 

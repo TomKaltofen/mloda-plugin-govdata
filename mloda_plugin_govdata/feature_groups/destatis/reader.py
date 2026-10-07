@@ -17,6 +17,7 @@ import pyarrow as pa
 from mloda.provider import CHAIN_SEPARATOR, COLUMN_SEPARATOR
 from mloda.user import Options
 
+from ..govdata.core.discovery import DL_DE_BY_2_0
 from ..govdata.core.provenance import FetchedPayload, Provenance
 from ..govdata.reader import BaseGovDataReader
 from .core.api import GenesisClient, fetch_tablefile
@@ -30,8 +31,8 @@ from .locator import DestatisLocator
 class DestatisReader(BaseGovDataReader[DestatisLocator]):
     """Reads one GENESIS table selection into a typed Arrow table, ffcsv parsed."""
 
-    # The reader resolves only the known GENESIS hosts, and both publish under dl-de/by-2-0.
-    LICENSE: ClassVar[str | None] = "DL-DE-BY-2.0"
+    # The reader resolves only the known GENESIS hosts, and both publish under DL-DE-BY-2.0.
+    LICENSE: ClassVar[str | None] = DL_DE_BY_2_0
 
     @classmethod
     def suffix(cls) -> tuple[str, ...]:
@@ -61,7 +62,9 @@ class DestatisReader(BaseGovDataReader[DestatisLocator]):
         with GenesisClient(host, credentials=explicit, lock_dir=cls.cache_dir) as client:
             fetch = functools.partial(fetch_tablefile, client)
             cached = cache.get_or_fetch(host, "data/tablefile", fields, fetch)
-        provenance = Provenance(source="genesis", url=host.url("data/tablefile"), parameters=cached.parameters)
+        provenance = Provenance(
+            source="genesis", url=host.url("data/tablefile"), parameters=cached.parameters, license=cls.LICENSE
+        )
         return FetchedPayload(
             path=cached.path, sha256=cached.sha256, retrieved_at=cached.retrieved_at, provenance=provenance
         )
