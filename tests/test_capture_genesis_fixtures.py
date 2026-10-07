@@ -30,7 +30,6 @@ def _client(tmp_path: Path) -> GenesisClient:
 
 
 def _zip(member: str = "data.csv", text: str = "", comment: bytes = b"") -> bytes:
-    """A real ffcsv-like archive with one deflated member."""
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         archive.comment = comment

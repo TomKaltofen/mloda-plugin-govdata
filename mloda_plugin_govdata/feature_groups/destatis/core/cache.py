@@ -41,7 +41,7 @@ _INT_FIELDS: frozenset[str] = frozenset({"startyear", "endyear", "timeslices"})
 
 
 def _wire_scalar(name: str, value: object) -> str:
-    """One value as it travels: strings stripped, ints as digits for ``_INT_FIELDS`` only; bools refused."""
+    """One value as it travels: strings stripped, ints as digits (``_INT_FIELDS`` only); bools refused."""
     if isinstance(value, bool):
         # The spec spells booleans per field ("true"/"false" for compress, "on"/"off" for quality).
         raise TypeError(f"parameter {name!r}: pass the wire string for booleans, not a bool")
