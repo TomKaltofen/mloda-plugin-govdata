@@ -53,7 +53,8 @@ def test_both_sides_run_and_the_land_rows_line_up_by_name(recipes_dir: Path, gen
     frames = frames_by_column(run(_load(recipes_dir).features))  # no consumer requested: two frames, unjoined
     destatis, election = frames["value"], frames["Nr"]
     assert destatis.num_rows == 16
-    # The election joins the last Stichtag on or before its date: requested, and what came back.
+    # The election joins the last Stichtag on or before its date: the request carries the policy year,
+    # and the returned time column (pinned by the fixture) agrees.
     stichtag = stichtag_period(BTW25_ELECTION_DATE)
     sent = parse_qs(route.calls.last.request.content.decode("utf-8"))
     assert sent["startyear"] == sent["endyear"] == [str(stichtag.start.year)]

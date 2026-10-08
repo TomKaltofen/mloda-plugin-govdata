@@ -11,12 +11,16 @@ from mloda_plugin_govdata.feature_groups.destatis.core.api import GenesisClient
 from mloda_plugin_govdata.feature_groups.destatis.core.auth import DestatisCredentials
 from mloda_plugin_govdata.feature_groups.destatis.core.hosts import GENESIS_ONLINE, KNOWN_HOSTS
 from mloda_plugin_govdata.feature_groups.destatis.reader import DestatisReader
+from mloda_plugin_govdata.feature_groups.land_population_per_voter import LAND_LOCATOR
 
-# Bevoelkerung by Kreis and by Land, Stichtag: small enough for a direct download, GENESIS-Online only.
-LIVE_LOCATORS = [
-    {"name": "12411-0015", "regionalvariable": "KREISE", "regionalkey": ["03159"], "startyear": 2016, "endyear": 2016},
-    {"name": "12411-0010", "startyear": 2024, "endyear": 2024},
-]
+# Bevoelkerung by Kreis and by Land, Auslaender by Kreis: small enough for a direct download, GENESIS-Online only.
+KREIS_2016: dict[str, Any] = {
+    "regionalvariable": "KREISE",
+    "regionalkey": ["03159"],
+    "startyear": 2016,
+    "endyear": 2016,
+}
+LIVE_LOCATORS = [{"name": "12411-0015", **KREIS_2016}, LAND_LOCATOR, {"name": "12521-0040", **KREIS_2016}]
 
 
 @pytest.mark.live

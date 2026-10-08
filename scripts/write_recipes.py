@@ -199,8 +199,9 @@ LAND_POPULATION_PER_VOTER = ShippedRecipe(
         notes=(
             "Population per eligible voter by Land. Join year: an election joins the last Destatis Stichtag on or "
             f"before its date, so the Bundestagswahl of {BTW25_ELECTION_DATE.strftime('%d.%m.%Y')} joins the "
-            f"population of 31.12.{LAND_YEAR} (time = {LAND_YEAR}). The kerg Land rows (gehört zu = 99) carry the AGS-2 in Nr, which "
-            "equals the Destatis DLAND code, so the join needs no name mapping; check the names on both sides with "
+            f"population of 31.12.{LAND_YEAR} (time = {LAND_YEAR}). "
+            "The kerg Land rows (gehört zu = 99) carry the AGS-2 in Nr, which equals the Destatis DLAND code, so "
+            "the join needs no name mapping; check the names on both sides with "
             "mloda_plugin_govdata.feature_groups.harmonization.core.land_codes. A party column is empty where the "
             "party was not on the ballot (the CSU outside Bayern), which is not a zero. The links block lets a "
             "consumer FeatureGroup needing a column from each side join them "
@@ -217,7 +218,7 @@ LAND_POPULATION = ShippedRecipe(
     _destatis_features(LAND_LOCATOR, KEY, "value"),
     Compliance(
         sources=[_destatis("12411-0010", _at(2026, 9, 8), LAND_SHA256)],
-        notes="Fortschreibung des Bevölkerungsstandes, Stichtag 2024-12-31, all 16 Länder (DLAND 01 to 16).",
+        notes=f"Fortschreibung des Bevölkerungsstandes, Stichtag {LAND_YEAR}-12-31, all 16 Länder (DLAND 01 to 16).",
     ),
 )
 
