@@ -5,7 +5,9 @@ Companion to [ap2-destatis-harmonization.md](ap2-destatis-harmonization.md)
 Tick items in the PR that lands them. If a slice moves, a checkpoint slips, or
 a cut line is pulled, edit both files in the same PR.
 
-Status: draft v2.15, 2026-09-14 (slice 7 join plumbing and recipe 3 ticked,
+Status: M2 reached, v2.16, 2026-10-08 (acceptance walkthrough ticked; the
+join-year policy stated and recipe 2 declared final in PR #59; residue in the
+plan's status line). Earlier: draft v2.15, 2026-09-14 (slice 7 join plumbing and recipe 3 ticked,
 `chore/bump-mloda-0-13-0`: mloda 0.13.0 fixed same-class link discriminator
 handling, the Land-level join runs for real through the new
 `LandPopulationPerVoter` consumer; slice 12 follow-ups ticked, PR #31: the
@@ -163,7 +165,8 @@ and Destatis' ffcsv example zip. Evidence: planning repo
       IT.NRW; the GENESIS-Online token is not valid there). Its spec is
       pinned in the planning repo (`genesis-openapi-regionalstatistik-GOJsonApi-2026-08-16.json`,
       sha256 `a9ce7944...`); request side identical for our endpoints, `servers`
-      is lower-case `/genesisws`.
+      is lower-case `/genesisws`. Superseded 2026-10-08: no account was
+      registered, recipe 2 stays on the GENESIS-Online fallback (slice 11).
 - [x] 2026-08-16. Berlin present with real values in all three: `11000` in
       `12411-0015` (2015: 3,520,031) and in `13211-02-05-4` (rate men 2024:
       10.0), `11` in `12411-0010`. Hamburg `02000`, Bremen `04011`,
@@ -764,11 +767,19 @@ tested here, three weeks before it is needed.
       month raise `NotImplementedError` rather than silently mis-parsing. Deliberately
       out of scope: a UBA `date_start` parser (no consumer yet, no source characterized
       for it); flagged here rather than silently dropped.
-- [ ] Snapshot-to-annual join policy, decided and documented: which Destatis
+- [x] Snapshot-to-annual join policy, decided and documented: which Destatis
       reference year an election on date D joins to (for example the year
       containing D, or the last 31 Dec before D). One policy, stated in the
       recipe notes and the README, tested end to end on fixtures. No silent
-      default.
+      default. (Done 2026-10-08, PR
+      https://github.com/TomKaltofen/mloda-plugin-govdata/pull/59: the last
+      31 Dec Stichtag on or before D, `stichtag_period(snapshot)` returning a
+      `Period`; the Bundestagswahl of 23.02.2025 joins 31.12.2024 and
+      `LandPopulationPerVoter`'s year is derived from it. Stated in the
+      recipe notes and `docs/recipes.md`, which the README links, not in the
+      README itself; `test_land_voters.py` checks the requested year and the
+      returned `time`. Scoped to joins against a 31 Dec Stichtag table: the
+      Stuttgart 30 June Stichtag stays undecided.)
 - [x] 2026-08-28, PR https://github.com/TomKaltofen/mloda-plugin-govdata/pull/19.
       `assert_same_frequency(left, right)` raises naming both frequencies with
       resampling guidance; no implicit aggregation.
@@ -1114,7 +1125,7 @@ Checkpoint C2 target (Sep 20). Week 5 is three working days (SciCAR).
       issues, empty markers on the observed rows, the retired keys' `-` in
       `issues_elsewhere`, and a numeric 0 where GENESIS writes `-` raising
       `ValidityError`.)
-- [ ] Recipe 2: Kreis-level labor-market indicator, Regionalstatistik
+- [x] Recipe 2: Kreis-level labor-market indicator, Regionalstatistik
       `13211-02-05-4` with `contents=ERWP06,ERWP10` (Arbeitslose in Anzahl,
       Quote in %), the U1 rate-with-denominator scenario in one file (two
       `value_unit` values per key); zero-vs-missing test. Fallback if the
@@ -1126,8 +1137,9 @@ Checkpoint C2 target (Sep 20). Week 5 is three working days (SciCAR).
       variable block 2 with an empty code on the Insgesamt rows) over
       `12411-0015` for the same keys and years; two frames, the share is a
       consumer's job; zero-vs-missing pins `-` as 0 plus `value_marker` `-`
-      on both sides against counted cells. Swap to `13211-02-05-4` once the
-      account exists.)
+      on both sides against counted cells. Declared final 2026-10-08, PR
+      #59: the fallback is the shipped recipe 2, the swap to
+      `13211-02-05-4` is dropped.)
 - [x] Recipe 3: Destatis population by Land (GENESIS-Online `12411-0010`)
       joined with Bundestagswahl results by Land (D2, `Nr` = `DLAND`) through
       the slice 7 `links` block; the flagship integration test and the Demo
@@ -1176,7 +1188,7 @@ Checkpoint C2 target (Sep 20). Week 5 is three working days (SciCAR).
       ["*.tests", "*.tests.*"]` plus `include-package-data = false`, pinned
       by `tests/test_packaging.py`, the wheel checked from a stale and a
       clean tree; the `credential_env` note landed in PR #26; the account
-      stays with the owner.)
+      is no longer needed, recipe 2 stays on the fallback, 2026-10-08.)
 
 ## Slice 12: docs, demo, handoff (WP-G, woven through, about 20 h)
 
@@ -1263,24 +1275,48 @@ Plan section 1, checked one by one on `main` from a clean cache. Each item
 names the cut line that changes its wording, so the walkthrough does not
 have to reconstruct that under deadline pressure.
 
-- [ ] 1. `DestatisReader` pulls two real GENESIS tables end to end into typed
+Walked 2026-10-08 on fork PR #59's head (commit 1534659: fork main e1f5e79
+plus the join-year policy), default tests offline, live tests from a clean
+temporary cache with a registered GENESIS-Online token.
+
+- [x] 1. `DestatisReader` pulls two real GENESIS tables end to end into typed
       Arrow tables via `mloda.run_all` (same call shape as M1 readers). No
-      cut line touches this.
-- [ ] 2. 5-digit AGS to NUTS-1/2/3 with explicit edition; one real multi-year
+      cut line touches this. (Live `test_tablefile_end_to_end` pulls
+      `12411-0015`, `12411-0010` and `12521-0040`; whoami and logincheck
+      green on GENESIS-Online, Regionalstatistik skipped, no account.)
+- [x] 2. 5-digit AGS to NUTS-1/2/3 with explicit edition; one real multi-year
       Kreis series re-based across a Gebietsstand change with BBSR keys.
-      Cut line 3: carried by the module tests, not a FeatureGroup.
-- [ ] 3. Typed period representation joins Destatis annual data with one M1
+      Cut line 3: carried by the module tests, not a FeatureGroup. (Cut line
+      3 not pulled: `AgsToNutsFeature` with an explicit `nuts_version`,
+      `test_nuts_feature.py`; `kreis_population_rebased.json` re-bases the
+      real `12411-0015` capture for 03152, 03156, 03159, 2013 to 2017 onto
+      31.12.2016 with BBSR sheet 2015-2016, `test_kreis_population.py`; the
+      live BBSR test parses the pinned real key file.)
+- [x] 3. Typed period representation joins Destatis annual data with one M1
       source at Land level. Cut line 1: reads "joins two Destatis tables at
       Land level; the cross-portal claim moves to AP3". Cut line 3: carried
       by the slice 7 join test, not a recipe. Underlying capability done
       2026-09-14 (mloda 0.13.0, `chore/bump-mloda-0-13-0`): the join test
       passes for real now; the walkthrough tick itself is still the owner's.
-- [ ] 4. Six recipe files with all compliance fields. Cut line 4: reads "four
-      recipe files plus a documented retrofit template".
-- [ ] 5. `tox` green, no live network by default, README and demo updated.
-      No cut line touches this.
+      (Cut line 1 not pulled: `LandPopulationPerVoter` joins `12411-0010`
+      with the Bundeswahlleiterin `kerg.csv` in one join step,
+      `tests/test_land_join.py`; the Destatis year is the typed
+      `stichtag_period` of the election date, checked in
+      `test_land_voters.py`, PR #59.)
+- [x] 4. Six recipe files with all compliance fields. Cut line 4: reads "four
+      recipe files plus a documented retrofit template". (Cut line 4 not
+      pulled: three new recipes, three M1 retrofits, plus
+      `land_population.json`; compliance complete and every file equal to
+      its definition and plan lock, `test_shipped.py`; pinned kerg and
+      Stuttgart payloads re-checked live.)
+- [x] 5. `tox` green, no live network by default, README and demo updated.
+      No cut line touches this. (`tox` green, 702 passed with `live` and
+      `genesis_live` deselected; README and demo current, PRs #27, #28, #49,
+      #58; the demo ran end to end as a script with credentials.)
 - [ ] Plan status flips to "M2 reached" (or lists the honest residue);
-      milestones.md and the funder update D say the same.
+      milestones.md and the funder update D say the same. (Plan and
+      checklist flipped 2026-10-08 with the residue; `milestones.md` and the
+      next funder update still open.)
 
 ## Cut lines (pull in this order, tick when pulled, name the slice)
 
@@ -1305,7 +1341,9 @@ values, `tox` green.
       (raises otherwise), so a series that crosses two changes needs two
       calls today; pull in only if a recipe needs it (ADR 0005 consequences).
 - [-] Regionalstatistik host, about 10 h: moved into WP-A scope in slice 0
-      (2026-08-16), recipe 2 needs it (slice 2 items).
+      (2026-08-16), recipe 2 needs it (slice 2 items). Recipe 2 stayed on
+      GENESIS-Online (2026-10-08): the host is built and contract-tested,
+      a live run waits for an account.
 - [ ] Discovery helper, about 8 h (kept out of AP2 by D5, re-checked in
       step 0): `describe_table(code)` typed by the spec's
       `TableMetadataEntry` (regional variable from `Structure.Rows[].Code`),

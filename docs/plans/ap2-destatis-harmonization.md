@@ -1,6 +1,11 @@
 # AP2 implementation plan: Destatis connector and harmonization
 
-Status: draft v2.3, 2026-08-16 (D7 wording corrected after slice 2; v2 plus the slice-0 OpenAPI assessment in
+Status: M2 reached, 2026-10-08 (acceptance walkthrough in the checklist, all five items green, verified on
+fork PR #59's head, which is fork main plus the join-year policy; no cut line besides 2 pulled). Residue:
+recipe 2 ships on the GENESIS-Online fallback (`12521-0040` over `12411-0015`, the same U1 scenario) and is
+declared final, so the Regionalstatistik host is built and contract-tested but never run live (no account);
+the weekly live CI is replaced by the manual smoke (D8); the ADR status flips and `milestones.md` in the
+planning companion still have to say the same. Earlier: draft v2.3, 2026-08-16 (D7 wording corrected after slice 2; v2 plus the slice-0 OpenAPI assessment in
 section 5 WP-A, plus the slice-0 paper work: recipe tables and hosts pinned,
 Regionalstatistik in scope, U2 change named, C2 on paper, cut line 2
 pre-pulled; details in the checklist and the planning repo `learnings/`).
@@ -158,7 +163,7 @@ planning repo (`decisions/`) at the first implementation PR.
   levels can be added without migration.
 - **D5 Hosts and discovery.** The base URL is a field on the locator with
   GENESIS-Online as default. Regionalstatistik is a second implemented host
-  since week 0 (recipe 2 lives there): same client, host-scoped credentials
+  since week 0 (planned for recipe 2, which stayed on the GENESIS-Online fallback): same client, host-scoped credentials
   (own registration and token), its own pinned spec fixture and contract
   test, its own live smoke. The Zensus database is not implemented and not
   designed beyond the base-URL field. No catalogue/discovery helper in AP2;
@@ -458,7 +463,7 @@ without mloda, wrapped by FeatureGroups in WP-E.
   2025, contents `ERWP06` Arbeitslose in Anzahl and `ERWP10` Quote in %),
   the U1 rate-with-denominator scenario in one file (GENESIS-Online-only
   fallback if that host fails: `12521-0040` Ausländer: Kreise over
-  `12411-0015`); (3) Destatis population by Land, GENESIS-Online `12411-0010`
+  `12411-0015`; shipped on the fallback, declared final 2026-10-08); (3) Destatis population by Land, GENESIS-Online `12411-0010`
   Bevölkerung: Bundesländer, Stichtag (`DLAND`, 16 keys, Berlin `11`, `STAG`
   1958 to 2025), joined with Bundestagswahl results by Land (D2, join key
   kerg `Nr` = `DLAND`), the U3 and Demo Day scenario.
