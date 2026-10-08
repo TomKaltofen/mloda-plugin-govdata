@@ -97,11 +97,7 @@ def from_snapshot(snapshot: date, freq: Frequency = Frequency.YEAR) -> Period:
 
 
 def stichtag_period(snapshot: date) -> Period:
-    """The annual period of the last 31 Dec Stichtag on or before ``snapshot``.
-
-    The join policy for a snapshot (e.g. an election) against a Destatis 31 Dec Stichtag table:
-    the latest reference date not after the snapshot, never a later one.
-    """
+    """The annual period of the last 31 Dec Stichtag on or before ``snapshot`` (the join year for an election)."""
     year = snapshot.year if (snapshot.month, snapshot.day) == (12, 31) else snapshot.year - 1
     return Period(date(year, 1, 1), Frequency.YEAR)
 
