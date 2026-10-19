@@ -22,6 +22,22 @@ dependencies = [
     "tenacity>=8.0",
 ]
 requires-python = ">=3.10"
+keywords = ["mloda", "mloda-plugin", "open-data", "govdata", "destatis", "genesis", "regionalstatistik", "official-statistics", "german-government-data", "ckan"]
+# No License classifier: setuptools rejects one next to the SPDX `license` string.
+classifiers = [
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
 
 [project.urls]
 Homepage = "https://github.com/mloda-ai/mloda-plugin-govdata"
@@ -38,7 +54,8 @@ dev = [
     "tox-uv",
     "uv>=0.11.15",
     "pytest",
-    "ruff",
+    # Exact pin: tox resolves the dev extra without uv.lock, so a range lets tox and .venv lint differently.
+    "ruff==0.17.0",
     "mypy",
     "bandit",
     "hypothesis",
@@ -72,6 +89,10 @@ addopts = "-m 'not live and not genesis_live'"
 
 [tool.ruff]
 line-length = 120
+
+[tool.ruff.lint]
+# ruff 0.17 dropped DTZ from its defaults; keep the naive-datetime checks.
+extend-select = ["DTZ"]
 
 [tool.ruff.lint.per-file-ignores]
 # Marimo notebooks are generated cell functions: a bare trailing expression is the cell's
