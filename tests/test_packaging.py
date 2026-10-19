@@ -1,5 +1,6 @@
-"""The wheel ships code only: the packages.find exclude patterns cover every tests package."""
+"""Packaging metadata: the wheel ships code only, the Python classifiers match CI, ruff matches the lock."""
 
+import re
 import sys
 from fnmatch import fnmatchcase
 from pathlib import Path
@@ -44,3 +45,29 @@ def test_no_package_data_is_shipped() -> None:
     with (REPO_ROOT / "pyproject.toml").open("rb") as handle:
         data = tomllib.load(handle)
     assert data["tool"]["setuptools"]["include-package-data"] is False
+
+
+def test_python_classifiers_match_the_ci_matrix() -> None:
+    with (REPO_ROOT / "pyproject.toml").open("rb") as handle:
+        data = tomllib.load(handle)
+    prefix = "Programming Language :: Python :: 3."
+    classified = [
+        c.removeprefix("Programming Language :: Python :: ")
+        for c in data["project"]["classifiers"]
+        if c.startswith(prefix)
+    ]
+    workflow = (REPO_ROOT / ".github" / "workflows" / "test.yml").read_text(encoding="utf-8")
+    match = re.search(r"python-version:\s*\[([^\]]*)\]", workflow)
+    assert match, "no python-version list in the CI matrix"
+    matrix = re.findall(r"[\"']([^\"']+)[\"']", match.group(1))
+    assert matrix
+    assert classified == matrix
+
+
+def test_ruff_pin_matches_the_lock() -> None:
+    # tox resolves the dev extra without uv.lock; an exact pin equal to the lock keeps both on one ruff.
+    with (REPO_ROOT / "pyproject.toml").open("rb") as handle:
+        dev = tomllib.load(handle)["project"]["optional-dependencies"]["dev"]
+    with (REPO_ROOT / "uv.lock").open("rb") as handle:
+        locked = [p["version"] for p in tomllib.load(handle)["package"] if p["name"] == "ruff"]
+    assert [d for d in dev if d.startswith("ruff")] == [f"ruff=={v}" for v in locked]
