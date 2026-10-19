@@ -89,6 +89,10 @@ addopts = "-m 'not live and not genesis_live'"
 [tool.ruff]
 line-length = 120
 
+[tool.ruff.lint]
+# ruff 0.17 dropped DTZ from its defaults; select it so every ruff version lints the same.
+extend-select = ["DTZ"]
+
 [tool.ruff.lint.per-file-ignores]
 # Marimo notebooks are generated cell functions: a bare trailing expression is the cell's
 # displayed output, the trailing `return` is generator structure, and imports live inside
