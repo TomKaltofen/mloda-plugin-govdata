@@ -1,4 +1,4 @@
-"""Packaging metadata: the wheel ships code only, and the Python classifiers match CI."""
+"""Packaging metadata: the wheel ships code only, the Python classifiers match CI, ruff matches the lock."""
 
 import re
 import sys
@@ -62,3 +62,12 @@ def test_python_classifiers_match_the_ci_matrix() -> None:
     matrix = re.findall(r"[\"']([^\"']+)[\"']", match.group(1))
     assert matrix
     assert classified == matrix
+
+
+def test_ruff_pin_matches_the_lock() -> None:
+    # tox resolves the dev extra without uv.lock; an exact pin equal to the lock keeps both on one ruff.
+    with (REPO_ROOT / "pyproject.toml").open("rb") as handle:
+        dev = tomllib.load(handle)["project"]["optional-dependencies"]["dev"]
+    with (REPO_ROOT / "uv.lock").open("rb") as handle:
+        locked = [p["version"] for p in tomllib.load(handle)["package"] if p["name"] == "ruff"]
+    assert [d for d in dev if d.startswith("ruff")] == [f"ruff=={v}" for v in locked]

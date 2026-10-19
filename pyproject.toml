@@ -54,7 +54,8 @@ dev = [
     "tox-uv",
     "uv>=0.11.15",
     "pytest",
-    "ruff",
+    # Exact pin: tox resolves the dev extra without uv.lock, so a range lets tox and .venv lint differently.
+    "ruff==0.17.0",
     "mypy",
     "bandit",
     "hypothesis",
@@ -90,7 +91,7 @@ addopts = "-m 'not live and not genesis_live'"
 line-length = 120
 
 [tool.ruff.lint]
-# ruff 0.17 dropped DTZ from its defaults; select it so every ruff version lints the same.
+# ruff 0.17 dropped DTZ from its defaults; keep the naive-datetime checks.
 extend-select = ["DTZ"]
 
 [tool.ruff.lint.per-file-ignores]
