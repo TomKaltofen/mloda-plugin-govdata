@@ -73,6 +73,10 @@ def test_feature_item_mirrors_mloda_cross_field_rules() -> None:
         _recipe(features=[{"name": "x", "propagate_context_keys": ["c"]}]),
         r"features\[0\]: propagate_context_keys needs context_options",
     )
+    _rejects(
+        _recipe(features=[{"name": "x", "cascade_context_keys": ["c"]}]),
+        r"features\[0\]: cascade_context_keys needs context_options",
+    )
 
 
 def test_minimal_recipe_validates_and_links_default_to_empty() -> None:
