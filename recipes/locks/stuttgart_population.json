@@ -10,6 +10,7 @@
         "Stadtbezirk",
         "Stichtag"
       ],
+      "input_feature_edges": {},
       "reader": "mloda_plugin_govdata.feature_groups.govdata.population:StuttgartPopulationReader",
       "result_framework": "mloda_plugins.compute_framework.base_implementations.pyarrow.table:PyArrowTable",
       "specialized_from": [
@@ -17,7 +18,7 @@
       ]
     }
   ],
-  "format": 3,
+  "format": 5,
   "joins": [],
   "requested_features": [
     "Alter in 10 Gruppen",

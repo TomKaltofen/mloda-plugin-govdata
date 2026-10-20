@@ -11,6 +11,7 @@
         "value",
         "value_marker"
       ],
+      "input_feature_edges": {},
       "reader": "mloda_plugin_govdata.feature_groups.destatis.reader:DestatisReader",
       "result_framework": null,
       "specialized_from": [
@@ -24,12 +25,21 @@
       "feature_names": [
         "destatis__bevoelkerung__kreise"
       ],
+      "input_feature_edges": {
+        "destatis__bevoelkerung__kreise": [
+          "1_variable_attribute_code",
+          "1_variable_code",
+          "time",
+          "value",
+          "value_marker"
+        ]
+      },
       "reader": null,
       "result_framework": "mloda_plugins.compute_framework.base_implementations.pyarrow.table:PyArrowTable",
       "specialized_from": []
     }
   ],
-  "format": 3,
+  "format": 5,
   "joins": [],
   "requested_features": [
     "destatis__bevoelkerung__kreise"

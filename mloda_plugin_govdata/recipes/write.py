@@ -87,7 +87,8 @@ def _feature_item(feature: Feature, position: int) -> dict[str, Any]:
             continue
         raise RecipeError(
             f"{where}: Feature.{attribute} has no field in the mloda feature config; "
-            "a recipe carries name, options, in_features, feature_group, and propagate_context_keys"
+            "a recipe carries name, options, in_features, feature_group, propagate_context_keys, "
+            "and cascade_context_keys"
         )
     if IN_FEATURES in options.group:
         raise RecipeError(
@@ -100,6 +101,8 @@ def _feature_item(feature: Feature, position: int) -> dict[str, Any]:
     context = dict(options.context)
     in_features = context.pop(IN_FEATURES, None)
     context_json = _json_value(context, f"{where}.context_options")
+    if (options.propagate_context_keys or options.cascade_context_keys) and not context_json:
+        raise RecipeError(f"{where}: {IN_FEATURES!r} cannot be pushed to inputs; a recipe carries it as its own field")
     item: dict[str, Any] = {"name": str(feature.name)}
     if in_features is not None:
         item[IN_FEATURES] = _in_feature_names(in_features, where)
@@ -109,6 +112,8 @@ def _feature_item(feature: Feature, position: int) -> dict[str, Any]:
         item["context_options"] = context_json
         if options.propagate_context_keys:
             item["propagate_context_keys"] = sorted(options.propagate_context_keys)
+        if options.cascade_context_keys:
+            item["cascade_context_keys"] = sorted(options.cascade_context_keys)
     elif group:
         item["options"] = group
     scope = feature.feature_group_scope
