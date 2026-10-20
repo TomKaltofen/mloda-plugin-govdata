@@ -225,6 +225,18 @@ def test_feature_attributes_without_a_config_field_raise_instead_of_being_droppe
         build_recipe([feature], COMPLIANCE)
 
 
+@pytest.mark.parametrize("keys", ["propagate_context_keys", "cascade_context_keys"])
+def test_pushing_only_in_features_raises_instead_of_being_dropped(keys: str) -> None:
+    pushed = frozenset({"in_features"})
+    options = Options(
+        context={"in_features": ("a",)},
+        propagate_context_keys=pushed if keys == "propagate_context_keys" else None,
+        cascade_context_keys=pushed if keys == "cascade_context_keys" else None,
+    )
+    with pytest.raises(RecipeError, match=r"features\[0\]: 'in_features' cannot be pushed"):
+        build_recipe([Feature("x", options=options)], COMPLIANCE)
+
+
 def test_domain_and_compute_framework_given_as_options_round_trip() -> None:
     feature = Feature("x", options={"domain": "d", "compute_framework": "PyArrowTable"})
     (loaded,) = _features(parse_recipe(recipe_to_json(build_recipe([feature], COMPLIANCE))).features)

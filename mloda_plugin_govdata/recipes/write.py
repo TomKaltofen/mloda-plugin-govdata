@@ -101,6 +101,8 @@ def _feature_item(feature: Feature, position: int) -> dict[str, Any]:
     context = dict(options.context)
     in_features = context.pop(IN_FEATURES, None)
     context_json = _json_value(context, f"{where}.context_options")
+    if (options.propagate_context_keys or options.cascade_context_keys) and not context_json:
+        raise RecipeError(f"{where}: {IN_FEATURES!r} cannot be pushed to inputs; a recipe carries it as its own field")
     item: dict[str, Any] = {"name": str(feature.name)}
     if in_features is not None:
         item[IN_FEATURES] = _in_feature_names(in_features, where)
