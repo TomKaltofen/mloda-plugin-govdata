@@ -43,6 +43,7 @@ class FeatureItem(BaseModel):
     group_options: dict[str, Any] | None = None
     context_options: dict[str, Any] | None = None
     propagate_context_keys: list[str] | None = None
+    cascade_context_keys: list[str] | None = None
     column_index: int | None = None
     feature_group: str | None = None
 
@@ -50,8 +51,9 @@ class FeatureItem(BaseModel):
     def _mloda_rules(self) -> FeatureItem:
         if self.options and (self.group_options or self.context_options):
             raise ValueError("options cannot be combined with group_options or context_options")
-        if self.propagate_context_keys and not self.context_options:
-            raise ValueError("propagate_context_keys needs context_options")
+        for key_field in ("propagate_context_keys", "cascade_context_keys"):
+            if getattr(self, key_field) and not self.context_options:
+                raise ValueError(f"{key_field} needs context_options")
         return self
 
 

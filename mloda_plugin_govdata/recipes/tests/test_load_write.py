@@ -61,8 +61,9 @@ def test_round_trip_keeps_names_options_context_scope_and_plain_strings(tmp_path
             "derived",
             options=Options(
                 group={"k": 1, "keys": ["03159", "03152"]},
-                context={"in_features": frozenset({"b", "a"}), "flag": True},
+                context={"in_features": frozenset({"b", "a"}), "flag": True, "trace": "t1"},
                 propagate_context_keys=frozenset({"flag"}),
+                cascade_context_keys=frozenset({"trace"}),
             ),
             feature_group="GovDataFeature",
         ),
@@ -89,8 +90,9 @@ def test_round_trip_keeps_names_options_context_scope_and_plain_strings(tmp_path
     )
     assert nr.options.group == {BundeswahlleiterinReader.__name__: KERG_URL}
     assert derived.options.group == {"k": 1, "keys": ["03159", "03152"]}
-    assert derived.options.context == {"in_features": ("a", "b"), "flag": True}
+    assert derived.options.context == {"in_features": ("a", "b"), "flag": True, "trace": "t1"}
     assert derived.options.propagate_context_keys == frozenset({"flag"})
+    assert derived.options.cascade_context_keys == frozenset({"trace"})
     assert derived.feature_group_scope == "GovDataFeature"
     assert scoped.feature_group_scope == "GovDataFeature" and scoped.options.group == {}
     assert context_only.options.group == {} and context_only.options.context == {"note": "x"}
@@ -193,6 +195,13 @@ def test_every_feature_constructor_parameter_is_either_carried_or_refused() -> N
     refused = {attribute for attribute, _, _ in _UNSUPPORTED}
     # compute_framework is the constructor name; the attribute is compute_frameworks.
     assert parameters == SUPPORTED_FEATURE_PARAMETERS | (refused - {"compute_frameworks"}) | {"compute_framework"}
+    # The writer carries every Options field; a new one must be written or refused, never dropped.
+    assert set(inspect.signature(Options.__init__).parameters) - {"self"} == {
+        "group",
+        "context",
+        "propagate_context_keys",
+        "cascade_context_keys",
+    }
 
 
 @pytest.mark.parametrize(
@@ -214,6 +223,18 @@ def test_feature_attributes_without_a_config_field_raise_instead_of_being_droppe
 ) -> None:
     with pytest.raises(RecipeError, match=rf"features\[0\]: Feature.{attribute} has no field"):
         build_recipe([feature], COMPLIANCE)
+
+
+@pytest.mark.parametrize("keys", ["propagate_context_keys", "cascade_context_keys"])
+def test_pushing_only_in_features_raises_instead_of_being_dropped(keys: str) -> None:
+    pushed = frozenset({"in_features"})
+    options = Options(
+        context={"in_features": ("a",)},
+        propagate_context_keys=pushed if keys == "propagate_context_keys" else None,
+        cascade_context_keys=pushed if keys == "cascade_context_keys" else None,
+    )
+    with pytest.raises(RecipeError, match=r"features\[0\]: 'in_features' cannot be pushed"):
+        build_recipe([Feature("x", options=options)], COMPLIANCE)
 
 
 def test_domain_and_compute_framework_given_as_options_round_trip() -> None:

@@ -8,6 +8,7 @@
         "1_variable_attribute_code",
         "value"
       ],
+      "input_feature_edges": {},
       "reader": "mloda_plugin_govdata.feature_groups.destatis.reader:DestatisReader",
       "result_framework": "mloda_plugins.compute_framework.base_implementations.pyarrow.table:PyArrowTable",
       "specialized_from": [
@@ -15,7 +16,7 @@
       ]
     }
   ],
-  "format": 3,
+  "format": 5,
   "joins": [],
   "requested_features": [
     "1_variable_attribute_code",
