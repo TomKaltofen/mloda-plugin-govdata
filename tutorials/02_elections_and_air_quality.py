@@ -30,7 +30,7 @@ def _(mo):
     `uv run marimo edit tutorials/02_elections_and_air_quality.py`.
 
     In [tutorial 1](https://github.com/mloda-ai/mloda-plugin-govdata/blob/main/tutorials/01_first_table.py)
-    the reader already knew its file. Here you pass more options: for a file, how it is laid out; for a web
+    the reader already knew how its file is laid out. Here you pass more options: for a file, how it is laid out; for a web
     service, what to ask it.
     """)
     return
@@ -124,15 +124,20 @@ def _(BundeswahlleiterinReader, DownloadCache, KERG, build_client, mo):
 @app.cell
 def _(mo):
     mo.md("""
-    The first five lines are not data: copyright, license, an empty line, a title. Then comes a header
-    spread over three rows. Read one column top to bottom:
+    The first five lines are not data: copyright, license, an empty line, a title and a subtitle
+    (*Amtliches Endergebnis*, official final result). Then comes a header spread over three rows. Read one
+    column top to bottom:
 
-    1. what is counted: *Wahlberechtigte* (eligible voters), *Wählende* (people who voted), or a party;
+    1. what is counted: *Wahlberechtigte* (eligible voters), *Wählende* (people who voted), *Ungültige* or
+       *Gültige Stimmen* (invalid or valid votes), or a party;
     2. which vote: each voter has two. *Erststimmen* (first votes) elect a local candidate,
        *Zweitstimmen* (second votes) go to a party;
     3. which election: *Endgültig* is the final 2025 result, *Vorperiode* the previous election.
 
-    After the header, one row per area. The first four columns name the area, the rest are counts.
+    After the header, one row per area. The first four columns are text: *Nr* (the area's number),
+    *Gebiet* (its name), *gehört zu* ("belongs to") and *Gewählt* (elected: the party of the
+    constituency's winner). The rest are counts. In *Gewählt*, a dash means the winner did not get a seat
+    in the Bundestag: a marker, where you might expect a party.
     """)
     return
 
@@ -142,8 +147,8 @@ def _(mo):
     mo.md("""
     ## Step 2: tell the reader the layout, then read
 
-    Three options describe what you just saw: skip 5 lines, join 3 header rows, treat the first 4 columns
-    as names (the rest are whole numbers). The reader joins the three header rows with spaces, so the column
+    Three options describe what you just saw: skip 5 lines, join 3 header rows, read the first 4 columns
+    as text (the rest are whole numbers). The reader joins the three header rows with spaces, so the column
     for eligible voters' second votes in 2025 is `Wahlberechtigte Zweitstimmen Endgültig`.
     """)
     return
@@ -183,8 +188,7 @@ def _(
 @app.cell
 def _(mo):
     mo.md("""
-    *Gebiet* is the area's name, *gehört zu* ("belongs to") the number of the area it is part of. The three
-    layout values are the reader's defaults, made for this file; they are written out here so you can see
+    The three layout values are the reader's defaults, made for this file; they are written out here so you can see
     them. If the next election's file is laid out differently, you change the numbers.
     `BundeswahlleiterinReader.peek(KERG)` lists all the columns you can ask for.
     """)
@@ -265,8 +269,8 @@ def _(Feature, kerg_options, mloda):
 @app.cell
 def _(mo):
     mo.md("""
-    The reader turns an empty cell into a missing value, which pandas shows as `NaN` (and so it shows the
-    whole column with decimals). It does not turn it into 0. That is right: the CDU did not get zero votes
+    The reader turns an empty cell into a missing value, which pandas shows as `NaN`. It does not turn it
+    into 0. That is right: the CDU did not get zero votes
     in Bavaria, it had no candidate there. See what a 0 would do to the CDU's average result:
     """)
     return
@@ -305,7 +309,8 @@ def _(mo):
     - which average: scope 2 is the average over one hour;
     - which days: from and to, as `YYYY-MM-DD`.
 
-    The ids come from the UBA's own lists. `UbaAirReader: True` only picks the reader; the other options are
+    The ids come from the UBA's own lists (its `stations`, `components` and `scopes` endpoints).
+    `UbaAirReader: True` only picks the reader; the other options are
     the question.
     """)
     return
@@ -352,7 +357,8 @@ def _(
 def _(mo):
     mo.md("""
     One row per hour: when the hour starts and the average ozone over it. The UBA gives times "in the time
-    zone valid at the measurement time (CET or CEST)", that is, German local time. The reader also has a
+    zone valid at the measurement time (CET or CEST)"; every day has 24 rows, even when the clocks change.
+    The reader also has a
     `date_end` column; the day's last hour ends at `24:00`, which pandas cannot read as a time, so use
     `date_start`.
     """)
@@ -445,8 +451,8 @@ def _(
     mo.md(f"""
     **Election results**
 
-    - **Publisher:** {kerg_lines[0].strip(";")}
-    - **License:** {kerg_lines[1].strip(";")}
+    - **Publisher:** `{kerg_lines[0].strip(";")}`
+    - **License:** `{kerg_lines[1].strip(";")}`
     - **File:** {KERG}
     - **Retrieved:** {_kerg_retrieved:%Y-%m-%d}
 
@@ -454,7 +460,7 @@ def _(
 
     - **Source:** Umweltbundesamt (German Federal Environment Agency),
       https://www.umweltbundesamt.de/daten/luft/luftdaten
-    - **License:** `{UbaAirReader.LICENSE}`, the id the reader declares for the UBA's terms
+    - **License:** `{UbaAirReader.LICENSE}`, the id the reader declares for the UBA's terms (see Readers)
     - **Query:** {_ozone_url}
     - **Retrieved:** {_ozone_retrieved:%Y-%m-%d}
     """)
@@ -464,7 +470,8 @@ def _(
 @app.cell
 def _(mo):
     mo.md("""
-    Name the source when you reuse the data. The election license also asks you to say what you changed:
+    Name the source when you reuse the data. The election license (*Datenlizenz Deutschland*, Data
+    License Germany, attribution, version 2.0) also asks you to say what you changed:
     here, you kept only the Länder rows and computed the turnout. The ozone values are shown as read.
 
     ## Next
