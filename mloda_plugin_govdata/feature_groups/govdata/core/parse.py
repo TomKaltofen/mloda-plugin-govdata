@@ -230,7 +230,7 @@ def parse_multi_header_csv_bytes(
     label_columns: int = 0,
     value_type: ColumnType = ColumnType.INTEGER,
     encoding: str | None = None,
-    text_columns: tuple[str, ...] = (),
+    text_columns: tuple[str, ...] | str = (),
 ) -> pa.Table:
     """Parse a publisher CSV with a multi-row merged header into a typed Arrow table.
 
@@ -247,6 +247,8 @@ def parse_multi_header_csv_bytes(
         raise ValueError("not enough header rows for the requested header_rows")
     names = _flatten_header(header_block)
     ncols = len(names)
+    if isinstance(text_columns, str):
+        text_columns = (text_columns,)  # one name, not its letters
     unknown = [name for name in text_columns if name not in names]
     if unknown:
         raise KeyError(f"text columns {unknown} not found; available: {names}")
@@ -275,7 +277,7 @@ def parse_multi_header_csv(
     label_columns: int = 0,
     value_type: ColumnType = ColumnType.INTEGER,
     encoding: str | None = None,
-    text_columns: tuple[str, ...] = (),
+    text_columns: tuple[str, ...] | str = (),
 ) -> pa.Table:
     """Read ``path`` and parse it with :func:`parse_multi_header_csv_bytes`."""
     with open(path, "rb") as handle:

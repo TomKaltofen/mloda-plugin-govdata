@@ -132,6 +132,7 @@ def test_multi_header_text_columns_kerg2(fixtures_dir: Path) -> None:
     )
     assert table.num_rows == 12
     assert table.schema.field("Gewählt").type == pa.string()
+    assert table.schema.field("Bemerkung").type == pa.string()
     assert table.schema.field("Anzahl").type == pa.float64()
     assert set(table.column("Gewählt").to_pylist()) == {None, "–", "CDU"}
     assert table.column("Prozent").to_pylist()[1] == 82.5122

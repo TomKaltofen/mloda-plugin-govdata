@@ -279,6 +279,13 @@ def test_geometry_options_default_to_btw25(fixtures_dir: Path, tmp_path: Path, m
     assert defaulted.equals(explicit)
 
 
+def test_text_columns_takes_a_bare_name(fixtures_dir: Path) -> None:
+    locator = GovDataLocator.from_string(KERG2_URL)
+    options = Options({**KERG2_OPTIONS, OPTION_WAHL_TEXT_COLUMNS: "Gewählt"})
+    table = BundeswahlleiterinReader._parse(fixtures_dir / "kerg2_sample.csv", locator, options=options)
+    assert table.schema.field("Gewählt").type == pa.string()
+
+
 def test_bad_geometry_option_raises(fixtures_dir: Path) -> None:
     locator = GovDataLocator.from_string(KERG_URL)
     options = Options({OPTION_WAHL_SKIPROWS: "five"})
