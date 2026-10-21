@@ -32,6 +32,8 @@ pip install mloda-plugin-govdata
 
 ## Quick start
 
+Auf Deutsch: [Schnellstart](https://github.com/mloda-ai/mloda-plugin-govdata/blob/main/docs/schnellstart.md).
+
 No account needed for GovData:
 
 ```python
