@@ -185,7 +185,7 @@ def _(mo):
     mo.md("""
     *Gebiet* is the area's name, *gehört zu* ("belongs to") the number of the area it is part of. The three
     layout values are the reader's defaults, made for this file; they are written out here so you can see
-    them. The next election's file may be laid out differently; then you change the numbers, not the code.
+    them. If the next election's file is laid out differently, you change the numbers.
     `BundeswahlleiterinReader.peek(KERG)` lists all the columns you can ask for.
     """)
     return
@@ -298,8 +298,7 @@ def _(mo):
     # Part 2: air quality
 
     The federal environment agency, the *Umweltbundesamt* (UBA), measures air quality at stations all
-    over Germany. It publishes the measurements through a web service, not as files. So the options are not
-    a file layout but your question:
+    over Germany. It publishes the measurements through a web service. So the options are your question:
 
     - which station: 143 is Berlin Grunewald, in a forest on the edge of the city;
     - which pollutant: component 3 is ozone, measured in µg/m³ (millionths of a gram per cubic metre of air);
@@ -391,7 +390,7 @@ def _(
     ozone_options,
     pd,
 ):
-    # The same question as in Step 4, for the picked day; the reader wants the day as "YYYY-MM-DD".
+    # Step 4's question for the picked day, written as "YYYY-MM-DD".
     _options = {**ozone_options, OPTION_UBA_DATE_FROM: day.value.isoformat(), OPTION_UBA_DATE_TO: day.value.isoformat()}
     _result = mloda.run_all(
         [Feature("date_start", options=_options), Feature("value", options=_options)],
