@@ -60,7 +60,6 @@ def _(mo):
 @app.cell
 def _():
     import altair as alt
-    import pandas as pd
 
     from mloda.user import Feature, mloda
     from mloda_plugin_govdata.feature_groups.destatis import (
@@ -82,7 +81,6 @@ def _():
         ParameterCache,
         alt,
         mloda,
-        pd,
     )
 
 
@@ -93,8 +91,10 @@ def _(DestatisCredentials, GENESIS_ONLINE, MissingCredentialsError, mo):
     try:
         if DestatisCredentials.from_env(GENESIS_ONLINE) is None:
             _why = "No token found: `GENESIS_TOKEN` is not set (nor `GENESIS_USER` and `GENESIS_PASSWORD`)."
-    except MissingCredentialsError as _error:  # a user name without a password, or the reverse
-        _why = str(_error)
+    except MissingCredentialsError:  # a user name without a password, or the reverse
+        _why = "Set both `GENESIS_USER` and `GENESIS_PASSWORD`, or only `GENESIS_TOKEN`."
+    except ValueError:  # a character that cannot be part of a token, e.g. a copied quote mark
+        _why = "The token contains a character that does not belong in it. Copy it again."
     mo.stop(
         _why is not None,
         mo.md(f"**Stopped.** {_why} Follow *Get a token* above, then start marimo again."),
@@ -110,7 +110,7 @@ def _(mo):
     ## Step 1: see the columns
 
     `DestatisReader` reads GENESIS tables. `peek` asks GENESIS for the table and lists the columns you can
-    ask for. If it says your token was rejected, copy the token again.
+    ask for. If it fails with an authentication or backend error, copy your token again.
     """)
     return
 
@@ -250,8 +250,9 @@ def _(DestatisLocator, DestatisReader, Feature, TABLE_BY_SEX, mloda):
 def _(by_sex, mo):
     mo.md(f"""
     The sex is the second variable, so its columns start with `2_`. You asked for women, yet there are
-    {len(by_sex)} rows, two per Land: GENESIS always adds the total, *Insgesamt*, with an empty code. Adding up
-    the `value` column would count every woman twice. Keep the rows whose code you asked for:
+    {len(by_sex)} rows, two per Land: GENESIS adds the total, *Insgesamt*, too. Its code is missing (pandas
+    shows `NaN`). Adding up the `value` column would add the whole population on top of the women. Keep the
+    rows whose code you asked for:
     `by_sex[by_sex["2_variable_attribute_code"] == "GESW"]`.
     """)
     return
@@ -312,10 +313,10 @@ def _(mo):
     mo.md("""
     ## Try it: pick a Land
 
-    The chart shows the Land's population on 31 December of each year, without the `-` rows. Pick Berlin:
-    until 1989 it counts West Berlin only, so the line jumps in 1990. Every Land drops from 2010 to 2011:
-    from 2011 the counts rest on a new census, which corrected them. From 2022 a newer census is the base, so
-    the step from 2021 to 2022 is a correction too.
+    The chart shows the Land's population on 31 December of each year, without the `-` rows. It starts with
+    Berlin: until 1989 it counts West Berlin only, so the line jumps in 1990. Every Land drops from 2010 to
+    2011: from 2011 the counts rest on a new census, which corrected them. From 2022 a newer census is the
+    base, so the step from 2021 to 2022 mixes a correction with real change.
     """)
     return
 
@@ -352,6 +353,7 @@ def _(mo):
 
 @app.cell
 def _(
+    DestatisLocator,
     DestatisReader,
     GENESIS_ONLINE,
     ParameterCache,
@@ -362,15 +364,19 @@ def _(
     women,
 ):
     _cache = ParameterCache(DestatisReader.cache_dir)
-    # The copies read in Steps 3 and 4.
-    _years = _cache.lookup(GENESIS_ONLINE, "data/tablefile", since_1980.tablefile_fields())
-    _women = _cache.lookup(GENESIS_ONLINE, "data/tablefile", women.tablefile_fields())
+
+    def _retrieved(selection):
+        # The copy each step read; a missing one means the cache was cleared since.
+        _hit = _cache.lookup(GENESIS_ONLINE, "data/tablefile", selection.tablefile_fields())
+        return f"{_hit.retrieved_at:%Y-%m-%d}" if _hit else "not in the local cache any more"
+
     _page = "https://genesis.destatis.de/datenbank/online/statistic/12411/table/"
     mo.md(f"""
     - **Source:** Statistisches Bundesamt (Destatis), GENESIS-Online
     - **License:** `{DestatisReader.LICENSE}`, the id the reader declares for Destatis data
-    - **Table {TABLE} (Step 3):** {_page}{TABLE}, retrieved {_years.retrieved_at:%Y-%m-%d}
-    - **Table {TABLE_BY_SEX} (Step 4):** {_page}{TABLE_BY_SEX}, retrieved {_women.retrieved_at:%Y-%m-%d}
+    - **Table {TABLE}:** {_page}{TABLE}, retrieved {_retrieved(DestatisLocator(TABLE))} (Steps 1 and 2) and
+      {_retrieved(since_1980)} (Step 3)
+    - **Table {TABLE_BY_SEX}:** {_page}{TABLE_BY_SEX}, retrieved {_retrieved(women)} (Step 4)
     """)
     return
 
@@ -379,9 +385,10 @@ def _(
 def _(mo):
     mo.md("""
     The license, [Data License Germany, attribution, version 2.0](https://www.govdata.de/dl-de/by-2-0),
-    lets you reuse the data if you name the source, link the license and say what you changed. Here: for
-    table 12411-0010 you kept the years from 1980 and left out the `-` rows; table 12411-0011 is shown as
-    read.
+    lets you reuse the data if you name the source, link the license and say what you changed. The plugin
+    changed two things for every table: each reference date became its year, and each `-` became 0 (the sign
+    stays in `value_marker`). Here you also kept the years from 1980 of table 12411-0010 and left out its
+    `-` rows in the chart.
 
     ## Next
 

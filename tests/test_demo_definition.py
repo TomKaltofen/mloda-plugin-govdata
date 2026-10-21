@@ -48,12 +48,17 @@ def test_globs_find_all_notebooks_and_docs() -> None:
 
 @pytest.mark.parametrize("demo_path", NOTEBOOK_PATHS, ids=lambda path: str(path.relative_to(REPO_ROOT)))
 def test_demo_defines_marimo_app(demo_path: Path) -> None:
-    spec = importlib.util.spec_from_file_location(demo_path.stem, demo_path)
+    assert isinstance(_load_app(demo_path), marimo.App)
+
+
+def _load_app(path: Path) -> marimo.App:
+    spec = importlib.util.spec_from_file_location(path.stem, path)
     assert spec is not None
     assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    assert isinstance(module.app, marimo.App)
+    app: marimo.App = module.app
+    return app
 
 
 @pytest.mark.parametrize("path", NOTEBOOK_PATHS + DOC_PATHS, ids=lambda path: str(path.relative_to(REPO_ROOT)))
@@ -151,3 +156,19 @@ def test_every_cell_after_the_credentials_guard_depends_on_it(path: Path) -> Non
             unguarded.append(cell.lineno)
     assert guarded, "the Destatis cells follow the guard"
     assert unguarded == []
+
+
+# The demo is left out: its cells before the guard read live sources.
+@pytest.mark.parametrize(
+    "path",
+    [path for path in GUARDED_PATHS if path.parent.name == "tutorials"],
+    ids=lambda path: str(path.relative_to(REPO_ROOT)),
+)
+def test_tutorial_stops_without_credentials(path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    for suffix in ("TOKEN", "USER", "PASSWORD"):
+        monkeypatch.delenv(f"GENESIS_{suffix}", raising=False)
+    guard = next(cell for cell in _demo_tree(path).body if _is_cell(cell) and GUARD_CALL in ast.unparse(cell))
+    held_back = _returned_names(guard)
+    assert held_back
+    _, defs = _load_app(path).run()
+    assert held_back.isdisjoint(defs)
