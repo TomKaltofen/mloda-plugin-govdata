@@ -27,6 +27,9 @@ DOC_PATHS = [
     for path in [REPO_ROOT / "README.md", *sorted((REPO_ROOT / "docs").glob("*.md"))]
     if PYTHON_FENCE.search(path.read_text(encoding="utf-8"))
 ]
+# Notebooks whose Destatis cells wait behind a credentials guard.
+GUARD_CALL = "DestatisCredentials.from_env("
+GUARDED_PATHS = [path for path in NOTEBOOK_PATHS if GUARD_CALL in path.read_text(encoding="utf-8")]
 
 
 def test_globs_find_all_notebooks_and_docs() -> None:
@@ -36,8 +39,10 @@ def test_globs_find_all_notebooks_and_docs() -> None:
         DEMO_PATH.with_name("berlin_wahl_2026_demo.py"),
         REPO_ROOT / "tutorials" / "01_first_table.py",
         REPO_ROOT / "tutorials" / "02_elections_and_air_quality.py",
+        REPO_ROOT / "tutorials" / "03_destatis_table.py",
     }
     assert expected <= set(NOTEBOOK_PATHS)
+    assert {DEMO_PATH, REPO_ROOT / "tutorials" / "03_destatis_table.py"} <= set(GUARDED_PATHS)
     assert {REPO_ROOT / "README.md", REPO_ROOT / "docs" / "schnellstart.md"} <= set(DOC_PATHS)
 
 
@@ -127,10 +132,12 @@ def _is_markdown(cell: ast.FunctionDef) -> bool:
     )
 
 
-def test_every_cell_after_the_credentials_guard_depends_on_it() -> None:
+@pytest.mark.parametrize("path", GUARDED_PATHS, ids=lambda path: str(path.relative_to(REPO_ROOT)))
+def test_every_cell_after_the_credentials_guard_depends_on_it(path: Path) -> None:
     # mo.stop skips only the cells that take a name from the stopped cell, directly or through another cell.
-    cells = [node for node in _demo_tree().body if _is_cell(node)]
-    guard = next(index for index, cell in enumerate(cells) if "mo.stop(" in ast.unparse(cell))
+    cells = [node for node in _demo_tree(path).body if _is_cell(node)]
+    guard = next(index for index, cell in enumerate(cells) if GUARD_CALL in ast.unparse(cell))
+    assert "mo.stop(" in ast.unparse(cells[guard])
     reached = _returned_names(cells[guard])
     guarded: list[int] = []
     unguarded: list[int] = []
