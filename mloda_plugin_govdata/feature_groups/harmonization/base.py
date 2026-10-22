@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import Any, ClassVar
 
 from mloda.provider import (
@@ -18,7 +19,7 @@ from mloda.user import Feature, FeatureName, Options
 from mloda.user.pyarrow import PyArrowTable
 
 from ..destatis.core.auth import OPTION_GENESIS_CREDENTIALS
-from ..govdata.core.cache import DEFAULT_CACHE_DIR
+from ..govdata.core.cache import DEFAULT_CACHE_DIR, CacheMissError, DownloadCache
 
 # A part selector is lowercase letters and digits only, so ``~key__nuts2024`` never reads as one part.
 PART_PATTERN = r"[a-z0-9]+"
@@ -40,6 +41,23 @@ class HarmonizationFeature(FeatureChainParserMixin, FeatureGroup):
     inherited_context_keys: ClassVar[frozenset[str]] = frozenset({OPTION_GENESIS_CREDENTIALS})
     # The ``~part`` columns a multi-output group returns; empty for a one-column group, whose name is not checked.
     PARTS: ClassVar[tuple[str, ...]] = ()
+
+    @classmethod
+    def fetch_reference(cls) -> None:
+        """Puts this group's reference tables in ``cache_dir``: read offline when cached, else fetched once.
+
+        A fetched file that does not match its pinned sha256 raises ``SourceIntegrityError``.
+        """
+        with DownloadCache(Path(cls.cache_dir)) as cache:
+            try:
+                cls._read_reference(cache)
+            except CacheMissError:
+                cls._read_reference(cache, revalidate=True)
+
+    @classmethod
+    def _read_reference(cls, cache: DownloadCache, *, revalidate: bool = False) -> Any:
+        """The group's reference tables from ``cache``; a group that has some overrides this."""
+        raise NotImplementedError(f"{cls.__name__} reads no reference table")
 
     @classmethod
     def compute_framework_rule(cls) -> set[type[ComputeFramework]] | None:

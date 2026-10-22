@@ -47,18 +47,24 @@ class AgsToNutsFeature(HarmonizationFeature):
     history_years: ClassVar[tuple[int, ...]] = (2016,)
 
     @classmethod
+    def _read_reference(cls, cache: DownloadCache, *, revalidate: bool = False) -> NutsCrosswalk:
+        changes = [
+            change for year in cls.history_years for change in load_gv_isys_changes(year, cache, revalidate=revalidate)
+        ]
+        return load_nuts_crosswalk(cache, gv_isys_changes=changes, revalidate=revalidate)
+
+    @classmethod
     def load_crosswalk(cls) -> NutsCrosswalk:
-        """The crosswalk plus the pinned history, from the offline cache; a miss names the fetch calls."""
+        """The crosswalk plus the pinned history, from the offline cache; a miss names the fetch call."""
         with DownloadCache(Path(cls.cache_dir)) as cache:
             try:
-                changes = [change for year in cls.history_years for change in load_gv_isys_changes(year, cache)]
-                return load_nuts_crosswalk(cache, gv_isys_changes=changes)
+                return cls._read_reference(cache)
             except CacheMissError as exc:
                 raise CacheMissError(
-                    f"{exc}. Call load_nuts_crosswalk(cache, revalidate=True) and load_gv_isys_changes(year, cache, "
-                    f"revalidate=True) for each year in {cls.history_years} once to fetch and cache them. If the "
-                    f"reference tables live elsewhere, set HarmonizationFeature.cache_dir (or {cls.__name__}."
-                    "cache_dir for this group alone), independent of any reader's cache_dir."
+                    f"{exc}. Call {cls.__name__}.fetch_reference() once to fetch and cache the crosswalk and the "
+                    f"GV-ISys change files for {cls.history_years}. If the reference tables live elsewhere, set "
+                    f"HarmonizationFeature.cache_dir (or {cls.__name__}.cache_dir for this group alone), "
+                    "independent of any reader's cache_dir."
                 ) from exc
 
     def input_features(self, options: Options, feature_name: FeatureName) -> set[Feature] | None:
