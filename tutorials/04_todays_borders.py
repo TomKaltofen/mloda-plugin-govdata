@@ -372,8 +372,8 @@ def _(
 @app.cell
 def _(mo):
     mo.md("""
-    Both licenses, [Data License Germany, attribution, version 2.0](https://www.govdata.de/dl-de/by-2-0)
-    and [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), let you reuse the data if you name the
+    Both licenses ([Data License Germany, attribution, version 2.0](https://www.govdata.de/dl-de/by-2-0)
+    and [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)) let you reuse the data if you name the
     source, link the license and say what you changed. Here: each reference date became its year and each
     `-` became 0 (the plugin does this for every Destatis table), the years before 2016 were summed onto the
     2016 borders with the BBSR population shares, and the district keys were mapped to NUTS 2024 codes.
