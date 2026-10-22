@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from functools import partial
 from pathlib import Path
 from typing import Any, ClassVar, Literal, cast
 
@@ -51,9 +52,9 @@ class AgsToNutsFeature(HarmonizationFeature):
         changes = [
             change
             for year in cls.history_years
-            for change in offline_first(lambda r, y=year: load_gv_isys_changes(y, cache, revalidate=r), fetch=fetch)
+            for change in offline_first(partial(load_gv_isys_changes, year, cache), fetch=fetch)
         ]
-        return offline_first(lambda r: load_nuts_crosswalk(cache, gv_isys_changes=changes, revalidate=r), fetch=fetch)
+        return offline_first(partial(load_nuts_crosswalk, cache, gv_isys_changes=changes), fetch=fetch)
 
     @classmethod
     def load_crosswalk(cls) -> NutsCrosswalk:

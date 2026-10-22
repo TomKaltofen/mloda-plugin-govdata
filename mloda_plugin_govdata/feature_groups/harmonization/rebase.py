@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Sequence
 from dataclasses import asdict
+from functools import partial
 from pathlib import Path
 from typing import Any, ClassVar
 
@@ -80,7 +81,7 @@ class KreisRebaseFeature(HarmonizationFeature):
 
     @classmethod
     def _read_reference(cls, cache: DownloadCache, *, fetch: bool = False) -> list[UmsteigeschluesselRow]:
-        return offline_first(lambda r: load_bbsr_kreise(cache, revalidate=r), fetch=fetch)
+        return offline_first(partial(load_bbsr_kreise, cache), fetch=fetch)
 
     @classmethod
     def load_keys(cls) -> tuple[Sequence[UmsteigeschluesselRow], ReferenceSource]:

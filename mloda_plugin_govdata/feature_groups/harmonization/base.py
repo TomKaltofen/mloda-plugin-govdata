@@ -30,14 +30,14 @@ _TRAILING_PART = re.compile(rf"{re.escape(COLUMN_SEPARATOR)}({PART_PATTERN})$")
 _T = TypeVar("_T")
 
 
-def offline_first(load: Callable[[bool], _T], *, fetch: bool) -> _T:
-    """``load(False)`` reads one pinned file offline; with ``fetch``, a cache miss becomes one ``load(True)``."""
+def offline_first(load: Callable[..., _T], *, fetch: bool) -> _T:
+    """One pinned file through ``load(revalidate=...)``: offline first; with ``fetch``, a cache miss is fetched once."""
     try:
-        return load(False)
+        return load(revalidate=False)
     except CacheMissError:
         if not fetch:
             raise
-        return load(True)
+        return load(revalidate=True)
 
 
 class HarmonizationFeature(FeatureChainParserMixin, FeatureGroup):
