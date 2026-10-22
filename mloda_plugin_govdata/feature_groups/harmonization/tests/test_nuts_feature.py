@@ -165,7 +165,7 @@ def test_a_crosswalk_missing_from_the_cache_names_the_fetch_call(
         AgsToNutsFeature.load_crosswalk()
 
 
-def test_fetch_reference_revalidates_the_crosswalk_and_its_history(
+def test_fetch_reference_fetches_only_the_file_missing_from_the_cache(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     calls: list[tuple[str, bool]] = []
@@ -183,7 +183,7 @@ def test_fetch_reference_revalidates_the_crosswalk_and_its_history(
     monkeypatch.setattr("mloda_plugin_govdata.feature_groups.harmonization.nuts.load_nuts_crosswalk", crosswalk)
     monkeypatch.setattr(AgsToNutsFeature, "cache_dir", str(tmp_path))
     AgsToNutsFeature.fetch_reference()
-    assert calls == [("gv-isys 2016", False), ("crosswalk", False), ("gv-isys 2016", True), ("crosswalk", True)]
+    assert calls == [("gv-isys 2016", False), ("crosswalk", False), ("crosswalk", True)]
 
 
 @respx.mock

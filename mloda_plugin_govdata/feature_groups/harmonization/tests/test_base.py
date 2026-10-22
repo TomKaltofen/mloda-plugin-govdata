@@ -1,6 +1,8 @@
 """HarmonizationFeature.by_base: stable output order and collision resolution, independent of
 set iteration/hash seed; source_column: exactly one source; fetch_reference without tables."""
 
+from pathlib import Path
+
 import pytest
 from mloda.provider import FeatureSet
 from mloda.user import Feature, Options
@@ -9,7 +11,10 @@ from mloda_plugin_govdata.feature_groups.harmonization.base import Harmonization
 from mloda_plugin_govdata.feature_groups.harmonization.period import AnnualPeriodFeature
 
 
-def test_fetch_reference_on_a_group_without_reference_tables_raises() -> None:
+def test_fetch_reference_on_a_group_without_reference_tables_raises(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(AnnualPeriodFeature, "cache_dir", str(tmp_path))
     with pytest.raises(NotImplementedError, match="AnnualPeriodFeature reads no reference table"):
         AnnualPeriodFeature.fetch_reference()
 

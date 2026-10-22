@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any, ClassVar, TypeVar
 
 from mloda.provider import (
     COLUMN_SEPARATOR,
@@ -26,6 +27,17 @@ PART_PATTERN = r"[a-z0-9]+"
 # The optional trailing ``~part`` of a PREFIX_PATTERN: request one output column of the group alone.
 OPTIONAL_PART = rf"(?:{re.escape(COLUMN_SEPARATOR)}{PART_PATTERN})?"
 _TRAILING_PART = re.compile(rf"{re.escape(COLUMN_SEPARATOR)}({PART_PATTERN})$")
+_T = TypeVar("_T")
+
+
+def offline_first(load: Callable[[bool], _T], *, fetch: bool) -> _T:
+    """``load(False)`` reads one pinned file offline; with ``fetch``, a cache miss becomes one ``load(True)``."""
+    try:
+        return load(False)
+    except CacheMissError:
+        if not fetch:
+            raise
+        return load(True)
 
 
 class HarmonizationFeature(FeatureChainParserMixin, FeatureGroup):
@@ -49,14 +61,11 @@ class HarmonizationFeature(FeatureChainParserMixin, FeatureGroup):
         A fetched file that does not match its pinned sha256 raises ``SourceIntegrityError``.
         """
         with DownloadCache(Path(cls.cache_dir)) as cache:
-            try:
-                cls._read_reference(cache)
-            except CacheMissError:
-                cls._read_reference(cache, revalidate=True)
+            cls._read_reference(cache, fetch=True)
 
     @classmethod
-    def _read_reference(cls, cache: DownloadCache, *, revalidate: bool = False) -> Any:
-        """The group's reference tables from ``cache``; a group that has some overrides this."""
+    def _read_reference(cls, cache: DownloadCache, *, fetch: bool = False) -> Any:
+        """The group's reference tables from ``cache``, each file through ``offline_first``."""
         raise NotImplementedError(f"{cls.__name__} reads no reference table")
 
     @classmethod

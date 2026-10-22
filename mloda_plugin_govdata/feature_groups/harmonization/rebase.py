@@ -13,7 +13,7 @@ from mloda.provider import DefaultOptionKeys, FeatureSet, property_spec
 from mloda.user import Feature, FeatureName, Options
 
 from ..govdata.core.cache import CacheMissError, DownloadCache
-from .base import OPTIONAL_PART, HarmonizationFeature
+from .base import OPTIONAL_PART, HarmonizationFeature, offline_first
 from .core.rebase import (
     DEFAULT_TOLERANCE,
     KeySheet,
@@ -79,8 +79,8 @@ class KreisRebaseFeature(HarmonizationFeature):
     }
 
     @classmethod
-    def _read_reference(cls, cache: DownloadCache, *, revalidate: bool = False) -> list[UmsteigeschluesselRow]:
-        return load_bbsr_kreise(cache, revalidate=revalidate)
+    def _read_reference(cls, cache: DownloadCache, *, fetch: bool = False) -> list[UmsteigeschluesselRow]:
+        return offline_first(lambda r: load_bbsr_kreise(cache, revalidate=r), fetch=fetch)
 
     @classmethod
     def load_keys(cls) -> tuple[Sequence[UmsteigeschluesselRow], ReferenceSource]:

@@ -102,8 +102,8 @@ def _(mo):
     ## Step 1: read the three districts
 
     Destatis table `12411-0015` counts the population of every district on 31 December of each year. Each
-    district has an *AGS*, its official region key, five digits long: `03152` (Göttingen before the
-    merger), `03156` (Osterode am Harz) and `03159` (the new Göttingen). `regionalvariable="KREISE"` and
+    district has an official five-digit key, the first digits of its *AGS* (the official region key):
+    `03152` (Göttingen before the merger), `03156` (Osterode am Harz) and `03159` (the new Göttingen). `regionalvariable="KREISE"` and
     `regionalkey` pick these three. The years start in 2011 and run to the latest one GENESIS has.
     """)
     return
@@ -145,7 +145,8 @@ def _(mo):
     borders of consecutive years: which share of each old district's population went to which new
     district. Each pair of years is one sheet of its key file. Sheet 2015-2016 converts the borders of 31
     December 2015 into those of 31 December 2016. These districts kept their borders from 2011 to 2015, so
-    the same sheet serves those years too.
+    the same sheet serves those years too; the plugin checks this and raises an error if a district changed
+    earlier.
 
     `KreisRebaseFeature.fetch_reference()` downloads the key file on the first run and reads it from disk
     afterwards. It checks the file against a fixed fingerprint, so a changed file raises an error instead
@@ -174,12 +175,14 @@ def _(mo, raw, rebased):
     _years = rebased["value__rebased~year"]
     _old = raw[(raw["time"] == 2015) & raw["1_variable_attribute_code"].isin(["03152", "03156"])]
     _old = _old.sort_values("1_variable_attribute_code")["value"]
+    _rebased_2015 = rebased[_years == 2015]["value__rebased~value"].iloc[0]
     mo.md(f"""
     One row per year, all on the key `03159`. `~flag` says how each value came about: `rebased` for
     {_years[_flag == "rebased"].min()} to {_years[_flag == "rebased"].max()}, built from the districts in
     `~sources`; `observed` from {_years[_flag == "observed"].min()}, counted by GENESIS for the new district
     itself. Both old districts went in whole, so a re-based year is their sum: for 2015,
-    {_old.iloc[0]:,.0f} + {_old.iloc[1]:,.0f} = {_old.sum():,.0f}.
+    {_old.iloc[0]:,.0f} + {_old.iloc[1]:,.0f} = {_old.sum():,.0f}, and the re-based 2015 value is
+    {_rebased_2015:,.0f}.
     """)
     return
 
@@ -215,10 +218,12 @@ def _(AgsToNutsFeature, Feature, mloda, rebase_options):
 
 @app.cell
 def _(mo, nuts):
+    _codes = nuts.iloc[0]
+    _prefix = "value__rebased~key__nuts2024~"
     mo.md(f"""
-    {len(nuts)} rows, one per year, all with the same codes, so the table shows one. `DE9` is Lower Saxony,
-    `DE91` the region of Braunschweig (named after a former administrative region) and `DE91C` the district
-    of Göttingen. With these codes, the series can be compared with regions in other EU countries.
+    {len(nuts)} rows, one per year, all with the same codes, so the table shows one. `{_codes[_prefix + "nuts1"]}`
+    is Lower Saxony, `{_codes[_prefix + "nuts2"]}` the region of Braunschweig (named after a former
+    administrative region) and `{_codes[_prefix + "nuts3"]}` the district of Göttingen. With these codes, the series can be compared with regions in other EU countries.
     """)
     return
 
@@ -228,8 +233,8 @@ def _(mo):
     mo.md("""
     ## Pitfall: new borders, not new counting
 
-    Re-basing fixes the borders. It cannot fix a change in how people were counted. Every few years a
-    census (*Zensus*) counts the population afresh, and the yearly numbers after it start from the new
+    Re-basing fixes the borders. It cannot fix a change in how people were counted. About every ten years
+    a census (*Zensus*) counts the population afresh, and the yearly numbers after it start from the new
     count. The `~provenance` column records which census changes fall inside your years, as
     `census_breaks`. Nothing in `~value` marks them.
     """)
@@ -286,7 +291,8 @@ def _(DestatisLocator, TABLE, goettingen, mo):
 
 
 @app.cell
-def _(DestatisReader, Feature, alt, merger, mloda, pd):
+def _(DestatisReader, Feature, alt, merger, mloda, pd, rebased):
+    _after_step_2 = rebased  # Step 2 fetched the key file this cell needs
     _locator, _from_year = merger.value
     _options = {DestatisReader: _locator}
     _columns = ["time", "1_variable_attribute_label", "value", "value_marker"]
@@ -326,8 +332,8 @@ def _(mo):
     mo.md("""
     ## Where the data came from
 
-    Every published number needs its sources. Steps 1 to 3 read three of them; the copies on your disk
-    record when you downloaded each one.
+    Every published number needs its sources. Steps 1 to 3 read four files; the copies on your disk record
+    when you downloaded each one.
     """)
     return
 
@@ -344,12 +350,14 @@ def _(
     goettingen,
     json,
     mo,
+    nuts,
     rebased,
 ):
     _hit = ParameterCache(DestatisReader.cache_dir).lookup(
         GENESIS_ONLINE, "data/tablefile", goettingen.tablefile_fields()
     )
     _keys = json.loads(rebased["value__rebased~provenance"].iloc[0])  # the key file Step 2 used
+    _version = nuts["value__rebased~key__nuts2024~version"].iloc[0]
     _crosswalk = AgsToNutsFeature.load_crosswalk()  # the table Step 3 used; reading it takes a few seconds
     with DownloadCache(KreisRebaseFeature.cache_dir) as _cache:
         _keys_retrieved = _cache.get_or_download(_keys["url"], revalidate=False).retrieved_at
@@ -362,9 +370,12 @@ def _(
       License `{DestatisReader.LICENSE}`.
     - **Conversion keys:** {_keys["source"]}, sheet {_keys["sheet"]}, {_keys["url"]}, retrieved
       {_keys_retrieved:%Y-%m-%d}. Attribution: "Laufende Raumbeobachtung des BBSR". License `DL-DE-BY-2.0`.
-    - **NUTS codes:** {_crosswalk.source}, {_crosswalk.url}, retrieved {_crosswalk_retrieved:%Y-%m-%d}.
-      Attribution: "Source: Eurostat." License `CC-BY-4.0`. The 2016 border changes come from the Destatis
-      municipality register (*Gemeindeverzeichnis*), license `DL-DE-BY-2.0`.
+    - **NUTS {_version} codes:** {_crosswalk.source}, {_crosswalk.url}, retrieved
+      {_crosswalk_retrieved:%Y-%m-%d}. Attribution: "Source: Eurostat." License `CC-BY-4.0`.
+    - **Border changes of 2016:** Destatis municipality register (*Gemeindeverzeichnis*), change file 2016,
+      https://www.destatis.de/DE/Themen/Laender-Regionen/Regionales/Gemeindeverzeichnis/_inhalt.html,
+      fetched together with the NUTS codes. Attribution: "(c) Statistisches Bundesamt (Destatis)". License
+      `DL-DE-BY-2.0`.
     """)
     return
 

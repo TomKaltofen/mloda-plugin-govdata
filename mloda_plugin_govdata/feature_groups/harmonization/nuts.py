@@ -10,7 +10,7 @@ from mloda.provider import DefaultOptionKeys, FeatureSet, property_spec
 from mloda.user import Feature, FeatureName, Options
 
 from ..govdata.core.cache import CacheMissError, DownloadCache
-from .base import OPTIONAL_PART, HarmonizationFeature
+from .base import OPTIONAL_PART, HarmonizationFeature, offline_first
 from .core.crosswalk import NUTS_VERSION, NutsCrosswalk, load_nuts_crosswalk
 from .core.nuts import map_ags_to_nuts
 from .core.reference.gv_isys import load_gv_isys_changes
@@ -47,11 +47,13 @@ class AgsToNutsFeature(HarmonizationFeature):
     history_years: ClassVar[tuple[int, ...]] = (2016,)
 
     @classmethod
-    def _read_reference(cls, cache: DownloadCache, *, revalidate: bool = False) -> NutsCrosswalk:
+    def _read_reference(cls, cache: DownloadCache, *, fetch: bool = False) -> NutsCrosswalk:
         changes = [
-            change for year in cls.history_years for change in load_gv_isys_changes(year, cache, revalidate=revalidate)
+            change
+            for year in cls.history_years
+            for change in offline_first(lambda r, y=year: load_gv_isys_changes(y, cache, revalidate=r), fetch=fetch)
         ]
-        return load_nuts_crosswalk(cache, gv_isys_changes=changes, revalidate=revalidate)
+        return offline_first(lambda r: load_nuts_crosswalk(cache, gv_isys_changes=changes, revalidate=r), fetch=fetch)
 
     @classmethod
     def load_crosswalk(cls) -> NutsCrosswalk:
