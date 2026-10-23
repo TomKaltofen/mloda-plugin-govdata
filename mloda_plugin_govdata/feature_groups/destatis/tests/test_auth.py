@@ -1,12 +1,15 @@
 """Credentials: resolution order, host scoping, redaction in every text form, the missing-credentials message."""
 
+from typing import Any
+
 import pytest
-from mloda.user import Options
+from mloda.user import Credential, DataAccessCollection, Options
 
 from mloda_plugin_govdata.feature_groups.destatis.core.auth import (
     ENV_SUFFIXES,
     OPTION_GENESIS_CREDENTIALS,
     DestatisCredentials,
+    credentials_from_collection,
     explicit_credentials_from_options,
     resolve_credentials,
 )
@@ -142,3 +145,54 @@ def test_unknown_host_with_explicit_prefix() -> None:
     assert resolve_credentials(zensus, environ={"ZENSUS_TOKEN": TOKEN}).host == "zensus"
     with pytest.raises(ValueError, match="upper-case"):
         GenesisHost("x", "https://example.org/", "zensus", "https://example.org/", "x")
+
+
+def _collection(**credentials: Any) -> DataAccessCollection:
+    return DataAccessCollection(credentials={handle: Credential(entry) for handle, entry in credentials.items()})
+
+
+def test_collection_credentials_are_picked_by_host_handle_or_host_key() -> None:
+    collection = _collection(
+        genesis={"token": TOKEN}, nrw={"host": "regionalstatistik", "user": USER, "password": PASSWORD}
+    )
+    online = credentials_from_collection(collection, GENESIS_ONLINE)
+    assert online is not None and (online.host, online.token) == ("genesis", TOKEN)
+    regional = credentials_from_collection(collection, REGIONALSTATISTIK)
+    assert regional is not None and (regional.host, regional.user) == ("regionalstatistik", USER)
+    assert credentials_from_collection(None, GENESIS_ONLINE) is None
+
+
+@pytest.mark.parametrize(
+    "entry",
+    [
+        {"token": TOKEN},  # another plugin's token under its own handle
+        {"host": "db.example.org", "user": USER, "password": PASSWORD},  # a database login
+    ],
+)
+def test_untagged_collection_credentials_are_never_taken(entry: dict[str, str]) -> None:
+    assert credentials_from_collection(_collection(other=entry), GENESIS_ONLINE) is None
+
+
+def test_a_data_access_handle_selects_among_several() -> None:
+    collection = _collection(work={"host": "genesis", "token": TOKEN}, home={"host": "genesis", "token": "other"})
+    with pytest.raises(ValueError, match="Several credentials for host 'genesis': home, work; .*data_access_handle"):
+        credentials_from_collection(collection, GENESIS_ONLINE)
+    picked = credentials_from_collection(collection, GENESIS_ONLINE, "work")
+    assert picked is not None and picked.token == TOKEN
+    # A handle of another kind or group is not ours to judge.
+    assert credentials_from_collection(_collection(genesis={"token": TOKEN}), GENESIS_ONLINE, "files") is not None
+    with pytest.raises(WrongHostCredentialsError, match="'work' are scoped to host 'genesis'"):
+        credentials_from_collection(collection, REGIONALSTATISTIK, "work")
+
+
+@pytest.mark.parametrize(
+    ("entry", "match"),
+    [
+        ({"tokn": TOKEN}, r"'genesis' have unknown key\(s\) \['tokn'\]"),
+        ({"user": USER}, "'genesis': .*together"),
+    ],
+)
+def test_a_malformed_genesis_entry_is_named_without_its_values(entry: dict[str, str], match: str) -> None:
+    with pytest.raises(ValueError, match=match) as excinfo:
+        credentials_from_collection(_collection(genesis=entry), GENESIS_ONLINE)
+    assert TOKEN not in str(excinfo.value) and USER not in str(excinfo.value)

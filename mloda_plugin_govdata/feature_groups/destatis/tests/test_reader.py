@@ -11,7 +11,7 @@ import httpx
 import pytest
 import respx
 from mloda.provider import FeatureSet, SourceMatch
-from mloda.user import Feature, FeatureName, Options, mloda
+from mloda.user import Credential, DataAccessCollection, Feature, FeatureName, Options, mloda
 
 from mloda_plugin_govdata.feature_groups.destatis.core.cache import ParameterCache
 from mloda_plugin_govdata.feature_groups.destatis.core.hosts import GENESIS_ONLINE
@@ -212,6 +212,98 @@ def test_explicit_credentials_from_options_are_used_over_env(
     )
     assert result[0].num_rows == 207
     assert route.calls.last.request.headers["username"] == TOKEN
+
+
+ENV_TOKEN = "envTokenAbCdEf0123456789abcdef0123"
+
+
+def _env_token_only(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("GENESIS_TOKEN", ENV_TOKEN)
+    for var in ("GENESIS_USER", "GENESIS_PASSWORD"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setattr(DestatisReader, "cache_dir", str(tmp_path))
+
+
+@pytest.mark.parametrize(
+    ("credentials", "sent"),
+    [
+        ({"genesis": Credential(token=TOKEN)}, TOKEN),  # tagged by its handle: used over env
+        ({"hf": Credential(token=TOKEN)}, ENV_TOKEN),  # another plugin's token: never sent to GENESIS
+    ],
+)
+@respx.mock
+def test_collection_credentials_are_used_over_env_when_tagged_for_genesis(
+    fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, credentials: dict[str, Any], sent: str
+) -> None:
+    _env_token_only(monkeypatch, tmp_path)
+    route = _mock_tablefile((fixtures_dir / "ffcsv" / FFCSV_FIXTURE).read_bytes())
+    result = mloda.run_all(
+        [Feature("value", options={DestatisReader.__name__: TABLE_CODE})],
+        compute_frameworks=["PyArrowTable"],
+        data_access_collection=DataAccessCollection(credentials=credentials),
+    )
+    assert result[0].num_rows == 207
+    assert route.calls.last.request.headers["username"] == sent
+
+
+@pytest.mark.parametrize("explicit_first", [True, False])
+@respx.mock
+def test_explicit_credentials_win_over_the_collection_in_one_request(
+    fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, explicit_first: bool
+) -> None:
+    from mloda_plugin_govdata.feature_groups.destatis.core.auth import OPTION_GENESIS_CREDENTIALS, DestatisCredentials
+
+    _env_token_only(monkeypatch, tmp_path)
+    route = _mock_tablefile((fixtures_dir / "ffcsv" / FFCSV_FIXTURE).read_bytes())
+    explicit = Feature(
+        "value",
+        options=Options(
+            group={DestatisReader.__name__: TABLE_CODE},
+            context={OPTION_GENESIS_CREDENTIALS: DestatisCredentials(token=TOKEN)},
+        ),
+    )
+    plain = Feature("time", options={DestatisReader.__name__: TABLE_CODE})
+    mloda.run_all(
+        [explicit, plain] if explicit_first else [plain, explicit],
+        compute_frameworks=["PyArrowTable"],
+        data_access_collection=DataAccessCollection(credentials={"genesis": Credential(token="collectionToken0123")}),
+    )
+    assert {call.request.headers["username"] for call in route.calls} == {TOKEN}
+
+
+@respx.mock
+def test_describe_columns_uses_the_collection_credentials(
+    fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    for var in ("GENESIS_TOKEN", "GENESIS_USER", "GENESIS_PASSWORD"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setattr(DestatisReader, "cache_dir", str(tmp_path))
+    route = _mock_tablefile((fixtures_dir / "ffcsv" / FFCSV_FIXTURE).read_bytes())
+    collection = DataAccessCollection(credentials={"genesis": Credential(token=TOKEN)})
+    options = Options({DestatisReader.__name__: TABLE_CODE})
+    [match] = DestatisReader.find_sources(DestatisReader.CLAIM_ROUTES[0], "value", options, collection)
+    assert TOKEN not in repr(match) and DestatisReader.data_access_identity(match) == TABLE_CODE
+    assert "value" in DestatisReader.describe_columns(match)
+    assert route.calls.last.request.headers["username"] == TOKEN
+
+
+@respx.mock
+def test_an_ambiguous_collection_is_refused_at_match_time_without_a_request(
+    fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Resolved while matching, so a cached selection fails too: a misconfigured collection never passes silently.
+    _env_token_only(monkeypatch, tmp_path)
+    route = _mock_tablefile((fixtures_dir / "ffcsv" / FFCSV_FIXTURE).read_bytes())
+    collection = DataAccessCollection(
+        credentials={"a": Credential(host="genesis", token=TOKEN), "b": Credential(host="genesis", token=ENV_TOKEN)}
+    )
+    with pytest.raises(ValueError, match="Several credentials for host 'genesis': a, b") as excinfo:
+        mloda.run_all(
+            [Feature("value", options={DestatisReader.__name__: TABLE_CODE})],
+            compute_frameworks=["PyArrowTable"],
+            data_access_collection=collection,
+        )
+    assert TOKEN not in str(excinfo.value) and route.calls.call_count == 0
 
 
 @respx.mock
