@@ -54,6 +54,7 @@ def test_destatis_reader_is_a_concrete_source_group_under_the_shared_root() -> N
     assert issubclass(DestatisReader, BaseGovDataReader)
     assert issubclass(DestatisReader, GovDataFeature)
     assert not inspect.isabstract(DestatisReader)
+    assert DestatisReader.pointer_keys() == (DestatisReader.__name__,)
 
 
 def test_class_options_key_normalizes_to_reader_name() -> None:
