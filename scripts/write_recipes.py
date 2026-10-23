@@ -156,7 +156,7 @@ KREIS_POPULATION_REBASED = ShippedRecipe(
             "break inside the range. The Landkreise Göttingen (03152) and Osterode am Harz (03156) merged into the "
             "Landkreis Göttingen (03159) on 01.11.2016: before that Stichtag 03159 carries '-' (not applicable, "
             "never a zero) and its 2013 to 2015 rows are re-based sums of the two feeders. The BBSR key file must "
-            "be in the cache: load_bbsr_kreise(cache, revalidate=True) once."
+            "be in the cache: KreisRebaseFeature.fetch_reference() once."
         ),
     ),
 )
@@ -292,8 +292,8 @@ UBA_OZONE_STATION_143 = ShippedRecipe(
         notes=(
             "Hourly ozone (component 3, scope 2) at station 143 on 2025-01-01. The endpoint re-serves revised "
             "values: a re-fetch on 2026-09-12 differed from the pinned payload in most hours by one unit, so the "
-            "sha256 identifies this retrieval, not the series. Licensed under the UBA data terms (§ 12a EGovG), "
-            "attribution required."
+            "sha256 identifies this retrieval, not the series. Licensed under the UBA data terms (§ 12a EGovG): "
+            "name the Umweltbundesamt as source and mark any changes in the source note."
         ),
     ),
 )

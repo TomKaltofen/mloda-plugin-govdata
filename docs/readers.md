@@ -2,7 +2,7 @@
 
 Every reader turns one source into a typed PyArrow table. The option key is the reader class or its class-name string; the option value says what to read.
 
-A reader whose source has one fixed license declares it to extenders as `license` (`DestatisReader` `DL-DE-BY-2.0`, `StuttgartPopulationReader` `CC-BY-4.0`, `UbaAirReader` `LicenseRef-UBA-EGovG-12a`, the UBA data terms under § 12a EGovG with attribution required), so `Feature(..., required_declarations={"license": "DL-DE-BY-2.0"})` is checked at plan time. `GovDataReader` and `BundeswahlleiterinReader` declare none, so such a requirement rejects them.
+A reader whose source has one fixed license declares it to extenders as `license` (`DestatisReader` `DL-DE-BY-2.0`, `StuttgartPopulationReader` `CC-BY-4.0`, `UbaAirReader` `LicenseRef-UBA-EGovG-12a`, the [UBA data terms](https://luftdaten.umweltbundesamt.de/en/node/3): use permitted under § 12a EGovG, name the Umweltbundesamt as source and mark any changes in the source note), so `Feature(..., required_declarations={"license": "DL-DE-BY-2.0"})` is checked at plan time. `GovDataReader` and `BundeswahlleiterinReader` declare none, so such a requirement rejects them.
 
 ## GovData
 
@@ -24,7 +24,7 @@ table = result[0]  # pyarrow.Table with the requested columns
 result.plan  # resolved execution steps: which FeatureGroup ran on which framework
 ```
 
-For any other GovData CSV dataset, `GovDataReader` works out of the box and reads every column as a string; subclass it and set `schema` for typed columns. Set `BaseGovDataReader.cache_dir` to control where downloads are cached.
+For any other GovData CSV dataset in the German layout (`;` between values, one header row), `GovDataReader` works out of the box and reads every column as a string; subclass it and set `schema` for typed columns. Set `BaseGovDataReader.cache_dir` to control where downloads are cached.
 
 ### Find a dataset
 
@@ -63,6 +63,10 @@ result = mloda.run_all(
     compute_frameworks=["PyArrowTable"],
 )
 ```
+
+Column names are the header rows joined by spaces (`Wahlberechtigte Zweitstimmen Endgültig`). The layout is set per feature by options whose defaults fit `kerg.csv`: `OPTION_WAHL_SKIPROWS` (preamble lines, 5), `OPTION_WAHL_HEADER_ROWS` (3), `OPTION_WAHL_LABEL_COLUMNS` (leading text columns, 4), and `OPTION_WAHL_VALUE_TYPE` (type of the rest, `ColumnType.INTEGER`). An empty value cell becomes null, not 0.
+
+`OPTION_WAHL_TEXT_COLUMNS` names further columns read as text wherever they sit. The long-format `kerg2.csv` ends with two text columns, so it reads with `OPTION_WAHL_SKIPROWS: 9`, `OPTION_WAHL_HEADER_ROWS: 1`, `OPTION_WAHL_LABEL_COLUMNS: 11`, `OPTION_WAHL_VALUE_TYPE: ColumnType.FLOAT` and `OPTION_WAHL_TEXT_COLUMNS: ["Bemerkung", "Gewählt"]`. In `Gewählt`, the dash `–` is text, not a value marker (a winner without a seat).
 
 ## Air quality (UBA)
 
