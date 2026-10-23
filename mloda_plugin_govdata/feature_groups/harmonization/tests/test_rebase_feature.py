@@ -430,12 +430,10 @@ def test_explicit_credentials_travel_from_the_derived_feature_to_the_reader(
 
 @respx.mock
 def test_collection_credentials_reach_the_reader_under_a_derived_feature(
-    genesis: Callable[[str], respx.Route], extract_keys: None, monkeypatch: pytest.MonkeyPatch
+    genesis: Callable[[str], respx.Route], extract_keys: None, no_genesis_env: None
 ) -> None:
     # No context plumbing: the run's collection reaches the Destatis input of the chain directly.
     route = genesis(GOETTINGEN_ZIP)
-    for var in ("GENESIS_TOKEN", "GENESIS_USER", "GENESIS_PASSWORD"):
-        monkeypatch.delenv(var, raising=False)
     result = mloda.run_all(
         [Feature("value__rebased", options={DestatisReader.__name__: GOETTINGEN_LOCATOR, **YEARS})],
         compute_frameworks=["PyArrowTable"],

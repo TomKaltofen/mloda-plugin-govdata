@@ -21,6 +21,7 @@ from mloda.provider import (
     COLUMN_SEPARATOR,
     HANDLE_OPTION,
     ClaimRoute,
+    FeatureSet,
     SourceMatch,
     escalate_match_abort,
 )
@@ -86,6 +87,22 @@ class DestatisReader(BaseGovDataReader[DestatisLocator]):
         except (ValueError, TypeError, GenesisAuthError) as exc:
             raise escalate_match_abort(exc) from None
         return matches if found is None else [SourceMatch(match.source, _CollectionAccess(match.access, found))]
+
+    @classmethod
+    def load_neutral(cls, match: SourceMatch, features: FeatureSet) -> Any:
+        # Context never splits a batch, and mloda hands over one feature's options, so explicit credentials are
+        # gathered from every feature; otherwise which one wins would depend on set order.
+        explicit = {
+            found
+            for feature in features.get_sorted_features()
+            if (found := explicit_credentials_from_options(feature.options)) is not None
+        }
+        if len(explicit) > 1:
+            raise ValueError("Features read together from one GENESIS selection carry different explicit credentials.")
+        if explicit:
+            locator = match.access.locator if isinstance(match.access, _CollectionAccess) else match.access
+            match = SourceMatch(match.source, _CollectionAccess(locator, explicit.pop()))
+        return super().load_neutral(match, features)
 
     @classmethod
     def _read_table(cls, locator: DestatisLocator | _CollectionAccess, options: Options | None = None) -> pa.Table:
