@@ -24,7 +24,7 @@ from mloda.user import Options
 
 from .core.locator import GovDataLocator
 from .core.parse import ColumnType
-from .reader import BaseGovDataReader, _is_scalar
+from .reader import BaseGovDataReader, is_scalar
 
 UBA_AIR_BASE = "https://luftdaten.umweltbundesamt.de/api/air-data/v4"
 # UBA data terms (no SPDX id, hence LicenseRef-): use permitted under section 12a EGovG, name the UBA as source,
@@ -252,35 +252,35 @@ class UbaAirReader(BaseGovDataReader[GovDataLocator]):
             "UBA station id.",
             strict_validation=True,
             element_validator=is_positive_int,
-            match_guard=_is_scalar,
+            match_guard=is_scalar,
             expected="a single value",
         ),
         OPTION_UBA_COMPONENT: PropertySpec(
             "UBA component id (see the UBA components endpoint).",
             strict_validation=True,
             element_validator=is_positive_int,
-            match_guard=_is_scalar,
+            match_guard=is_scalar,
             expected="a single value",
         ),
         OPTION_UBA_SCOPE: PropertySpec(
             "UBA scope id (see the UBA scopes endpoint).",
             strict_validation=True,
             element_validator=is_positive_int,
-            match_guard=_is_scalar,
+            match_guard=is_scalar,
             expected="a single value",
         ),
         OPTION_UBA_DATE_FROM: PropertySpec(
             "Query window start, YYYY-MM-DD.",
             strict_validation=True,
             element_validator=_is_iso_date,
-            match_guard=_is_scalar,
+            match_guard=is_scalar,
             expected="a single value",
         ),
         OPTION_UBA_DATE_TO: PropertySpec(
             "Query window end, YYYY-MM-DD.",
             strict_validation=True,
             element_validator=_is_iso_date,
-            match_guard=_is_scalar,
+            match_guard=is_scalar,
             expected="a single value",
         ),
         OPTION_UBA_TIME_FROM: PropertySpec(
@@ -288,7 +288,7 @@ class UbaAirReader(BaseGovDataReader[GovDataLocator]):
             default=1,
             strict_validation=True,
             element_validator=_is_hour_slot,
-            match_guard=_is_scalar,
+            match_guard=is_scalar,
             expected="a single value",
         ),
         OPTION_UBA_TIME_TO: PropertySpec(
@@ -296,7 +296,7 @@ class UbaAirReader(BaseGovDataReader[GovDataLocator]):
             default=24,
             strict_validation=True,
             element_validator=_is_hour_slot,
-            match_guard=_is_scalar,
+            match_guard=is_scalar,
             expected="a single value",
         ),
         OPTION_UBA_LANG: PropertySpec(
@@ -304,7 +304,7 @@ class UbaAirReader(BaseGovDataReader[GovDataLocator]):
             default="en",
             strict_validation=True,
             element_validator=_is_non_empty_str,
-            match_guard=_is_scalar,
+            match_guard=is_scalar,
             expected="a single value",
         ),
     }
@@ -316,7 +316,7 @@ class UbaAirReader(BaseGovDataReader[GovDataLocator]):
         values = {key: cls._option(key, options) for key in cls.PROPERTY_MAPPING or {}}
         try:
             validate_property_values(values, cls.PROPERTY_MAPPING or {}, closed_world=False)
-            valid = all(_is_scalar(option) for option in values.values())
+            valid = all(is_scalar(option) for option in values.values())
         except PropertyValidationError:
             valid = False
         if not valid:

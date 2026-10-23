@@ -72,7 +72,7 @@ def _match(reader: type[BaseGovDataReader[Any]], value: object) -> SourceMatch:
 
 
 class _FakeFeatureSet:
-    """Just enough FeatureSet surface for load_data: sorted tuple of FeatureName, like the real one."""
+    """Just enough FeatureSet surface for load_neutral: sorted tuple of FeatureName, like the real one."""
 
     def __init__(self, names: set[str], options: Options | None = None) -> None:
         self._names = tuple(sorted(FeatureName(name) for name in names))

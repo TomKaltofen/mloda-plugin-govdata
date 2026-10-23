@@ -6,4 +6,4 @@ from mloda.provider import SourceFeatureGroup
 
 
 class GovDataFeature(SourceFeatureGroup):
-    """Common base of every reader, so a ``feature_group="GovDataFeature"`` scope reaches them all."""
+    """Base of every reader; a ``feature_group="GovDataFeature"`` scope narrows to readers, a pointer picks one."""

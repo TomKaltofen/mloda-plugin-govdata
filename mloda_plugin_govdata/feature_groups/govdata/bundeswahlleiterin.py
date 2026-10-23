@@ -12,7 +12,7 @@ from mloda.user import Options
 
 from .core.locator import GovDataLocator
 from .core.parse import ColumnType, parse_multi_header_csv
-from .reader import BaseGovDataReader, _is_scalar
+from .reader import BaseGovDataReader, is_scalar
 
 # Feature-option keys steering the multi-header election parse; defaults are the btw25 kerg.csv
 # geometry, so a new election file is a per-feature configuration change, not a code change.
@@ -63,7 +63,7 @@ class BundeswahlleiterinReader(BaseGovDataReader[GovDataLocator]):
             "Preamble lines to skip before the header block.",
             default=5,
             strict_validation=True,
-            match_guard=_is_scalar,
+            match_guard=is_scalar,
             expected="a single value",
             element_validator=_is_non_negative_int,
         ),
@@ -71,7 +71,7 @@ class BundeswahlleiterinReader(BaseGovDataReader[GovDataLocator]):
             "Merged header rows flattened into column names.",
             default=3,
             strict_validation=True,
-            match_guard=_is_scalar,
+            match_guard=is_scalar,
             expected="a single value",
             element_validator=is_positive_int,
         ),
@@ -79,7 +79,7 @@ class BundeswahlleiterinReader(BaseGovDataReader[GovDataLocator]):
             "Leading columns typed as strings, not value_type.",
             default=4,
             strict_validation=True,
-            match_guard=_is_scalar,
+            match_guard=is_scalar,
             expected="a single value",
             element_validator=_is_non_negative_int,
         ),
@@ -87,7 +87,7 @@ class BundeswahlleiterinReader(BaseGovDataReader[GovDataLocator]):
             "ColumnType of the non-label columns.",
             default=ColumnType.INTEGER,
             strict_validation=True,
-            match_guard=_is_scalar,
+            match_guard=is_scalar,
             expected="a single value",
             allowed_values=tuple(ColumnType),
         ),

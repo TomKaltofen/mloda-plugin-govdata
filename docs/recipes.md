@@ -92,9 +92,10 @@ policy as the reference tables in the harmonization package. The shipped files a
 
 ## Plan locks
 
-`recipes/locks/` holds one mloda plan lock per shipped recipe: the feature group, compute framework, reader
-and inputs of each step that the documented call (`compute_frameworks=["PyArrowTable"]`) resolves to. The offline
-tests fail with a diff when a plan changes, a mloda upgrade included. Regenerate the recipes and locks with
+`recipes/locks/` holds one mloda plan lock per shipped recipe: the feature group, compute framework and inputs
+of each step that the documented call (`compute_frameworks=["PyArrowTable"]`) resolves to, plus a hash of the
+code each reader can reach. The offline tests fail with a diff when a plan changes, a mloda upgrade or an edit
+to reader code included. Regenerate the recipes and locks with
 `uv run python scripts/write_recipes.py` and review the lock diff before committing.
 
 ## Shipped recipes

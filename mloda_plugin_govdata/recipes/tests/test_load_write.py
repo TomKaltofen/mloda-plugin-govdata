@@ -133,12 +133,21 @@ def test_links_block_builds_the_link() -> None:
 
 
 def test_links_block_builds_discriminators() -> None:
-    loaded = parse_recipe(recipe_to_json(build_recipe(["Nr"], COMPLIANCE, [_kerg_self_link(BERLIN_URL)])))
+    # A dict locator (the DestatisLocator form) as well as a string one.
+    destatis_self = Link.inner(
+        JoinSpec(DestatisReader, "time"),
+        JoinSpec(DestatisReader, "time"),
+        left_discriminator={DestatisReader.__name__: LAND_LOCATOR},
+        right_discriminator={DestatisReader.__name__: "12411-0015"},
+    )
+    links = [_kerg_self_link(BERLIN_URL), destatis_self]
+    loaded = parse_recipe(recipe_to_json(build_recipe(["Nr"], COMPLIANCE, links)))
 
-    (link,) = loaded.links
-    assert link.left_discriminator == {BundeswahlleiterinReader.__name__: KERG_URL}
-    assert link.right_discriminator == {BundeswahlleiterinReader.__name__: BERLIN_URL}
-    assert link == _kerg_self_link(BERLIN_URL)
+    kerg, destatis = loaded.links
+    assert kerg.left_discriminator == {BundeswahlleiterinReader.__name__: KERG_URL}
+    assert kerg.right_discriminator == {BundeswahlleiterinReader.__name__: BERLIN_URL}
+    assert destatis.left_discriminator == {DestatisReader.__name__: LAND_LOCATOR}
+    assert loaded.links == links
 
 
 def test_a_same_name_key_link_and_a_multi_column_index_round_trip() -> None:
@@ -204,8 +213,7 @@ def test_an_asof_link_has_no_recipe_form() -> None:
 def test_every_feature_constructor_parameter_is_either_carried_or_refused() -> None:
     parameters = set(inspect.signature(Feature.__init__).parameters) - {"self"}
     # Constructor name where the attribute differs.
-    renamed = {"compute_frameworks": "compute_framework", "implementation_pin": "implementation"}
-    renamed["_connection_holder"] = "connection"
+    renamed = {"compute_frameworks": "compute_framework", "_connection_holder": "connection"}
     refused = {renamed.get(attribute, attribute) for attribute, _, _ in _UNSUPPORTED}
     assert parameters == SUPPORTED_FEATURE_PARAMETERS | refused
     # The writer carries every Options field; a new one must be written or refused, never dropped.
@@ -229,7 +237,6 @@ def test_every_feature_constructor_parameter_is_either_carried_or_refused() -> N
         (Feature("x", forward_group_exclude=["k"]), "forward_group_exclude"),
         (Feature("x", inherit_context_keys=["k"]), "inherit_context_keys"),
         (Feature("x", required_declarations={"k": "v"}), "required_declarations"),
-        (Feature("x", implementation="PandasAggregation"), "implementation_pin"),
         (Feature("x", keep_index=True), "keep_index"),
         (Feature("x", connection=sqlite3.connect(":memory:")), "_connection_holder"),
     ],
@@ -258,6 +265,16 @@ def test_domain_and_compute_framework_given_as_options_round_trip() -> None:
     (loaded,) = _features(parse_recipe(recipe_to_json(build_recipe([feature], COMPLIANCE))).features)
     assert loaded.options.group.get("compute_framework") == "PyArrowTable"
     assert loaded.domain == feature.domain and loaded.compute_frameworks == feature.compute_frameworks
+
+
+@pytest.mark.parametrize("pin", ["PandasAggregation", ["PandasAggregation", "PyArrowAggregation"]])
+def test_an_implementation_pin_round_trips(pin: str | list[str]) -> None:
+    recipe = build_recipe([Feature("x", implementation=pin)], COMPLIANCE)
+    assert recipe.features[0] == {"name": "x", "implementation": pin}
+    (loaded,) = parse_recipe(recipe_to_json(recipe)).features
+    assert (
+        isinstance(loaded, Feature) and loaded.implementation_pin == Feature("x", implementation=pin).implementation_pin
+    )
 
 
 def test_a_constructor_domain_is_written_to_the_domain_option() -> None:

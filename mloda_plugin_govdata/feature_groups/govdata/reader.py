@@ -44,7 +44,7 @@ def _unknown_features_message(missing: list[str], available: list[str], locator:
     return " ".join(parts)
 
 
-def _is_scalar(value: Any) -> bool:
+def is_scalar(value: Any) -> bool:
     """Match guard for single-valued options: mloda would otherwise validate a collection element-wise."""
     return not isinstance(value, (list, tuple, set, frozenset))
 
