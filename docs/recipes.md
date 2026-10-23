@@ -24,10 +24,8 @@ recipe.compliance.sources[0].attribution  # what to print next to the result
   "links": [
     {
       "join": "inner",
-      "left": {"feature_group": "GovDataFeature", "index": ["1_variable_attribute_code"],
-               "discriminator": {"DestatisReader": {"name": "12411-0010", "startyear": 2024, "endyear": 2024}}},
-      "right": {"feature_group": "GovDataFeature", "index": ["Nr"],
-                "discriminator": {"BundeswahlleiterinReader": "https://www.bundeswahlleiterin.de/.../kerg.csv"}}
+      "left": {"feature_group": "DestatisReader", "index": ["1_variable_attribute_code"]},
+      "right": {"feature_group": "BundeswahlleiterinReader", "index": ["Nr"]}
     }
   ],
   "compliance": {

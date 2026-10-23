@@ -31,6 +31,9 @@ _UNSUPPORTED: tuple[tuple[str, Any, str | None], ...] = (
     ("forward_group_exclude", frozenset(), None),
     ("inherit_context_keys", frozenset(), None),
     ("required_declarations", None, None),
+    ("implementation_pin", None, None),
+    ("keep_index", False, None),
+    ("_connection_holder", None, None),
 )
 
 
@@ -86,7 +89,7 @@ def _feature_item(feature: Feature, position: int) -> dict[str, Any]:
         if _same(value, default) or (option_key is not None and _same(value, getattr(from_options, attribute))):
             continue
         raise RecipeError(
-            f"{where}: Feature.{attribute} has no field in the mloda feature config; "
+            f"{where}: Feature.{attribute} has no recipe form; "
             "a recipe carries name, options, in_features, feature_group, propagate_context_keys, "
             "and cascade_context_keys"
         )
