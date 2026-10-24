@@ -27,8 +27,7 @@ def test_source_column_names_the_feature_on_a_wrong_source_count() -> None:
 
 
 def test_by_name_orders_by_feature_name_not_set_iteration() -> None:
-    # Five names, not two or three: an unfixed set-iteration order has only a 1-in-120
-    # chance of coincidentally matching this expected order on a given run.
+    # Five names, so an unsorted set order rarely matches by chance.
     names = ["zeta__nuts2024", "alpha__nuts2024", "mu__nuts2024", "beta__nuts2024", "eta__nuts2024"]
     features = FeatureSet([Feature(name) for name in names])
     assert list(HarmonizationFeature.by_name(features)) == sorted(names)
