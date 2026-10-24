@@ -48,10 +48,14 @@ def test_the_recipe_pins_both_payloads_and_carries_the_link(recipes_dir: Path) -
 
 
 @respx.mock
-def test_both_sides_run_and_the_land_rows_line_up_by_name(recipes_dir: Path, genesis: Genesis, kerg: Mock) -> None:
+def test_both_sides_run_and_the_land_rows_line_up_by_name(
+    recipes_dir: Path, genesis: Genesis, kerg: Mock, caplog: pytest.LogCaptureFixture
+) -> None:
     route = genesis({"12411-0010": LAND_ZIP})
     kerg((GOVDATA_FIXTURES / "kerg_sample.csv").read_bytes() + BUNDESGEBIET_ROW)
-    result = run(_load(recipes_dir).features)  # no consumer requested: two frames, unjoined
+    recipe = _load(recipes_dir)
+    result = run(recipe.features, recipe.links)  # no consumer requested: two frames, unjoined
+    assert "planned no join" in caplog.text  # mloda says so; the consumer test pins the silent path
     destatis, election = result.frame_for("value"), result.frame_for("Nr")
     assert destatis.num_rows == 16
     # The election joins the last Stichtag on or before its date: the request carries the policy year,

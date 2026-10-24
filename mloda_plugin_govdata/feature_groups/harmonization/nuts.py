@@ -106,8 +106,8 @@ class AgsToNutsFeature(HarmonizationFeature):
                 "version": [crosswalk.nuts_version if k in matched else None for k in raw],
                 "unmatched": [NULL_KEY if k is None else reasons.get(k, "") for k in raw],
             }
-            for part, values in parts.items():
-                table = table.append_column(f"{name}~{part}", pa.array(values, pa.string()))
+            for part in cls.OUTPUT_PARTS:
+                table = table.append_column(f"{name}~{part}", pa.array(parts[part], pa.string()))
         return table
 
 

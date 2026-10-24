@@ -181,6 +181,15 @@ def test_an_unknown_part_is_refused_before_any_fetch_naming_the_parts(
             r"declared parts: \['key'.*'provenance'\]",
         ):
             _run([feature])
+    configured = Options(group=options, context={"in_features": "value"})
+    refused = [
+        (Feature("value__rebased~key__nuts2024~nuts4", options=options), "'nuts4' is not an output part"),
+        (Feature("value__rebased~key~x", options=options), "'key~x' is a nested part"),
+        (Feature(f"{CONFIGURATION_BASED_NAME}~flag~x", configured), "'flag~x' is a nested part"),
+    ]
+    for feature, reason in refused:
+        with pytest.raises(FeatureResolutionError, match=reason):
+            _run([feature])
     assert route.calls.call_count == 0
 
 
