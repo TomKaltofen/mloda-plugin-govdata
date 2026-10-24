@@ -48,8 +48,8 @@ recipe.compliance.sources[0].attribution  # what to print next to the result
 - `features`: mloda's feature-config array, handed to `load_features_from_config` unchanged. Items are
   feature names or objects with `name`, `options` (or `group_options` plus `context_options`),
   `in_features`, `propagate_context_keys`, `cascade_context_keys`, `column_index`, `feature_group` (a class
-  name). Reader locators are strings or dicts (the `DestatisLocator` dict form). Any other key fails at load
-  with the allowed set.
+  name), `implementation`. Reader locators are strings or dicts (the `DestatisLocator` dict form). mloda's
+  loader checks the items at load and names the failing one.
 - `links`: joins the feature array cannot express. `join` is `inner`, `left`, `right`, `outer`, `append`,
   or `union`; each side names the FeatureGroup class, its key columns, and, when both sides share a class,
   a `discriminator` of option key/value pairs picking the node. mloda matches a discriminator by exact
