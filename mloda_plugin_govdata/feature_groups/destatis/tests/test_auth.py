@@ -151,52 +151,16 @@ def _collection(**credentials: Any) -> DataAccessCollection:
     return DataAccessCollection(credentials={handle: Credential(entry) for handle, entry in credentials.items()})
 
 
-def test_collection_credentials_are_picked_by_host_handle_or_host_key() -> None:
+def test_a_host_key_tags_an_entry_and_a_database_login_is_never_taken() -> None:
+    # Handle tagging, foreign tokens and ambiguity run end to end in test_reader.py.
     collection = _collection(
-        genesis={"token": TOKEN}, nrw={"host": "regionalstatistik", "user": USER, "password": PASSWORD}
+        nrw={"host": " Regionalstatistik ", "user": USER, "password": PASSWORD},
+        db={"host": "db.example.org", "user": USER, "password": PASSWORD},
     )
-    online = credentials_from_collection(collection, GENESIS_ONLINE)
-    assert online is not None and (online.host, online.token) == ("genesis", TOKEN)
     regional = credentials_from_collection(collection, REGIONALSTATISTIK)
     assert regional is not None and (regional.host, regional.user) == ("regionalstatistik", USER)
+    assert credentials_from_collection(collection, GENESIS_ONLINE) is None
     assert credentials_from_collection(None, GENESIS_ONLINE) is None
-
-
-@pytest.mark.parametrize(
-    "entry",
-    [
-        {"token": TOKEN},  # another plugin's token under its own handle
-        {"host": "db.example.org", "user": USER, "password": PASSWORD},  # a database login
-    ],
-)
-def test_untagged_collection_credentials_are_never_taken(entry: dict[str, str]) -> None:
-    assert credentials_from_collection(_collection(other=entry), GENESIS_ONLINE) is None
-
-
-def test_a_data_access_handle_selects_among_several() -> None:
-    collection = _collection(work={"host": "genesis", "token": TOKEN}, home={"host": "genesis", "token": "other"})
-    with pytest.raises(ValueError, match="Several credentials for host 'genesis': home, work; .*data_access_handle"):
-        credentials_from_collection(collection, GENESIS_ONLINE)
-    picked = credentials_from_collection(collection, GENESIS_ONLINE, "work")
-    assert picked is not None and picked.token == TOKEN
-    # A handle of another kind or group is not ours to judge.
-    assert credentials_from_collection(_collection(genesis={"token": TOKEN}), GENESIS_ONLINE, "files") is not None
-    with pytest.raises(WrongHostCredentialsError, match="'work' are scoped to host 'genesis'"):
-        credentials_from_collection(collection, REGIONALSTATISTIK, "work")
-
-
-def test_a_handle_never_reaches_past_the_genesis_tag() -> None:
-    collection = _collection(regionalstatistik={"token": TOKEN}, hf={"token": "foreign"}, genesis={"token": "online"})
-    # A host-named handle keeps its own host: never sent to the other installation.
-    with pytest.raises(WrongHostCredentialsError, match="'regionalstatistik' are scoped to host 'regionalstatistik'"):
-        credentials_from_collection(collection, GENESIS_ONLINE, "regionalstatistik")
-    # A handle naming another plugin's entry is left to that plugin; the tagged entry is used.
-    picked = credentials_from_collection(collection, GENESIS_ONLINE, "hf")
-    assert picked is not None and picked.token == "online"
-    tagged = credentials_from_collection(
-        _collection(nrw={"host": " Regionalstatistik ", "token": TOKEN}), REGIONALSTATISTIK
-    )
-    assert tagged is not None and tagged.host == "regionalstatistik"
 
 
 @pytest.mark.parametrize(

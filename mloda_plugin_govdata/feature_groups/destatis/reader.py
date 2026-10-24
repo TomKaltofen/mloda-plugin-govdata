@@ -19,7 +19,6 @@ import pyarrow as pa
 from mloda.provider import (
     CHAIN_SEPARATOR,
     COLUMN_SEPARATOR,
-    HANDLE_OPTION,
     ClaimRoute,
     FeatureSet,
     SourceMatch,
@@ -80,9 +79,7 @@ class DestatisReader(BaseGovDataReader[DestatisLocator]):
             return matches
         (match,) = matches
         try:
-            found = credentials_from_collection(
-                data_access_collection, resolve_host(match.access.host), options.get(HANDLE_OPTION)
-            )
+            found = credentials_from_collection(data_access_collection, resolve_host(match.access.host))
         except (ValueError, GenesisAuthError) as exc:
             # Raises a marked abort, or declines with the reason inside mloda's global filter probe.
             cls._abort(ValueError(str(exc)))
@@ -100,12 +97,6 @@ class DestatisReader(BaseGovDataReader[DestatisLocator]):
         }
         if len(explicit) > 1:
             raise ValueError("Features read together from one GENESIS selection carry different explicit credentials.")
-        handles = {feature.options.get(HANDLE_OPTION) for feature in features.get_sorted_features()} - {None}
-        if not explicit and len(handles) > 1:
-            raise ValueError(
-                f"Features read together from one GENESIS selection name different data_access_handle values: "
-                f"{', '.join(sorted(map(str, handles)))}; put the handle in group options to read them apart."
-            )
         if explicit:
             locator = match.access.locator if isinstance(match.access, _CollectionAccess) else match.access
             match = SourceMatch(match.source, _CollectionAccess(locator, explicit.pop()))

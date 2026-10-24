@@ -28,7 +28,7 @@ Credentials never go into the URL or the form body: the server ignores body cred
    mloda.run_all(features, data_access_collection=collection)
    ```
 
-   An entry counts only when its handle is a host name (`genesis`, `regionalstatistik`) or it carries a `host` key, so another plugin's token is never sent to GENESIS. Keys are `host`, `token`, `user`, `password`. Several entries for one host need the `data_access_handle` option to pick one; a handle naming another host's entry is refused, and one naming an untagged entry is ignored. Features that share a table but name different handles must carry the handle in group options, which reads them apart. The collection is checked while features resolve, so a misconfigured entry fails the run even when the table is cached.
+   An entry counts only when its handle is a host name (`genesis`, `regionalstatistik`) or it carries a `host` key, so another plugin's token is never sent to GENESIS. Keys are `host`, `token`, `user`, `password`. Several entries for one host are refused; keep one. The collection is checked while features resolve, so a misconfigured entry fails the run even when the table is cached.
 3. Env vars of the host, chosen by the host prefix. Whitespace is stripped. A half-set pair (`GENESIS_USER` without `GENESIS_PASSWORD`, or the reverse) is an error, never a fallback to the token or to the other host.
 4. Otherwise `MissingCredentialsError` names the env vars and the registration page for that host. Nothing is sent.
 

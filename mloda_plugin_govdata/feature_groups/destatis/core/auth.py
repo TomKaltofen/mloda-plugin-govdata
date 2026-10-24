@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from mloda.user import DataAccessCollection, Options
 
 from .errors import MissingCredentialsError, WrongHostCredentialsError
-from .hosts import KNOWN_HOSTS, GenesisHost
+from .hosts import GenesisHost
 
 # Suffixes joined with the host prefix: GENESIS_TOKEN, REGIONALSTATISTIK_USER, ... (a tuple, so
 # no *_PASSWORD named constant exists for bandit B105 to flag).
@@ -134,29 +134,17 @@ _CREDENTIAL_KEYS = frozenset({"host", "token", "user", "password"})
 
 
 def credentials_from_collection(
-    collection: DataAccessCollection | None, host: GenesisHost, handle: object = None
+    collection: DataAccessCollection | None, host: GenesisHost
 ) -> DestatisCredentials | None:
     """The collection's GENESIS credentials for ``host``, or ``None``; errors name handles and keys, never values.
 
     An entry counts only when tagged for GENESIS: its handle is a host name (``genesis``, ``regionalstatistik``)
-    or it carries a known ``host`` key, so another plugin's token is never sent here. A ``data_access_handle``
-    naming a tagged entry selects it; one naming any other entry is left to its own reader.
+    or it carries a known ``host`` key, so another plugin's token is never sent here.
     """
     entries = {} if collection is None else collection.credentials
-    tagged = {name: tag for name, entry in entries.items() if (tag := _tag(entry.get("host", name))) in KNOWN_HOSTS}
-    if isinstance(handle, str) and handle in tagged:
-        if tagged[handle] != host.name:
-            raise WrongHostCredentialsError(
-                f"Credentials {handle!r} are scoped to host {tagged[handle]!r} but the request targets {host.name!r}."
-            )
-        matching = [handle]
-    else:
-        matching = sorted(name for name, tag in tagged.items() if tag == host.name)
+    matching = sorted(name for name, entry in entries.items() if _tag(entry.get("host", name)) == host.name)
     if len(matching) > 1:
-        raise ValueError(
-            f"Several credentials for host {host.name!r}: {', '.join(matching)}; "
-            "pick one with the data_access_handle option."
-        )
+        raise ValueError(f"Several credentials for host {host.name!r}: {', '.join(matching)}; keep one.")
     return _destatis_credentials(matching[0], entries[matching[0]], host.name) if matching else None
 
 

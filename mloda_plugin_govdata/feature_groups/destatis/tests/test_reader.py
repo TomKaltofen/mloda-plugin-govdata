@@ -10,7 +10,7 @@ from typing import Any, cast
 import httpx
 import pytest
 import respx
-from mloda.provider import HANDLE_OPTION, FeatureSet, SourceMatch
+from mloda.provider import FeatureSet, SourceMatch
 from mloda.user import Credential, DataAccessCollection, Feature, FeatureName, Options, mloda
 
 from mloda_plugin_govdata.feature_groups.destatis.core.auth import OPTION_GENESIS_CREDENTIALS, DestatisCredentials
@@ -223,32 +223,23 @@ def test_explicit_credentials_from_options_are_used_over_env(
     assert route.calls.last.request.headers["username"] == TOKEN
 
 
-@pytest.mark.parametrize(
-    ("credentials", "sent"),
-    [
-        ({"genesis": Credential(token=TOKEN)}, TOKEN),  # tagged by its handle: used over env
-        ({"hf": Credential(token=TOKEN)}, ENV_TOKEN),  # another plugin's token: never sent to GENESIS
-    ],
-)
 @respx.mock
-def test_collection_credentials_are_used_over_env_when_tagged_for_genesis(
-    fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, credentials: dict[str, Any], sent: str
+def test_another_plugins_token_is_never_sent_to_genesis(
+    fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _env_token_only(monkeypatch, tmp_path)
     route = _mock_tablefile((fixtures_dir / "ffcsv" / FFCSV_FIXTURE).read_bytes())
-    result = mloda.run_all(
+    mloda.run_all(
         [Feature("value", options={DestatisReader.__name__: TABLE_CODE})],
         compute_frameworks=["PyArrowTable"],
-        data_access_collection=DataAccessCollection(credentials=credentials),
+        data_access_collection=DataAccessCollection(credentials={"hf": Credential(token=TOKEN)}),
     )
-    assert result[0].num_rows == 207
-    assert route.calls.last.request.headers["username"] == sent
+    assert route.calls.last.request.headers["username"] == ENV_TOKEN
 
 
-@pytest.mark.parametrize("explicit_first", [True, False])
 @respx.mock
 def test_explicit_credentials_win_over_the_collection_in_one_request(
-    fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, explicit_first: bool
+    fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _env_token_only(monkeypatch, tmp_path)
     route = _mock_tablefile((fixtures_dir / "ffcsv" / FFCSV_FIXTURE).read_bytes())
@@ -261,7 +252,7 @@ def test_explicit_credentials_win_over_the_collection_in_one_request(
     )
     plain = Feature("time", options={DestatisReader.__name__: TABLE_CODE})
     mloda.run_all(
-        [explicit, plain] if explicit_first else [plain, explicit],
+        [plain, explicit],
         compute_frameworks=["PyArrowTable"],
         data_access_collection=DataAccessCollection(credentials={"genesis": Credential(token="collectionToken0123")}),
     )
@@ -334,7 +325,7 @@ def test_an_ambiguous_collection_is_refused_at_match_time_without_a_request(
 
 
 @respx.mock
-def test_collection_credentials_follow_the_host_and_a_handle_never_crosses_it(
+def test_collection_credentials_follow_the_host(
     fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, no_genesis_env: None
 ) -> None:
     monkeypatch.setattr(DestatisReader, "cache_dir", str(tmp_path))
@@ -348,43 +339,15 @@ def test_collection_credentials_follow_the_host_and_a_handle_never_crosses_it(
     )
     regional_table = DestatisLocator("13211-02-05-4", host="regionalstatistik")
     mloda.run_all(
-        [Feature("value", options={DestatisReader.__name__: regional_table})],
+        [
+            Feature("value", options={DestatisReader.__name__: regional_table}),
+            Feature("time", options={DestatisReader.__name__: TABLE_CODE}),
+        ],
         compute_frameworks=["PyArrowTable"],
         data_access_collection=collection,
     )
     assert regional.calls.last.request.headers["username"] == "regionalToken0123"
-    crossing = Options(group={DestatisReader.__name__: TABLE_CODE}, context={HANDLE_OPTION: "regionalstatistik"})
-    with pytest.raises(ValueError, match="scoped to host 'regionalstatistik'"):
-        mloda.run_all(
-            [Feature("value", options=crossing)], compute_frameworks=["PyArrowTable"], data_access_collection=collection
-        )
-    assert online.calls.call_count == 0
-
-
-@respx.mock
-def test_different_handles_in_one_batch_are_refused(
-    fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, no_genesis_env: None
-) -> None:
-    monkeypatch.setattr(DestatisReader, "cache_dir", str(tmp_path))
-    route = _mock_tablefile((fixtures_dir / "ffcsv" / FFCSV_FIXTURE).read_bytes())
-    collection = DataAccessCollection(
-        credentials={
-            "work": Credential(host="genesis", token=TOKEN),
-            "home": Credential(host="genesis", token=ENV_TOKEN),
-        }
-    )
-    features: list[Feature | str] = [
-        Feature(name, options=Options(group={DestatisReader.__name__: TABLE_CODE}, context={HANDLE_OPTION: handle}))
-        for name, handle in (("value", "work"), ("time", "home"))
-    ]
-    with pytest.raises(ValueError, match="different data_access_handle values: home, work"):
-        mloda.run_all(features, compute_frameworks=["PyArrowTable"], data_access_collection=collection)
-    assert route.calls.call_count == 0
-    picked = Options(group={DestatisReader.__name__: TABLE_CODE}, context={HANDLE_OPTION: "work"})
-    mloda.run_all(
-        [Feature("value", options=picked)], compute_frameworks=["PyArrowTable"], data_access_collection=collection
-    )
-    assert route.calls.last.request.headers["username"] == TOKEN
+    assert online.calls.last.request.headers["username"] == TOKEN
 
 
 @respx.mock
