@@ -17,7 +17,7 @@ from mloda_plugin_govdata.feature_groups.land_population_per_voter import (
     LAND_LINK,
     LandPopulationPerVoter,
 )
-from mloda_plugin_govdata.recipes import LoadedRecipe, frames_by_column, load_recipe
+from mloda_plugin_govdata.recipes import LoadedRecipe, load_recipe
 from scripts.write_recipes import CSU_ZWEITSTIMMEN, KEY, LAND_POPULATION_PER_VOTER, VOTERS
 
 from .conftest import FFCSV_FIXTURES, GOVDATA_FIXTURES, LAND_ZIP, Mock, run
@@ -50,8 +50,8 @@ def test_the_recipe_pins_both_payloads_and_carries_the_link(recipes_dir: Path) -
 def test_both_sides_run_and_the_land_rows_line_up_by_name(recipes_dir: Path, genesis: Genesis, kerg: Mock) -> None:
     route = genesis({"12411-0010": LAND_ZIP})
     kerg((GOVDATA_FIXTURES / "kerg_sample.csv").read_bytes() + BUNDESGEBIET_ROW)
-    frames = frames_by_column(run(_load(recipes_dir).features))  # no consumer requested: two frames, unjoined
-    destatis, election = frames["value"], frames["Nr"]
+    result = run(_load(recipes_dir).features)  # no consumer requested: two frames, unjoined
+    destatis, election = result.frame_for("value"), result.frame_for("Nr")
     assert destatis.num_rows == 16
     # The election joins the last Stichtag on or before its date: the request carries the policy year,
     # and the returned time column (pinned by the fixture) agrees.
@@ -85,12 +85,12 @@ def test_zero_vs_missing_an_absent_party_is_null_and_a_land_count_is_never_a_sig
 ) -> None:
     genesis({"12411-0010": LAND_ZIP})
     kerg()
-    frames = frames_by_column(run(_load(recipes_dir).features))
-    land_rows = _land_rows(frames["Nr"])
+    result = run(_load(recipes_dir).features)
+    land_rows = _land_rows(result.frame_for("Nr"))
     # The CSU stands in Bayern only: elsewhere its cell is empty, which is null, not a zero.
     assert land_rows["09"][CSU_ZWEITSTIMMEN] > 0
     assert {row[CSU_ZWEITSTIMMEN] for nr, row in land_rows.items() if nr != "09"} == {None}
     # The Land population cells are all numbers: no GENESIS sign, no null.
-    destatis = frames["value"]
+    destatis = result.frame_for("value")
     assert set(destatis.column("value_marker").to_pylist()) == {""}
     assert destatis.column("value").null_count == 0 and min(destatis.column("value").to_pylist()) > 0
