@@ -10,12 +10,12 @@ from typing import Any, cast
 import httpx
 import pytest
 import respx
-from mloda.provider import FeatureSet, SourceMatch
+from mloda.provider import HANDLE_OPTION, FeatureSet, SourceMatch
 from mloda.user import Credential, DataAccessCollection, Feature, FeatureName, Options, mloda
 
 from mloda_plugin_govdata.feature_groups.destatis.core.auth import OPTION_GENESIS_CREDENTIALS, DestatisCredentials
 from mloda_plugin_govdata.feature_groups.destatis.core.cache import ParameterCache
-from mloda_plugin_govdata.feature_groups.destatis.core.hosts import GENESIS_ONLINE
+from mloda_plugin_govdata.feature_groups.destatis.core.hosts import GENESIS_ONLINE, REGIONALSTATISTIK
 from mloda_plugin_govdata.feature_groups.destatis.locator import DestatisLocator
 from mloda_plugin_govdata.feature_groups.destatis.reader import DestatisReader
 from mloda_plugin_govdata.feature_groups.govdata.core.locator import GovDataLocator
@@ -320,6 +320,71 @@ def test_an_ambiguous_collection_is_refused_at_match_time_without_a_request(
             data_access_collection=collection,
         )
     assert TOKEN not in str(excinfo.value) and route.calls.call_count == 0
+    # An explicit per-feature override never consults the collection, so the ambiguity cannot block it.
+    explicit = Options(
+        group={DestatisReader.__name__: TABLE_CODE},
+        context={OPTION_GENESIS_CREDENTIALS: DestatisCredentials(token=TOKEN)},
+    )
+    mloda.run_all(
+        [Feature("value", options=explicit)],
+        compute_frameworks=["PyArrowTable"],
+        data_access_collection=collection,
+    )
+    assert route.calls.last.request.headers["username"] == TOKEN
+
+
+@respx.mock
+def test_collection_credentials_follow_the_host_and_a_handle_never_crosses_it(
+    fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, no_genesis_env: None
+) -> None:
+    monkeypatch.setattr(DestatisReader, "cache_dir", str(tmp_path))
+    zip_bytes = (fixtures_dir / "ffcsv" / FFCSV_FIXTURE).read_bytes()
+    regional = respx.post(REGIONALSTATISTIK.base_url + "data/tablefile").mock(
+        return_value=httpx.Response(200, content=zip_bytes, headers={"content-type": "application/octet-stream"})
+    )
+    online = _mock_tablefile(zip_bytes)
+    collection = DataAccessCollection(
+        credentials={"genesis": Credential(token=TOKEN), "regionalstatistik": Credential(token="regionalToken0123")}
+    )
+    regional_table = DestatisLocator("13211-02-05-4", host="regionalstatistik")
+    mloda.run_all(
+        [Feature("value", options={DestatisReader.__name__: regional_table})],
+        compute_frameworks=["PyArrowTable"],
+        data_access_collection=collection,
+    )
+    assert regional.calls.last.request.headers["username"] == "regionalToken0123"
+    crossing = Options(group={DestatisReader.__name__: TABLE_CODE}, context={HANDLE_OPTION: "regionalstatistik"})
+    with pytest.raises(ValueError, match="scoped to host 'regionalstatistik'"):
+        mloda.run_all(
+            [Feature("value", options=crossing)], compute_frameworks=["PyArrowTable"], data_access_collection=collection
+        )
+    assert online.calls.call_count == 0
+
+
+@respx.mock
+def test_different_handles_in_one_batch_are_refused(
+    fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, no_genesis_env: None
+) -> None:
+    monkeypatch.setattr(DestatisReader, "cache_dir", str(tmp_path))
+    route = _mock_tablefile((fixtures_dir / "ffcsv" / FFCSV_FIXTURE).read_bytes())
+    collection = DataAccessCollection(
+        credentials={
+            "work": Credential(host="genesis", token=TOKEN),
+            "home": Credential(host="genesis", token=ENV_TOKEN),
+        }
+    )
+    features: list[Feature | str] = [
+        Feature(name, options=Options(group={DestatisReader.__name__: TABLE_CODE}, context={HANDLE_OPTION: handle}))
+        for name, handle in (("value", "work"), ("time", "home"))
+    ]
+    with pytest.raises(ValueError, match="different data_access_handle values: home, work"):
+        mloda.run_all(features, compute_frameworks=["PyArrowTable"], data_access_collection=collection)
+    assert route.calls.call_count == 0
+    picked = Options(group={DestatisReader.__name__: TABLE_CODE}, context={HANDLE_OPTION: "work"})
+    mloda.run_all(
+        [Feature("value", options=picked)], compute_frameworks=["PyArrowTable"], data_access_collection=collection
+    )
+    assert route.calls.last.request.headers["username"] == TOKEN
 
 
 @respx.mock
@@ -350,7 +415,7 @@ _SUBPROCESS_SCRIPT = textwrap.dedent(
     # Only the documented Destatis surface; registration must not depend on also
     # importing mloda_plugin_govdata.feature_groups.govdata directly.
     from mloda_plugin_govdata.feature_groups.destatis import DestatisReader
-    from mloda_plugin_govdata.feature_groups.destatis.core.hosts import GENESIS_ONLINE
+    from mloda_plugin_govdata.feature_groups.destatis.core.hosts import GENESIS_ONLINE, REGIONALSTATISTIK
 
     # The reader layer imports nothing from the layers built on it.
     reader_layer = tuple(f"mloda_plugin_govdata.feature_groups.{p}" for p in ("destatis", "govdata"))

@@ -185,6 +185,20 @@ def test_a_data_access_handle_selects_among_several() -> None:
         credentials_from_collection(collection, REGIONALSTATISTIK, "work")
 
 
+def test_a_handle_never_reaches_past_the_genesis_tag() -> None:
+    collection = _collection(regionalstatistik={"token": TOKEN}, hf={"token": "foreign"}, genesis={"token": "online"})
+    # A host-named handle keeps its own host: never sent to the other installation.
+    with pytest.raises(WrongHostCredentialsError, match="'regionalstatistik' are scoped to host 'regionalstatistik'"):
+        credentials_from_collection(collection, GENESIS_ONLINE, "regionalstatistik")
+    # A handle naming another plugin's entry is left to that plugin; the tagged entry is used.
+    picked = credentials_from_collection(collection, GENESIS_ONLINE, "hf")
+    assert picked is not None and picked.token == "online"
+    tagged = credentials_from_collection(
+        _collection(nrw={"host": " Regionalstatistik ", "token": TOKEN}), REGIONALSTATISTIK
+    )
+    assert tagged is not None and tagged.host == "regionalstatistik"
+
+
 @pytest.mark.parametrize(
     ("entry", "match"),
     [

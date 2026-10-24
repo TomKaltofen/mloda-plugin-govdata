@@ -23,7 +23,6 @@ from mloda.provider import (
     ClaimRoute,
     FeatureSet,
     SourceMatch,
-    escalate_match_abort,
 )
 from mloda.user import DataAccessCollection, Options
 
@@ -77,15 +76,17 @@ class DestatisReader(BaseGovDataReader[DestatisLocator]):
         data_access_collection: DataAccessCollection | None,
     ) -> list[SourceMatch]:
         matches = super().find_sources(route, feature_name, options, data_access_collection)
-        if not matches:
+        if not matches or explicit_credentials_from_options(options) is not None:
             return matches
         (match,) = matches
         try:
             found = credentials_from_collection(
                 data_access_collection, resolve_host(match.access.host), options.get(HANDLE_OPTION)
             )
-        except (ValueError, TypeError, GenesisAuthError) as exc:
-            raise escalate_match_abort(exc) from None
+        except (ValueError, GenesisAuthError) as exc:
+            # Raises a marked abort, or declines with the reason inside mloda's global filter probe.
+            cls._abort(ValueError(str(exc)))
+            return []
         return matches if found is None else [SourceMatch(match.source, _CollectionAccess(match.access, found))]
 
     @classmethod
@@ -99,6 +100,12 @@ class DestatisReader(BaseGovDataReader[DestatisLocator]):
         }
         if len(explicit) > 1:
             raise ValueError("Features read together from one GENESIS selection carry different explicit credentials.")
+        handles = {feature.options.get(HANDLE_OPTION) for feature in features.get_sorted_features()} - {None}
+        if not explicit and len(handles) > 1:
+            raise ValueError(
+                f"Features read together from one GENESIS selection name different data_access_handle values: "
+                f"{', '.join(sorted(map(str, handles)))}; put the handle in group options to read them apart."
+            )
         if explicit:
             locator = match.access.locator if isinstance(match.access, _CollectionAccess) else match.access
             match = SourceMatch(match.source, _CollectionAccess(locator, explicit.pop()))

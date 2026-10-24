@@ -140,44 +140,39 @@ def credentials_from_collection(
 
     An entry counts only when tagged for GENESIS: its handle is a host name (``genesis``, ``regionalstatistik``)
     or it carries a known ``host`` key, so another plugin's token is never sent here. A ``data_access_handle``
-    naming a credentials entry selects it outright.
+    naming a tagged entry selects it; one naming any other entry is left to its own reader.
     """
     entries = {} if collection is None else collection.credentials
-    if isinstance(handle, str) and handle in entries:
-        found = _destatis_credentials(handle, entries[handle], default_host=host.name)
-        if found.host != host.name:
+    tagged = {name: tag for name, entry in entries.items() if (tag := _tag(entry.get("host", name))) in KNOWN_HOSTS}
+    if isinstance(handle, str) and handle in tagged:
+        if tagged[handle] != host.name:
             raise WrongHostCredentialsError(
-                f"Credentials {handle!r} are scoped to host {found.host!r} but the request targets {host.name!r}."
+                f"Credentials {handle!r} are scoped to host {tagged[handle]!r} but the request targets {host.name!r}."
             )
-        return found
-    tagged = {
-        name: _destatis_credentials(name, entry, default_host=name)
-        for name, entry in entries.items()
-        if isinstance(entry, Mapping) and _tag(entry.get("host", name)) in KNOWN_HOSTS
-    }
-    matching = sorted(name for name, found in tagged.items() if found.host == host.name)
+        matching = [handle]
+    else:
+        matching = sorted(name for name, tag in tagged.items() if tag == host.name)
     if len(matching) > 1:
         raise ValueError(
             f"Several credentials for host {host.name!r}: {', '.join(matching)}; "
             "pick one with the data_access_handle option."
         )
-    return tagged[matching[0]] if matching else None
+    return _destatis_credentials(matching[0], entries[matching[0]], host.name) if matching else None
 
 
 def _tag(value: object) -> str | None:
-    return value if isinstance(value, str) else None
+    return value.strip().lower() if isinstance(value, str) else None
 
 
-def _destatis_credentials(handle: str, entry: object, *, default_host: str) -> DestatisCredentials:
-    if not isinstance(entry, Mapping):
-        raise TypeError(f"Credentials {handle!r} must be a mapping, got {type(entry).__name__}.")
+def _destatis_credentials(handle: str, entry: Mapping[str, object], host: str) -> DestatisCredentials:
     unknown = sorted(set(entry) - _CREDENTIAL_KEYS)
     if unknown:
         raise ValueError(
             f"Credentials {handle!r} have unknown key(s) {unknown}; GENESIS takes {sorted(_CREDENTIAL_KEYS)}."
         )
+    fields = {key: value for key, value in entry.items() if key != "host"}
     try:
-        return DestatisCredentials(**{"host": default_host, **dict(entry)})
+        return DestatisCredentials(host=host, **fields)  # type: ignore[arg-type]
     except ValueError as exc:  # __post_init__ names fields only, never values
         raise ValueError(f"Credentials {handle!r}: {exc}") from None
 
