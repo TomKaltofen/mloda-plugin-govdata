@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs
 
+import pytest
 import respx
 from mloda.user import Feature
 
@@ -67,13 +68,16 @@ def test_both_sides_run_and_the_land_rows_line_up_by_name(recipes_dir: Path, gen
 
 
 @respx.mock
-def test_the_consumer_joins_once_on_the_recipes_link(recipes_dir: Path, genesis: Genesis, kerg: Mock) -> None:
+def test_the_consumer_joins_once_on_the_recipes_link(
+    recipes_dir: Path, genesis: Genesis, kerg: Mock, caplog: pytest.LogCaptureFixture
+) -> None:
     genesis({"12411-0010": LAND_ZIP})
     kerg()
     recipe = _load(recipes_dir)
     assert set(recipe.links) == {LAND_LINK}  # the link LandPopulationPerVoter declares on both inputs
     result = run([Feature(LandPopulationPerVoter.NAME)], recipe.links)
     assert [step.step_kind for step in result.plan].count("join") == 1
+    assert "planned no join" not in caplog.text  # mloda warns only when no consumer reads both sides
     table = result[0]
     assert table.num_rows == 16
     assert f"{LandPopulationPerVoter.NAME}~value" in table.schema.names

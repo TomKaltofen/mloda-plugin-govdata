@@ -106,7 +106,7 @@ class Compliance(BaseModel):
 
 
 class Recipe(BaseModel):
-    """The recipe file. ``features`` stays the raw mloda array so it reaches the loader verbatim."""
+    """The recipe file. ``features`` stays the raw mloda array: mloda's loader checks it (``parse_recipe`` runs it)."""
 
     model_config = _forbid_extra()
 
