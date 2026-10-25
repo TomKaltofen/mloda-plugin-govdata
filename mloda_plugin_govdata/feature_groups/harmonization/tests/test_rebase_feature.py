@@ -42,8 +42,8 @@ from .conftest import COCHEM_ZELL_ZIP, EXTRACT, GOETTINGEN_LOCATOR, GOETTINGEN_Z
 CONFIGURATION_BASED_NAME = "destatis__bevoelkerung__kreise"
 PARTS = KreisRebaseFeature.OUTPUT_PARTS
 YEARS = {"rebase_from_year": 2015, "rebase_to_year": 2016}
-# mloda's refusal of a nested part; a declared part matches only in full.
-_NESTED = r"KreisRebaseFeature \(feature name\): '%s' is not an output part of '[^']+'; declared parts: \['key'"
+# mloda's refusal of an undeclared part; a nested part (``key~x``) gets it too, since a part matches only in full.
+UNKNOWN_PART = r"KreisRebaseFeature \(feature name\): '%s' is not an output part of '[^']+'; declared parts: \['key'"
 
 
 def _expected(path: Path) -> list[tuple[str, int, int, str, str]]:
@@ -188,15 +188,14 @@ def test_an_unknown_part_is_refused_before_any_fetch_naming_the_parts(
     for feature in features:
         with pytest.raises(
             FeatureResolutionError,
-            match=r"KreisRebaseFeature \(feature name\): 'edition' is not an output part of '[^']+'; "
-            r"declared parts: \['key'.*'provenance'\]",
+            match=UNKNOWN_PART % "edition" + r".*'provenance'\]",
         ):
             _run([feature])
     configured = Options(group=options, context={"in_features": "value"})
     refused = [
         (Feature("value__rebased~key__nuts2024~nuts4", options=options), "'nuts4' is not an output part"),
-        (Feature("value__rebased~key~x", options=options), _NESTED % "key~x"),
-        (Feature(f"{CONFIGURATION_BASED_NAME}~flag~x", configured), _NESTED % "flag~x"),
+        (Feature("value__rebased~key~x", options=options), UNKNOWN_PART % "key~x"),  # a nested part
+        (Feature(f"{CONFIGURATION_BASED_NAME}~flag~x", configured), UNKNOWN_PART % "flag~x"),
     ]
     for feature, reason in refused:
         with pytest.raises(FeatureResolutionError, match=reason):
