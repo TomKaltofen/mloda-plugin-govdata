@@ -127,12 +127,13 @@ def _feature_item(feature: Feature, position: int) -> dict[str, Any]:
     if feature.keep_index:
         item["keep_index"] = True
     if feature.index is not None:
+        if not isinstance(feature.index, Index):
+            raise RecipeError(f"{where}: Feature.index must be an Index")
         item["index"] = list(feature.index.index)
     return item
 
 
 def _same(value: Any, other: Any) -> bool:
-    # Identity first, so None never reaches a custom __eq__ that raises on a foreign type.
     if value is other:
         return True
     if value is None or other is None:

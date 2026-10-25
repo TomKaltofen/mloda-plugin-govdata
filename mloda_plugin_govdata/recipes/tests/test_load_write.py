@@ -104,12 +104,14 @@ def test_round_trip_keeps_names_options_context_scope_and_plain_strings(tmp_path
 def test_writing_a_loaded_recipe_again_gives_the_same_text() -> None:
     features: list[Feature | str] = [
         Feature("value", options={DestatisReader.__name__: LAND_LOCATOR}, link=LAND_LINK),
-        Feature("Nr", options={BundeswahlleiterinReader.__name__: KERG_URL}),
+        Feature("Nr", options={BundeswahlleiterinReader.__name__: KERG_URL}, keep_index=True, index=Index(("Nr",))),
     ]
     first = recipe_to_json(build_recipe(features, COMPLIANCE))
     loaded = parse_recipe(first)
     second = recipe_to_json(build_recipe(loaded.features, loaded.compliance, loaded.links))
     assert first == second
+    # The written index still binds the link side it names.
+    assert _features(loaded.features)[1].index == loaded.links[0].right_index
 
 
 def _kerg_self_link(right_url: str) -> Link:
@@ -281,6 +283,10 @@ def test_an_implementation_pin_round_trips(pin: str | list[str]) -> None:
         (Feature("x", keep_index=True, index=Index(("a",))), {"name": "x", "keep_index": True, "index": ["a"]}),
         (Feature("x", keep_index=True), {"name": "x", "keep_index": True}),
         (Feature("x", index=Index(("a", "b"))), {"name": "x", "index": ["a", "b"]}),
+        (
+            Feature("x", options=Options(group={"k": 1}, context={"c": 2}), keep_index=True, index=Index(("a",))),
+            {"name": "x", "group_options": {"k": 1}, "context_options": {"c": 2}, "keep_index": True, "index": ["a"]},
+        ),
     ],
 )
 def test_keep_index_and_index_round_trip(feature: Feature, written: dict[str, Any]) -> None:
@@ -292,6 +298,12 @@ def test_keep_index_and_index_round_trip(feature: Feature, written: dict[str, An
     (back,) = _features(loaded.features)
     assert back.keep_index == feature.keep_index and back.index == feature.index
     assert recipe_to_json(build_recipe(loaded.features, loaded.compliance)) == text
+
+
+@pytest.mark.parametrize("index", [("a",), ["a"]])
+def test_an_index_that_is_not_an_index_raises(index: Any) -> None:
+    with pytest.raises(RecipeError, match=r"features\[0\]: Feature.index must be an Index"):
+        build_recipe([Feature("x", index=index)], COMPLIANCE)
 
 
 def test_a_constructor_domain_is_written_to_the_domain_option() -> None:
@@ -390,6 +402,7 @@ def test_values_outside_the_json_safe_subset_raise(value: Any, match: str) -> No
             "'feature_group' must not be a top-level key",
         ),
         (Feature("x", index=Index(("k", "k"))), "'index' must not repeat a column"),
+        (Feature("x", index=Index(())), "'index' must be a non-empty array"),
     ],
 )
 def test_the_writer_refuses_what_its_own_loader_would_refuse(feature: Feature, match: str) -> None:
