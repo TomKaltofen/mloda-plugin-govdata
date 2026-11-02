@@ -154,6 +154,9 @@ def test_a_raw_column_next_to_the_land_ratio_keeps_its_rows(tmp_path: Path, monk
     )
     rows = {frozenset(table.schema.names): table.num_rows for table in result}
     assert rows == {frozenset({"value"}): 16, frozenset(f"{LandPopulationPerVoter.NAME}~{part}" for part in PARTS): 16}
+    (raw,) = [table for table in result if table.schema.names == ["value"]]
+    # The reader's own frame, unsorted: the ratio's sort did not reach it.
+    assert raw.column("value").to_pylist() == parse_ffcsv_zip(LAND_TABLE_ZIP.read_bytes()).column("value").to_pylist()
 
 
 class _ReadsLandRatioAndRaw(FeatureGroup):
