@@ -450,7 +450,12 @@ def test_collection_credentials_reach_the_reader_under_a_derived_feature(
     [
         ("value__rebased", {}, "rebase_from_year, rebase_to_year are absent", 0),
         # The reader declines a `__` name, so nothing claims it and resolution fails before the fetch.
-        (CONFIGURATION_BASED_NAME, {"in_features": "value"}, CONFIGURATION_BASED_NAME, 0),
+        (
+            CONFIGURATION_BASED_NAME,
+            {"in_features": "value"},
+            f"No feature groups found for feature name: '{CONFIGURATION_BASED_NAME}'",
+            0,
+        ),
         # The reader takes a plain name as a column and fails only on the fetched table.
         ("kreise", {"in_features": "value"}, r"Unknown feature\(s\) 'kreise'", 1),
     ],
@@ -468,6 +473,16 @@ def test_missing_years_fail_before_the_fetch_unless_the_name_is_plain(
     with pytest.raises(ValueError, match=error):
         _run([Feature(name, Options(group={DestatisReader.__name__: GOETTINGEN_LOCATOR}, context=context))])
     assert route.calls.call_count == fetches
+
+
+@respx.mock
+def test_missing_years_on_a_plain_column_name_return_the_raw_column(
+    genesis: Callable[[str], respx.Route], extract_keys: None
+) -> None:
+    genesis(GOETTINGEN_ZIP)
+    options = Options(group={DestatisReader.__name__: GOETTINGEN_LOCATOR}, context={"in_features": "value"})
+    table = _run([Feature("value", options)])[0]
+    assert (table.schema.names, table.num_rows) == (["value"], 15)  # not re-based: the input rows, no parts
 
 
 @respx.mock
