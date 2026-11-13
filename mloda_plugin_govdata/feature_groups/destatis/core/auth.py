@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any
 
 from mloda.user import DataAccessCollection, Options
 
@@ -136,7 +135,7 @@ _CREDENTIAL_KEYS = frozenset({"host", "token", "user", "password"})
 
 def credentials_from_collection(
     collection: DataAccessCollection | None, host: GenesisHost
-) -> tuple[Any, DestatisCredentials] | None:
+) -> tuple[Mapping[str, object], DestatisCredentials] | None:
     """The collection's stored entry for ``host`` and its parsed credentials, or ``None``; errors never name values.
 
     An entry counts only when tagged for GENESIS: its handle is a host name (``genesis``, ``regionalstatistik``)

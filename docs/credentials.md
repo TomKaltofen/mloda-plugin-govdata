@@ -30,7 +30,7 @@ Credentials never go into the URL or the form body: the server ignores body cred
 
    An entry counts only when its handle is a host name (`genesis`, `regionalstatistik`) or it carries a `host` key, so another plugin's token is never sent to GENESIS. Keys are `host`, `token`, `user`, `password`. Several entries for one host are refused; keep one. The collection is checked while features resolve, so a misconfigured entry fails the run even when the table is cached. The handle the reader binds shows in `mloda.explain`, on the plan step (`bound_credential_handle`) and in the plan lock; the value never does.
 
-   The `genesis_credentials` options key is retired: a feature carrying it, in group or context, chained ones included, is refused at match time. Register the credential in the collection instead. There is no per-feature override, so two credentials for one host are fixed in the collection.
+   The `genesis_credentials` options key is retired: a feature carrying it, in group or context, chained ones included, is refused at match time. Register the credential in the collection instead, and rotate a token that was passed in `group` (group options are printed with the feature). One run uses one credential per host; there is no per-feature override.
 3. Env vars of the host, chosen by the host prefix. Whitespace is stripped. A half-set pair (`GENESIS_USER` without `GENESIS_PASSWORD`, or the reverse) is an error, never a fallback to the token or to the other host.
 4. Otherwise `MissingCredentialsError` names the env vars and the registration page for that host. Nothing is sent.
 

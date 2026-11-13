@@ -11,6 +11,7 @@ Flow, on the shared ``BaseGovDataReader`` seam:
 from __future__ import annotations
 
 import functools
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, ClassVar
@@ -44,7 +45,7 @@ class _CollectionAccess:
     locator: DestatisLocator
     credentials: DestatisCredentials = field(repr=False)
     # The collection's stored entry: mloda names its handle in the plan and lock by identity.
-    entry: Any = field(repr=False, compare=False)
+    entry: Mapping[str, object] = field(repr=False, compare=False)
 
     def describe(self) -> str:
         return self.locator.describe()
@@ -79,12 +80,16 @@ class DestatisReader(BaseGovDataReader[DestatisLocator]):
         if not matches:
             return matches
         (match,) = matches
+        host = resolve_host(match.access.host)
+        # Each _abort raises a marked abort, or declines with the reason inside mloda's global filter probe.
         try:
-            host = resolve_host(match.access.host)
             refuse_option_credentials(options, host)
+        except ValueError as exc:
+            cls._abort(exc, code=CoreDeclineCode.OPTION_VALUE_REJECTED)
+            return []
+        try:
             found = credentials_from_collection(data_access_collection, host)
         except (ValueError, GenesisAuthError) as exc:
-            # Raises a marked abort, or declines with the reason inside mloda's global filter probe.
             cls._abort(ValueError(str(exc)), code=CoreDeclineCode.CREDENTIALS_INVALID)
             return []
         if found is None:

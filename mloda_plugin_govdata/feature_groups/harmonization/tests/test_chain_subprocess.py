@@ -46,13 +46,13 @@ _SCRIPT = textwrap.dedent(
             context={"in_features": "value"},
         ),
     )
-    collection = DataAccessCollection(credentials={"genesis": Credential(token="sub-token")})
+    collection = DataAccessCollection(credentials={"genesis": Credential(token="sub-token-0123456789")})
     with respx.mock:
         route = respx.post(GENESIS_ONLINE.base_url + "data/tablefile").mock(
             return_value=httpx.Response(200, content=zip_bytes, headers={"content-type": "application/octet-stream"})
         )
         result = mloda.run_all([feature], compute_frameworks=["PyArrowTable"], data_access_collection=collection)
-    assert route.calls.last.request.headers["username"] == "sub-token"
+    assert route.calls.last.request.headers["username"] == "sub-token-0123456789"
     table = result[0]
     values = table.column("destatis__bevoelkerung__kreise~value").to_pylist()
     assert values == [322616.0, 324013.0, 329538.0, 327065.0, 328036.0], values
@@ -79,4 +79,4 @@ def test_chained_request_resolves_in_a_fresh_subprocess(
     )
     assert completed.returncode == 0, completed.stdout + completed.stderr
     assert completed.stdout.strip() == "OK"
-    assert "sub-token" not in completed.stdout + completed.stderr
+    assert "sub-token-0123456789" not in completed.stdout + completed.stderr

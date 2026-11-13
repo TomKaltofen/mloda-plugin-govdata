@@ -1,6 +1,7 @@
 """DestatisReader: locator dispatch, peek without credentials, end-to-end via mloda.run_all."""
 
 import inspect
+import json
 import subprocess
 import sys
 import textwrap
@@ -273,17 +274,20 @@ def test_collection_credentials_follow_the_host(
         [
             Feature("value", options={DestatisReader.__name__: regional_table}),
             Feature("time", options={DestatisReader.__name__: TABLE_CODE}),
+            Feature("value", options={DestatisReader.__name__: TABLE_CODE}),
         ],
         compute_frameworks=["PyArrowTable"],
         data_access_collection=collection,
     )
     assert regional.calls.last.request.headers["username"] == "regionalToken0123"
     assert online.calls.last.request.headers["username"] == TOKEN
+    assert online.calls.call_count == 1  # two columns of one selection, one request
     # The bound handle reaches the plan and the plan lock, never the value.
     assert _bound_handles(result) == {"genesis", "regionalstatistik"}
     write_plan_lock(result.plan, tmp_path / "lock.json")
-    lock = (tmp_path / "lock.json").read_text(encoding="utf-8")
-    assert '"genesis"' in lock and '"regionalstatistik"' in lock and TOKEN not in lock
+    text = (tmp_path / "lock.json").read_text(encoding="utf-8")
+    handles = [handle for step in json.loads(text)["compute"] for handle in step.get("credential_handles", [])]
+    assert sorted(handles) == ["genesis", "regionalstatistik"] and TOKEN not in text
 
 
 @respx.mock
