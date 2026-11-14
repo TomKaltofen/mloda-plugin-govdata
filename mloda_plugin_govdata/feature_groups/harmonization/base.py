@@ -111,7 +111,7 @@ class HarmonizationFeature(FeatureChainParserMixin, FeatureGroup):
 
     @classmethod
     def validate_input_features(cls, data: Any, features: FeatureSet) -> None:
-        """An output column already in the input is the same name requested again with other options."""
+        """An output column already in the input: the same name requested again under separate options."""
         present = set(data.column_names)
         for feature in features.get_sorted_features():
             name = str(feature.name)
@@ -120,8 +120,9 @@ class HarmonizationFeature(FeatureChainParserMixin, FeatureGroup):
                 keys = sorted(cls.declared_option_keys())
                 shown = ", ".join(f"{k}={feature.options.get(k)!r}" for k in keys if feature.options.get(k) is not None)
                 raise ValueError(
-                    f"{cls.__name__}: '{name}' is requested more than once in this run with different options "
-                    f"(this request: {shown or 'none'}); request it once, or give each set its own configured name"
+                    f"{cls.__name__}: '{name}' is requested more than once in this run under separate options "
+                    f"(this set: {shown or 'none'}), or a source column has its name; request it once, "
+                    "or give each set of options its own configured name"
                 )
 
     @classmethod
