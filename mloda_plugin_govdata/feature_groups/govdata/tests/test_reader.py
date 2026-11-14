@@ -331,12 +331,20 @@ def test_geometry_collection_value_rejected_before_any_network_call(
 
 
 @pytest.mark.live
-def test_berlin_wahl_live_end_to_end() -> None:
+@pytest.mark.parametrize(
+    "url",
+    [
+        BERLIN_URL,
+        "https://www.wahlen-berlin.de/wahlen/EU2024/AFSPRAES/Datenexport_EUROPAWAHL2024_Stimme_W_BE.csv",
+        "https://www.wahlen-berlin.de/wahlen/BU2025/afspraes/Datenexport_BUNDESTAGSWAHL2025_Zweitstimme_W_BE.csv",
+        "https://www.wahlen-berlin.de/wahlen/BE2026/AFSPRAES/agh/Datenexport_AGH2026_Zweitstimme_W_BE.csv",
+    ],
+)
+def test_berlin_wahl_live_end_to_end(url: str) -> None:
+    # One layout reads every Berlin election; only the URL differs.
+    options = {**BERLIN_OPTIONS, BundeswahlleiterinReader.__name__: url}
     result = mloda.run_all(
-        [
-            Feature("Bezirksname", options=dict(BERLIN_OPTIONS)),
-            Feature("Gueltig", options=dict(BERLIN_OPTIONS)),
-        ],
+        [Feature("Bezirksname", options=options), Feature("Gueltig", options=options)],
         compute_frameworks=["PyArrowTable"],
     )
     table = result[0]

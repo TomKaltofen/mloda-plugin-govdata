@@ -65,8 +65,9 @@ Tutorials (englisch), je etwa 15 Minuten:
 3. [A table from Destatis](../tutorials/03_destatis_table.py): die Bevölkerung nach Ländern aus GENESIS-Online lesen, Jahre und Merkmale wählen, die Zeichen anstelle von Zahlen richtig lesen. Kostenloses GENESIS-Online-Konto, Token in `.env`. `uv run marimo edit tutorials/03_destatis_table.py`
 4. [Districts on today's borders](../tutorials/04_todays_borders.py): die Bevölkerungsreihe eines Kreises über eine Fusion hinweg auf den heutigen Gebietsstand bringen, ablesen, wie jeder Wert entstand, EU-Regionalcodes (NUTS) ergänzen. Dasselbe Konto wie in Tutorial 3. `uv run marimo edit tutorials/04_todays_borders.py`
 5. [Recipes and provenance](../tutorials/05_recipes_and_provenance.py): eine Rezeptdatei ausführen, Bevölkerung und Wahlberechtigte für alle 16 Länder verknüpfen, ablesen, woher jede Zahl stammt und unter welcher Lizenz. Dasselbe Konto wie in Tutorial 3. `uv run marimo edit tutorials/05_recipes_and_provenance.py`
+6. [A new election](../tutorials/06_a_new_election.py): vier Berliner Wahlen mit denselben Reader-Optionen lesen, die nächste Wahl als weitere URL ergänzen, die Wahlbeteiligung trotz eigener Briefwahlbezirke richtig berechnen. Ohne Konto. `uv run marimo edit tutorials/06_a_new_election.py`
 
-Demo: `uv run marimo edit demos/berlin_wahl_2026_demo.py` liest vier Berliner Wahlen mit denselben Reader-Optionen.
+Demo: `uv run marimo edit demos/berlin_wahl_2026_demo.py` führt die Berliner Wahlen weiter: Parteinamen, die Bevölkerung jedes Wahlbezirks, eine Wahlnacht im Zeitraffer.
 
 ## Weiterlesen (englisch)
 

@@ -40,6 +40,7 @@ def test_globs_find_all_notebooks_and_docs() -> None:
         REPO_ROOT / "tutorials" / "03_destatis_table.py",
         REPO_ROOT / "tutorials" / "04_todays_borders.py",
         REPO_ROOT / "tutorials" / "05_recipes_and_provenance.py",
+        REPO_ROOT / "tutorials" / "06_a_new_election.py",
     }
     assert expected <= set(NOTEBOOK_PATHS)
     guarded = ("03_destatis_table.py", "04_todays_borders.py", "05_recipes_and_provenance.py")

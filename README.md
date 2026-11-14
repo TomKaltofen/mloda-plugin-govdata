@@ -84,8 +84,9 @@ Tutorials, about 15 minutes each:
 3. [A table from Destatis](https://github.com/mloda-ai/mloda-plugin-govdata/blob/main/tutorials/03_destatis_table.py): read population by Land from GENESIS-Online, choose years and categories, read the signs that replace numbers. Free GENESIS-Online account, token in `.env`. `uv run marimo edit tutorials/03_destatis_table.py`
 4. [Districts on today's borders](https://github.com/mloda-ai/mloda-plugin-govdata/blob/main/tutorials/04_todays_borders.py): re-base a district's population series across a merger, read how each value came about, add EU region codes (NUTS). Same account as tutorial 3. `uv run marimo edit tutorials/04_todays_borders.py`
 5. [Recipes and provenance](https://github.com/mloda-ai/mloda-plugin-govdata/blob/main/tutorials/05_recipes_and_provenance.py): run a recipe file, join population and eligible voters for all 16 Länder, read where every number came from and under which license. Same account as tutorial 3. `uv run marimo edit tutorials/05_recipes_and_provenance.py`
+6. [A new election](https://github.com/mloda-ai/mloda-plugin-govdata/blob/main/tutorials/06_a_new_election.py): read four Berlin elections with one set of reader options, add the next election as one more URL, compute turnout without the postal vote trap. No account. `uv run marimo edit tutorials/06_a_new_election.py`
 
-Demo: `uv run marimo edit demos/berlin_wahl_2026_demo.py` reads four Berlin elections with one set of reader options.
+Demo: `uv run marimo edit demos/berlin_wahl_2026_demo.py` takes the Berlin elections further: party names, the people living in each voting district, an election night replayed.
 
 ## Docs
 
