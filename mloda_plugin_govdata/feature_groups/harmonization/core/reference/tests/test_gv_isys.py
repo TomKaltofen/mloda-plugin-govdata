@@ -9,7 +9,7 @@ from mloda_plugin_govdata.feature_groups.harmonization.core.reference.gv_isys im
     load_gv_isys_changes,
     parse_gv_isys_workbook,
 )
-from mloda_plugin_govdata.feature_groups.harmonization.core.reference.sources import GV_ISYS_2016_SHA256
+from mloda_plugin_govdata.feature_groups.harmonization.core.reference.sources import GV_ISYS_2016_SHA256, gv_isys_source
 
 
 def test_parses_kreis_merger_and_gemeinde_row(fixtures_dir: Path) -> None:
@@ -54,7 +54,7 @@ def test_load_applies_the_known_2016_hash_without_an_explicit_sha256(monkeypatch
     monkeypatch.setattr(gv_isys, "parse_gv_isys_workbook", lambda path: [])
 
     load_gv_isys_changes(2016, cache=object())  # type: ignore[arg-type]
-    assert captured["source"].sha256 == GV_ISYS_2016_SHA256
+    assert captured["source"].sha256 == GV_ISYS_2016_SHA256 == gv_isys_source(2016).sha256
 
 
 def test_load_leaves_an_unknown_year_unpinned(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -69,3 +69,4 @@ def test_load_leaves_an_unknown_year_unpinned(monkeypatch: pytest.MonkeyPatch) -
 
     load_gv_isys_changes(2017, cache=object())  # type: ignore[arg-type]
     assert captured["source"].sha256 is None
+    assert gv_isys_source(2017).sha256 is None

@@ -14,6 +14,11 @@ from mloda_plugin_govdata.feature_groups.destatis.reader import DestatisReader
 from mloda_plugin_govdata.feature_groups.govdata.core.cache import CacheMissError
 from mloda_plugin_govdata.feature_groups.harmonization.core.crosswalk import NutsCrosswalk
 from mloda_plugin_govdata.feature_groups.harmonization.core.nuts import UnmatchedKeysError
+from mloda_plugin_govdata.feature_groups.harmonization.core.reference.sources import (
+    EUROSTAT_LAU_NUTS,
+    GV_ISYS_2016_SHA256,
+    ReferenceCopy,
+)
 from mloda_plugin_govdata.feature_groups.harmonization.nuts import NULL_KEY, AgsToNutsFeature
 
 from .conftest import (
@@ -157,12 +162,18 @@ def test_a_cached_crosswalk_of_another_nuts_version_is_refused(
         _run([Feature(NAME, options={DestatisReader.__name__: GOETTINGEN_LOCATOR})])
 
 
+@respx.mock
 def test_a_crosswalk_missing_from_the_cache_names_the_fetch_call(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(AgsToNutsFeature, "cache_dir", str(tmp_path))
     with pytest.raises(CacheMissError, match="AgsToNutsFeature.fetch_reference\\(\\).*AgsToNutsFeature.cache_dir"):
         AgsToNutsFeature.load_crosswalk()
+    codes, changes = AgsToNutsFeature.reference_sources()
+    assert codes == ReferenceCopy(EUROSTAT_LAU_NUTS, None, None)
+    assert (changes.source.sha256, changes.sha256, changes.retrieved_at) == (GV_ISYS_2016_SHA256, None, None)
+    assert "2016" in changes.source.url
+    assert respx.calls.call_count == 0
 
 
 def test_fetch_reference_fetches_only_the_file_missing_from_the_cache(

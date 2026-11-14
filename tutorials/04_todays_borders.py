@@ -51,9 +51,7 @@ def _():
         DestatisLocator,
         DestatisReader,
         MissingCredentialsError,
-        ParameterCache,
     )
-    from mloda_plugin_govdata.feature_groups.govdata import DownloadCache
     from mloda_plugin_govdata.feature_groups.harmonization import AgsToNutsFeature, KreisRebaseFeature
 
     return (
@@ -61,12 +59,10 @@ def _():
         DestatisCredentials,
         DestatisLocator,
         DestatisReader,
-        DownloadCache,
         Feature,
         GENESIS_ONLINE,
         KreisRebaseFeature,
         MissingCredentialsError,
-        ParameterCache,
         alt,
         json,
         mloda,
@@ -339,43 +335,28 @@ def _(mo):
 
 
 @app.cell
-def _(
-    AgsToNutsFeature,
-    DestatisReader,
-    DownloadCache,
-    GENESIS_ONLINE,
-    KreisRebaseFeature,
-    ParameterCache,
-    TABLE,
-    goettingen,
-    json,
-    mo,
-    nuts,
-    rebased,
-):
-    _hit = ParameterCache(DestatisReader.cache_dir).lookup(
-        GENESIS_ONLINE, "data/tablefile", goettingen.tablefile_fields()
-    )
-    _keys = json.loads(rebased["value__rebased~provenance"].iloc[0])  # the key file Step 2 used
+def _(AgsToNutsFeature, DestatisReader, KreisRebaseFeature, TABLE, goettingen, json, mo, nuts, rebased):
+    def _retrieved(record):
+        # A missing record or date means the cache was cleared since the step ran.
+        return (
+            f"{record.retrieved_at:%Y-%m-%d}" if record and record.retrieved_at else "not in the local cache any more"
+        )
+
+    _sheet = json.loads(rebased["value__rebased~provenance"].iloc[0])["sheet"]  # the key sheet Step 2 used
     _version = nuts["value__rebased~key__nuts2024~version"].iloc[0]
-    _crosswalk = AgsToNutsFeature.load_crosswalk()  # the table Step 3 used; reading it takes a few seconds
-    with DownloadCache(KreisRebaseFeature.cache_dir) as _cache:
-        _keys_retrieved = _cache.get_or_download(_keys["url"], revalidate=False).retrieved_at
-    with DownloadCache(AgsToNutsFeature.cache_dir) as _cache:
-        _crosswalk_retrieved = _cache.get_or_download(_crosswalk.url, revalidate=False).retrieved_at
-    _table_retrieved = f"{_hit.retrieved_at:%Y-%m-%d}" if _hit else "not in the local cache any more"
+    (_keys,) = KreisRebaseFeature.reference_sources()
+    _codes, _changes = AgsToNutsFeature.reference_sources()  # the NUTS table and the 2016 change file
     mo.md(f"""
     - **Population:** Statistisches Bundesamt (Destatis), GENESIS-Online, table {TABLE},
-      https://genesis.destatis.de/datenbank/online/statistic/12411/table/{TABLE}, retrieved {_table_retrieved}.
-      License `{DestatisReader.LICENSE}`.
-    - **Conversion keys:** {_keys["source"]}, sheet {_keys["sheet"]}, {_keys["url"]}, retrieved
-      {_keys_retrieved:%Y-%m-%d}. Attribution: "Laufende Raumbeobachtung des BBSR". License `DL-DE-BY-2.0`.
-    - **NUTS {_version} codes:** {_crosswalk.source}, {_crosswalk.url}, retrieved
-      {_crosswalk_retrieved:%Y-%m-%d}. Attribution: "Source: Eurostat." License `CC-BY-4.0`.
+      https://genesis.destatis.de/datenbank/online/statistic/12411/table/{TABLE}, retrieved
+      {_retrieved(DestatisReader.retrieval(goettingen))}. License `{DestatisReader.LICENSE}`.
+    - **Conversion keys:** {_keys.source.name}, sheet {_sheet}, {_keys.source.url}, retrieved
+      {_retrieved(_keys)}. Attribution: "{_keys.source.attribution}". License `{_keys.source.license}`.
+    - **NUTS {_version} codes:** {_codes.source.name}, {_codes.source.url}, retrieved {_retrieved(_codes)}.
+      Attribution: "{_codes.source.attribution}". License `{_codes.source.license}`.
     - **Border changes of 2016:** Destatis municipality register (*Gemeindeverzeichnis*), change file 2016,
-      https://www.destatis.de/DE/Themen/Laender-Regionen/Regionales/Gemeindeverzeichnis/_inhalt.html,
-      fetched together with the NUTS codes. Attribution: "(c) Statistisches Bundesamt (Destatis)". License
-      `DL-DE-BY-2.0`.
+      {_changes.source.url}, retrieved {_retrieved(_changes)}. Attribution: "{_changes.source.attribution}".
+      License `{_changes.source.license}`.
     """)
     return
 

@@ -1,5 +1,5 @@
 """HarmonizationFeature.by_name: stable output order independent of set iteration and hash seed;
-source_column: exactly one source; fetch_reference without tables."""
+source_column: exactly one source; fetch_reference and reference_sources without tables."""
 
 from pathlib import Path
 
@@ -17,6 +17,7 @@ def test_fetch_reference_on_a_group_without_reference_tables_raises(
     monkeypatch.setattr(AnnualPeriodFeature, "cache_dir", str(tmp_path))
     with pytest.raises(NotImplementedError, match="AnnualPeriodFeature reads no reference table"):
         AnnualPeriodFeature.fetch_reference()
+    assert AnnualPeriodFeature.reference_sources() == []
 
 
 def test_source_column_names_the_feature_on_a_wrong_source_count() -> None:

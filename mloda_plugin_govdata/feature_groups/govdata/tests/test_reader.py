@@ -376,9 +376,18 @@ def test_peek_elections_level2(fixtures_dir: Path, tmp_path: Path, monkeypatch: 
     monkeypatch.setattr(BundeswahlleiterinReader, "cache_dir", str(tmp_path))
     kerg_bytes = (fixtures_dir / "kerg_sample.csv").read_bytes()
     respx.get(KERG_URL).mock(return_value=httpx.Response(200, content=kerg_bytes, headers={"ETag": '"k1"'}))
+    assert BundeswahlleiterinReader.retrieval(KERG_URL) is None
     columns = BundeswahlleiterinReader.peek(KERG_URL)
     assert columns["Gebiet"] == "string"
     assert columns[KERG_MEASURE] == "int64"
+    record = BundeswahlleiterinReader.retrieval(KERG_URL)
+    assert respx.calls.call_count == 1
+    assert record is not None
+    assert (
+        record.sha256 == hashlib.sha256(kerg_bytes).hexdigest() == hashlib.sha256(record.path.read_bytes()).hexdigest()
+    )
+    assert (record.provenance.source, record.provenance.url) == ("url", KERG_URL)
+    assert record.provenance.license == BundeswahlleiterinReader.LICENSE
 
 
 @respx.mock
@@ -596,3 +605,6 @@ def test_fetch_refuses_a_ckan_license_the_reader_does_not_declare(fixtures_dir: 
 def test_base_fetch_rejects_foreign_locator() -> None:
     with pytest.raises(NotImplementedError):
         BaseGovDataReader._fetch(_FakeLocator("x"))
+    with pytest.raises(ValueError, match="needs a distribution URL"):
+        GovDataReader.retrieval(SLUG)
+    assert respx.calls.call_count == 0

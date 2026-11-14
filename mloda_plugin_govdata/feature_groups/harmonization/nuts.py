@@ -15,6 +15,7 @@ from .base import HarmonizationFeature, offline_first
 from .core.crosswalk import NUTS_VERSION, NutsCrosswalk, load_nuts_crosswalk
 from .core.nuts import map_ags_to_nuts
 from .core.reference.gv_isys import load_gv_isys_changes
+from .core.reference.sources import EUROSTAT_LAU_NUTS, ReferenceSource, gv_isys_source
 
 NULL_KEY = "null key cell"
 _POLICIES = {"raise": "fail loud", "flag": "null codes, the reason in ~unmatched"}
@@ -46,6 +47,10 @@ class AgsToNutsFeature(HarmonizationFeature):
     }
     # GV-ISys change files that redirect a retired Kreis key to its successor; the pinned years.
     history_years: ClassVar[tuple[int, ...]] = (2016,)
+
+    @classmethod
+    def _reference_files(cls) -> tuple[ReferenceSource, ...]:
+        return (EUROSTAT_LAU_NUTS, *(gv_isys_source(year) for year in cls.history_years))
 
     @classmethod
     def _read_reference(cls, cache: DownloadCache, *, fetch: bool = False) -> NutsCrosswalk:

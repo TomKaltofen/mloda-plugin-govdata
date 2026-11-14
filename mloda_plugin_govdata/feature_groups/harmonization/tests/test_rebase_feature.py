@@ -1,12 +1,15 @@
 """KreisRebaseFeature: matching, option forwarding, and the expected re-based cells through mloda.run_all."""
 
 import csv
+import dataclasses
+import hashlib
 import json
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+import httpx
 import pyarrow as pa
 import pytest
 import respx
@@ -25,7 +28,7 @@ from mloda.user import (
 
 from mloda_plugin_govdata.feature_groups.destatis.core.auth import OPTION_GENESIS_CREDENTIALS, DestatisCredentials
 from mloda_plugin_govdata.feature_groups.destatis.reader import DestatisReader
-from mloda_plugin_govdata.feature_groups.govdata.core.cache import CacheMissError
+from mloda_plugin_govdata.feature_groups.govdata.core.cache import CacheMissError, DownloadCache
 from mloda_plugin_govdata.feature_groups.harmonization.core.rebase import (
     Flag,
     KeySheet,
@@ -35,6 +38,7 @@ from mloda_plugin_govdata.feature_groups.harmonization.core.rebase import (
     rebase,
 )
 from mloda_plugin_govdata.feature_groups.harmonization.core.reference.download import SourceIntegrityError
+from mloda_plugin_govdata.feature_groups.harmonization.core.reference.sources import BBSR_KREISE, ReferenceCopy
 from mloda_plugin_govdata.feature_groups.harmonization.rebase import KreisRebaseFeature
 from mloda_plugin_govdata.recipes import Compliance, SourceCompliance, build_recipe, parse_recipe, recipe_to_json
 
@@ -522,10 +526,26 @@ def test_a_land_table_is_refused_by_its_variable(genesis: Callable[[str], respx.
         _run([Feature("value__rebased", options={DestatisReader.__name__: locator, **YEARS})])
 
 
+@respx.mock
 def test_keys_missing_from_the_cache_name_the_fetch_call(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(KreisRebaseFeature, "cache_dir", str(tmp_path))
     with pytest.raises(CacheMissError, match="KreisRebaseFeature.fetch_reference\\(\\).*KreisRebaseFeature.cache_dir"):
         KreisRebaseFeature.load_keys()
+    assert KreisRebaseFeature.reference_sources() == [ReferenceCopy(BBSR_KREISE, None, None)]
+
+    # A cached body that is not the pinned one reads as not cached; the pinned one reports its copy.
+    body = b"key sheets"
+    respx.get(BBSR_KREISE.url).mock(return_value=httpx.Response(200, content=body))
+    with DownloadCache(tmp_path) as cache:
+        cache.get_or_download(BBSR_KREISE.url)
+    assert KreisRebaseFeature.reference_sources() == [ReferenceCopy(BBSR_KREISE, None, None)]
+    digest = hashlib.sha256(body).hexdigest()
+    pinned = dataclasses.replace(BBSR_KREISE, sha256=digest)
+    monkeypatch.setattr("mloda_plugin_govdata.feature_groups.harmonization.rebase.BBSR_KREISE", pinned)
+    (copy,) = KreisRebaseFeature.reference_sources()
+    assert (copy.source, copy.sha256) == (pinned, digest)
+    assert copy.retrieved_at is not None
+    assert respx.calls.call_count == 1
 
 
 @pytest.mark.parametrize("cached", [True, False])

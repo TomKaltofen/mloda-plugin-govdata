@@ -47,12 +47,10 @@ def _():
     from mloda_plugin_govdata.feature_groups.destatis import (
         GENESIS_ONLINE,
         DestatisCredentials,
-        DestatisLocator,
         DestatisReader,
         MissingCredentialsError,
-        ParameterCache,
     )
-    from mloda_plugin_govdata.feature_groups.govdata import BundeswahlleiterinReader, DownloadCache
+    from mloda_plugin_govdata.feature_groups.govdata import BundeswahlleiterinReader
     from mloda_plugin_govdata.feature_groups.harmonization import check_land_names
     from mloda_plugin_govdata.feature_groups.land_population_per_voter import LAND_LOCATOR, LandPopulationPerVoter
     from mloda_plugin_govdata.recipes import load_recipe
@@ -60,15 +58,12 @@ def _():
     return (
         BundeswahlleiterinReader,
         DestatisCredentials,
-        DestatisLocator,
         DestatisReader,
-        DownloadCache,
         Feature,
         GENESIS_ONLINE,
         LAND_LOCATOR,
         LandPopulationPerVoter,
         MissingCredentialsError,
-        ParameterCache,
         check_land_names,
         load_recipe,
         mloda,
@@ -278,34 +273,24 @@ def _(mo):
 
 
 @app.cell
-def _(
-    BundeswahlleiterinReader,
-    DestatisLocator,
-    DestatisReader,
-    DownloadCache,
-    GENESIS_ONLINE,
-    LAND_LOCATOR,
-    ParameterCache,
-    mo,
-    per_voter,
-    recipe,
-):
+def _(BundeswahlleiterinReader, DestatisReader, LAND_LOCATOR, mo, per_voter, recipe):
     _after_step_3 = per_voter  # Steps 2 and 3 put both copies on disk
     _destatis, _election = recipe.compliance.sources
     # LAND_LOCATOR names the same table and year as the recipe.
-    _destatis_copy = ParameterCache(DestatisReader.cache_dir).lookup(
-        GENESIS_ONLINE, "data/tablefile", DestatisLocator(**LAND_LOCATOR).tablefile_fields()
-    )
-    with DownloadCache(BundeswahlleiterinReader.cache_dir) as _cache:
-        _election_copy = _cache.get_or_download(_election.dataset_uri, revalidate=False)
+    _destatis_copy = DestatisReader.retrieval(LAND_LOCATOR)
+    _election_copy = BundeswahlleiterinReader.retrieval(_election.dataset_uri)
     _destatis_yours = (
         f"you on {_destatis_copy.retrieved_at:%Y-%m-%d}" if _destatis_copy else "your copy is no longer in the cache"
     )
-    _same = (
-        "the same file"
-        if _election_copy.sha256 == _election.sha256
-        else "a different file: it changed between the two downloads"
-    )
+    if _election_copy is None:
+        _election_yours, _same = "your copy is no longer in the cache", "nothing to compare"
+    else:
+        _election_yours = f"you on {_election_copy.retrieved_at:%Y-%m-%d}"
+        _same = (
+            "the same file"
+            if _election_copy.sha256 == _election.sha256
+            else "a different file: it changed between the two downloads"
+        )
     mo.md(f"""
     - **{_destatis.attribution}**, license `{_destatis.license}`, {_destatis.dataset_uri}. The recipe's author
       downloaded it on {_destatis.retrieved_at:%Y-%m-%d}, {_destatis_yours}. Its checksum cannot be compared:
@@ -313,7 +298,7 @@ def _(
       request, so the checksum changes on every download, even when no number does. Changes recorded in the
       recipe: {"; ".join(_destatis.modifications)}.
     - **{_election.attribution}**, license `{_election.license}`, {_election.dataset_uri}. The recipe's author
-      downloaded it on {_election.retrieved_at:%Y-%m-%d}, you on {_election_copy.retrieved_at:%Y-%m-%d}. The
+      downloaded it on {_election.retrieved_at:%Y-%m-%d}, {_election_yours}. The
       checksums say: {_same}. Changes recorded in the recipe: {"; ".join(_election.modifications)}.
     """)
     return

@@ -31,9 +31,9 @@ from ..govdata.core.provenance import FetchedPayload, Provenance
 from ..govdata.reader import BaseGovDataReader
 from .core.api import GenesisClient, fetch_tablefile
 from .core.auth import DestatisCredentials, credentials_from_collection, refuse_option_credentials
-from .core.cache import ParameterCache
+from .core.cache import CachedPayload, ParameterCache
 from .core.errors import GenesisAuthError
-from .core.hosts import resolve_host
+from .core.hosts import GenesisHost, resolve_host
 from .core.parse import parse_ffcsv_zip
 from .locator import DestatisLocator
 
@@ -123,6 +123,17 @@ class DestatisReader(BaseGovDataReader[DestatisLocator]):
         with GenesisClient(host, credentials=collection_credentials, lock_dir=cls.cache_dir) as client:
             fetch = functools.partial(fetch_tablefile, client)
             cached = cache.get_or_fetch(host, "data/tablefile", fields, fetch)
+        return cls._genesis_payload(host, cached)
+
+    @classmethod
+    def retrieval(cls, value: Any) -> FetchedPayload | None:
+        locator = cls._coerce_locator(value)
+        host = resolve_host(locator.host)
+        cached = ParameterCache(cls.cache_dir).lookup(host, "data/tablefile", locator.tablefile_fields())
+        return None if cached is None else cls._genesis_payload(host, cached)
+
+    @classmethod
+    def _genesis_payload(cls, host: GenesisHost, cached: CachedPayload) -> FetchedPayload:
         provenance = Provenance(
             source="genesis", url=host.url("data/tablefile"), parameters=cached.parameters, license=cls.LICENSE
         )

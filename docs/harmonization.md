@@ -31,6 +31,8 @@ location. `AnnualPeriodFeature` inherits the attribute but reads no reference ta
 `HarmonizationFeature.cache_dir` itself, not one subclass's, to move every group's cache at once.
 `KreisRebaseFeature.fetch_reference()` and `AgsToNutsFeature.fetch_reference()` fill it: offline when the
 pinned files are cached, else fetched once; a file that no longer matches its pin raises.
+`reference_sources()` lists each group's files (name, URL, license, attribution) with the cached copy's
+sha256 and download time, offline; both are `None` for a file not in the cache.
 
 ```python
 from mloda.user import Feature, Options, mloda
