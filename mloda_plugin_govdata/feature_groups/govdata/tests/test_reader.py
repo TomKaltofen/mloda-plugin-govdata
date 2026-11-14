@@ -605,6 +605,8 @@ def test_fetch_refuses_a_ckan_license_the_reader_does_not_declare(fixtures_dir: 
 def test_fetch_and_retrieval_refuse_what_they_cannot_read() -> None:
     with pytest.raises(NotImplementedError):
         BaseGovDataReader._fetch(_FakeLocator("x"))
+    with pytest.raises(NotImplementedError):
+        FakeReader.retrieval("x")
     with pytest.raises(ValueError, match="needs a distribution URL"):
         GovDataReader.retrieval(SLUG)
     assert respx.calls.call_count == 0

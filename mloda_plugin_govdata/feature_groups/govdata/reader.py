@@ -125,7 +125,10 @@ class BaseGovDataReader(GovDataFeature, Generic[LocatorT]):
 
     @classmethod
     def retrieval(cls, value: Any) -> FetchedPayload | None:
-        """The cached copy's record for a pointer value, None when not cached; never makes a request."""
+        """The cached copy's record for a pointer value, None when not cached; never makes a request.
+
+        Provenance is URL-level: a file first read through CKAN loses its dataset record and CKAN license.
+        """
         locator = cls._coerce_locator(value)
         if not isinstance(locator, GovDataLocator):
             raise NotImplementedError(f"{cls.__name__} must implement retrieval for {type(locator).__name__}")

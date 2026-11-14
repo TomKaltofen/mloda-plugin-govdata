@@ -48,7 +48,7 @@ with build_client() as client:
 StuttgartPopulationReader.peek(slug)  # {"Stichtag": "date32[day]", "Stadtbezirk": "string", ...}
 ```
 
-It works on every reader (`BundeswahlleiterinReader.peek(kerg)`, `UbaAirReader.peek(uba_measures_url(...))`, `DestatisReader.peek(...)`) and downloads through the cache, so the actual feature request reuses the file. `peek` takes a raw URL, bypassing the `PROPERTY_MAPPING` validation. `describe_columns` returns the same columns with mloda `DataType`s, the form lineage extenders read. A typo in a feature name fails with the available columns and a close-match suggestion. `retrieval` takes the same values and returns the cached copy's record (`retrieved_at`, `sha256`, `provenance`) offline, `None` when it is not cached; a CKAN dataset id needs its distribution URL there.
+It works on every reader (`BundeswahlleiterinReader.peek(kerg)`, `UbaAirReader.peek(uba_measures_url(...))`, `DestatisReader.peek(...)`) and downloads through the cache, so the actual feature request reuses the file. `peek` takes a raw URL, bypassing the `PROPERTY_MAPPING` validation. `describe_columns` returns the same columns with mloda `DataType`s, the form lineage extenders read. A typo in a feature name fails with the available columns and a close-match suggestion. `retrieval` takes the same values and returns the cached copy's record (`retrieved_at`, `sha256`, `provenance`) offline, `None` when it is not cached; a CKAN dataset id needs its distribution URL there, and the provenance names the URL, not the CKAN record.
 
 ## Elections (Bundeswahlleiterin)
 
