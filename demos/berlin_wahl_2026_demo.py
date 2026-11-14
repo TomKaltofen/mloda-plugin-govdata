@@ -255,7 +255,7 @@ def _(alt, borough_pick, elections, party_cols):
 @app.cell
 def _(mo):
     mo.md("""
-    ## 3. Neighbourhood compass: demographics meet votes
+    ## 3. Neighborhood compass: demographics meet votes
 
     The statistics office publishes structural data (*Strukturdaten*) for the
     2026 voting districts and, crucially, the 2023 results recalculated onto
@@ -282,9 +282,9 @@ def _(build_client, pd, request_with_retry):
         _baseline_bytes = request_with_retry(_client, "GET", _baseline_url).content
     structure = pd.read_excel(io.BytesIO(_structure_bytes), sheet_name="Strukturdaten")
     baseline_2023 = pd.read_excel(io.BytesIO(_baseline_bytes), sheet_name="2023_Zweitstimme")
-    districts = structure.merge(baseline_2023, on="Adresse", suffixes=("", "_wahl"))
+    districts = structure.merge(baseline_2023, on="Adresse", suffixes=("", "_2023"))
     districts = districts[districts["Wahlbezirksart"] == "W"].copy()  # polling station districts: residents live there
-    districts["Wahlbeteiligung"] = 100 * districts["Wählende"] / districts["Wahlberechtigte insgesamt"]
+    districts["turnout"] = 100 * districts["Wählende"] / districts["Wahlberechtigte insgesamt"]
     districts.head(10)
     return (districts,)
 
@@ -309,7 +309,7 @@ def _(mo):
             "Die Linke in Prozent",
             "AfD in Prozent",
             "FDP in Prozent",
-            "Wahlbeteiligung",
+            "turnout",
         ],
         value="GRÜNE in Prozent",
         label="2023 result (y)",

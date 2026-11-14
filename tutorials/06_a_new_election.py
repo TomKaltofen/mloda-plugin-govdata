@@ -80,23 +80,23 @@ def _(mo):
     ## Step 1: look at the file
 
     Start with the Abgeordnetenhaus election of 12 February 2023. It repeated the 2021 election, which a
-    court had declared invalid. The file holds the votes for a party (*Zweitstimmen*, second votes). This
-    cell downloads it, keeps a copy on your disk and shows the first three lines, each cut to 150
-    characters.
+    court had declared invalid. Each voter has two votes: the first for a local candidate, the second
+    (*Zweitstimme*) for a party. The file holds the second votes. This cell downloads it, keeps a copy on
+    your disk and shows the first three lines, each cut to 150 characters.
     """)
     return
 
 
 @app.cell
 def _():
-    AGH_2023 = "https://www.wahlen-berlin.de/wahlen/BE2023/AFSPRAES/agh/Datenexport_AGH2023_Zweitstimme_W_BE.csv"
-    return (AGH_2023,)
+    AGH_2023_URL = "https://www.wahlen-berlin.de/wahlen/BE2023/AFSPRAES/agh/Datenexport_AGH2023_Zweitstimme_W_BE.csv"
+    return (AGH_2023_URL,)
 
 
 @app.cell
-def _(AGH_2023, BundeswahlleiterinReader, DownloadCache, build_client, mo):
+def _(AGH_2023_URL, BundeswahlleiterinReader, DownloadCache, build_client, mo):
     with build_client() as _client, DownloadCache(BundeswahlleiterinReader.cache_dir, client=_client) as _cache:
-        _path = _cache.get_or_download(AGH_2023).path
+        _path = _cache.get_or_download(AGH_2023_URL).path
     _lines = _path.read_text(encoding="utf-8-sig").splitlines()
     mo.plain_text("\n".join(_line[:150] for _line in _lines[:3]))
     return
@@ -127,15 +127,15 @@ def _(mo):
     ## Step 2: describe the layout, then read
 
     Four options describe what you just saw: skip 0 lines, 1 header row, 12 text columns, the rest decimal
-    numbers. `BundeswahlleiterinReader` is named after the publisher of the federal file, its default
-    layout. With these options it reads Berlin's files too.
+    numbers. `BundeswahlleiterinReader` is named after the federal returning officer (*Bundeswahlleiterin*).
+    Her results file sets the reader's default layout; these four options replace it.
     """)
     return
 
 
 @app.cell
 def _(
-    AGH_2023,
+    AGH_2023_URL,
     BundeswahlleiterinReader,
     ColumnType,
     Feature,
@@ -152,7 +152,7 @@ def _(
         OPTION_WAHL_VALUE_TYPE: ColumnType.FLOAT,
     }
     COLUMNS = ["Bezirksname", "WBezArt", "WberIns", "Waehler", "Gueltig", "P01"]
-    _options = {BundeswahlleiterinReader: AGH_2023, **BERLIN_LAYOUT}
+    _options = {BundeswahlleiterinReader: AGH_2023_URL, **BERLIN_LAYOUT}
     _result = mloda.run_all(
         [Feature(_name, options=_options) for _name in COLUMNS],
         compute_frameworks=["PyArrowTable"],
@@ -181,7 +181,7 @@ def _(mo):
     Berlin published three more elections in the same layout:
 
     - **EU 2024:** the election to the European Parliament on 9 June 2024.
-    - **BT 2025:** the election to the federal parliament, the *Bundestag*, on 23 February 2025.
+    - **BT 2025:** the election to the federal parliament, the *Bundestag* (BT), on 23 February 2025.
     - **AGH 2026:** the Abgeordnetenhaus election on 20 September 2026.
 
     Each one is a URL. The layout options stay as they are.
@@ -190,9 +190,9 @@ def _(mo):
 
 
 @app.cell
-def _(AGH_2023):
+def _(AGH_2023_URL):
     ELECTIONS = {
-        "AGH 2023": AGH_2023,
+        "AGH 2023": AGH_2023_URL,
         "EU 2024": "https://www.wahlen-berlin.de/wahlen/EU2024/AFSPRAES/Datenexport_EUROPAWAHL2024_Stimme_W_BE.csv",
         "BT 2025": (
             "https://www.wahlen-berlin.de/wahlen/BU2025/afspraes/Datenexport_BUNDESTAGSWAHL2025_Zweitstimme_W_BE.csv"
@@ -229,9 +229,10 @@ def _(mo):
 
     Two things do differ between elections:
 
-    - The voting districts: see the number of rows. The 12 boroughs stay the same, so compare boroughs.
-    - Who may vote: the minimum age was 16 at the 2024 European election and 18 at the 2025 Bundestag
-      election.
+    - The voting districts. Berlin redraws them, so the number of rows changes. The 12 boroughs stay the
+      same, so compare boroughs.
+    - Who may vote. At the 2024 European election the minimum age was 16 and citizens of other EU
+      countries could vote. At the 2025 Bundestag election the minimum age was 18.
     """)
     return
 
@@ -259,13 +260,12 @@ def _(agh_2023, mo):
     mo.md(f"""
     Every eligible voter is listed in a polling station district (`W`). A person who votes by post is
     counted as a voter in a postal vote district (`B`), which lists no eligible voters. So a turnout per
-    row is wrong in both kinds of row:
+    row is wrong: in a `W` row the postal voters are missing, in a `B` row you divide by zero. Add up a
+    whole borough, or the whole city, before you divide. For the whole city:
 
-    - Polling station districts only: {_stations["Waehler"].sum() / _stations["WberIns"].sum():.1%}
-    - All rows: {agh_2023["Waehler"].sum() / agh_2023["WberIns"].sum():.1%}, the turnout the Landeswahlleiter
-      reported
-
-    Add up a whole borough, or the whole city, before you divide.
+    - Polling station rows only (too low): {_stations["Waehler"].sum() / _stations["WberIns"].sum():.1%}
+    - All rows (the turnout the Landeswahlleiter reported):
+      {agh_2023["Waehler"].sum() / agh_2023["WberIns"].sum():.1%}
     """)
     return
 
@@ -328,9 +328,9 @@ def _(elections):
 @app.cell
 def _(mo):
     mo.md("""
-    Each election has its own ballot paper: in the 2023 file `P01` is the Social Democrats (SPD), in the
-    2024 file the Greens (*GRÜNE*). The files do not name the parties. The official results do, and the
-    Berlin demo (see Next) matches the two.
+    Each election has its own ballot paper. The files do not name the parties; the official results do.
+    Matched against them, `P01` is the Social Democrats (SPD) in the 2023 file and the Greens (*GRÜNE*) in
+    the 2024 file. The Berlin demo (see Next) shows the matching.
     """)
     return
 
@@ -340,9 +340,10 @@ def _(mo):
     mo.md("""
     ## Where the data came from
 
-    The files name neither a publisher nor a license. The website they come from names two publishers, the
+    The files name neither a publisher nor a license. The website they come from does: its footer names the
     Landeswahlleiter and the statistics office of Berlin and Brandenburg (*Amt für Statistik*), and its
-    terms. The copy on your disk records when you downloaded each file.
+    imprint names the statistics office as publisher and states the terms. The copy on your disk records
+    when you downloaded each file.
     """)
     return
 
@@ -354,14 +355,12 @@ def _(BundeswahlleiterinReader, ELECTIONS, elections, mo):
         _copy = BundeswahlleiterinReader.retrieval(url)
         return f"{_copy.retrieved_at:%Y-%m-%d}" if _copy else "not in the local cache any more"
 
-    _read = set(elections["election"])  # taken from Step 3, so this cell runs after the files are read
     _lines = [
         "- **Publisher:** Der Landeswahlleiter für Berlin / Amt für Statistik Berlin-Brandenburg",
         "- **Website:** https://www.wahlen-berlin.de",
         *(
-            f"- **{_election}:** {_url}, retrieved {_retrieved(_url)}"
-            for _election, _url in ELECTIONS.items()
-            if _election in _read
+            f"- **{_election}:** {ELECTIONS[_election]}, retrieved {_retrieved(ELECTIONS[_election])}"
+            for _election in elections["election"].unique()  # the elections Step 3 read
         ),
     ]
     mo.md("\n".join(_lines))
