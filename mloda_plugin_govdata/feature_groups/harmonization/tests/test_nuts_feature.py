@@ -53,6 +53,9 @@ def test_matches_only_the_pinned_nuts_version() -> None:
         "kreis_nuts", Options(group={"nuts_version": "2021"}, context={"in_features": KEY})
     )
     assert not AgsToNutsFeature.match_feature_group_criteria("kreis_nuts", Options(context={"in_features": KEY}))
+    assert not AgsToNutsFeature.match_feature_group_criteria(  # the name is its source column
+        KEY, Options(group={"nuts_version": "2024"}, context={"in_features": KEY})
+    )
 
 
 def test_the_named_capture_binds_nuts_version_by_name() -> None:
@@ -206,6 +209,10 @@ def test_two_parts_of_one_output_in_one_request(
     table = _run([Feature(f"{NAME}~nuts1", options=options), Feature(f"{NAME}~nuts3", options=options)])[0]
     assert sorted(table.schema.names) == [f"{NAME}~nuts1", f"{NAME}~nuts3"]
     assert table.num_rows == 15
+    # Other options for the same name are refused.
+    flagged = {**options, "nuts_on_unmatched": "flag"}
+    with pytest.raises(ValueError, match=f"AgsToNutsFeature: '{NAME}' is requested more than once in this run"):
+        _run([Feature(NAME, options=options), Feature(f"{NAME}~unmatched", options=flagged)])
 
 
 @respx.mock
