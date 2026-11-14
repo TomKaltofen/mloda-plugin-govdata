@@ -11,7 +11,7 @@ from mloda_plugin_govdata.feature_groups.harmonization.base import Harmonization
 from mloda_plugin_govdata.feature_groups.harmonization.period import AnnualPeriodFeature
 
 
-def test_fetch_reference_on_a_group_without_reference_tables_raises(
+def test_a_group_without_reference_tables_fetches_and_lists_none(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(AnnualPeriodFeature, "cache_dir", str(tmp_path))

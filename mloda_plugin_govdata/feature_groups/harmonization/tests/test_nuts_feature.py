@@ -163,7 +163,7 @@ def test_a_cached_crosswalk_of_another_nuts_version_is_refused(
 
 
 @respx.mock
-def test_a_crosswalk_missing_from_the_cache_names_the_fetch_call(
+def test_an_empty_reference_cache_names_the_fetch_call_and_lists_the_sources(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(AgsToNutsFeature, "cache_dir", str(tmp_path))

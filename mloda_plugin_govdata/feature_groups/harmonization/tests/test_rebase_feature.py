@@ -527,7 +527,9 @@ def test_a_land_table_is_refused_by_its_variable(genesis: Callable[[str], respx.
 
 
 @respx.mock
-def test_keys_missing_from_the_cache_name_the_fetch_call(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_the_key_file_cache_state_in_load_keys_and_reference_sources(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(KreisRebaseFeature, "cache_dir", str(tmp_path))
     with pytest.raises(CacheMissError, match="KreisRebaseFeature.fetch_reference\\(\\).*KreisRebaseFeature.cache_dir"):
         KreisRebaseFeature.load_keys()
