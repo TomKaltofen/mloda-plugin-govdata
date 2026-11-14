@@ -18,9 +18,7 @@ from typing import Any
 from mloda_plugin_govdata.feature_groups.govdata.core.cache import DownloadCache
 
 from .download import fetch_pinned, load_workbook
-from .sources import GV_ISYS_2016_SHA256, gv_isys_source
-
-_KNOWN_SHA256: dict[int, str] = {2016: GV_ISYS_2016_SHA256}
+from .sources import gv_isys_source
 
 _CHANGE_ID = re.compile(r"^\d{2}/\d{4}/\d+-[A-Z]$")
 
@@ -105,6 +103,6 @@ def load_gv_isys_changes(
     check is never silently skipped just because the caller forgot to pass it. Other years
     fetch unpinned.
     """
-    source = gv_isys_source(year, sha256=sha256 or _KNOWN_SHA256.get(year))
+    source = gv_isys_source(year, sha256=sha256)
     path = fetch_pinned(cache, source, revalidate=revalidate)
     return parse_gv_isys_workbook(path)

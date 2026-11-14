@@ -69,7 +69,6 @@ def _():
         DestatisLocator,
         DestatisReader,
         MissingCredentialsError,
-        ParameterCache,
     )
 
     return (
@@ -79,7 +78,6 @@ def _():
         Feature,
         GENESIS_ONLINE,
         MissingCredentialsError,
-        ParameterCache,
         alt,
         mloda,
     )
@@ -353,29 +351,17 @@ def _(mo):
 
 
 @app.cell
-def _(
-    DestatisLocator,
-    DestatisReader,
-    GENESIS_ONLINE,
-    ParameterCache,
-    TABLE,
-    TABLE_BY_SEX,
-    mo,
-    since_1980,
-    women,
-):
-    _cache = ParameterCache(DestatisReader.cache_dir)
-
+def _(DestatisReader, TABLE, TABLE_BY_SEX, mo, since_1980, women):
     def _retrieved(selection):
         # The copy each step read; a missing one means the cache was cleared since.
-        _hit = _cache.lookup(GENESIS_ONLINE, "data/tablefile", selection.tablefile_fields())
-        return f"{_hit.retrieved_at:%Y-%m-%d}" if _hit else "not in the local cache any more"
+        _copy = DestatisReader.retrieval(selection)
+        return f"{_copy.retrieved_at:%Y-%m-%d}" if _copy else "not in the local cache any more"
 
     _page = "https://genesis.destatis.de/datenbank/online/statistic/12411/table/"
     mo.md(f"""
     - **Source:** Statistisches Bundesamt (Destatis), GENESIS-Online
     - **License:** `{DestatisReader.LICENSE}`, the id the reader declares for Destatis data
-    - **Table {TABLE}:** {_page}{TABLE}, retrieved {_retrieved(DestatisLocator(TABLE))} (Steps 1 and 2) and
+    - **Table {TABLE}:** {_page}{TABLE}, retrieved {_retrieved(TABLE)} (Steps 1 and 2) and
       {_retrieved(since_1980)} (Step 3)
     - **Table {TABLE_BY_SEX}:** {_page}{TABLE_BY_SEX}, retrieved {_retrieved(women)} (Step 4)
     """)

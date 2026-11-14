@@ -93,6 +93,10 @@ class KreisRebaseFeature(HarmonizationFeature):
         return True
 
     @classmethod
+    def _reference_files(cls) -> tuple[ReferenceSource, ...]:
+        return (BBSR_KREISE,)
+
+    @classmethod
     def _read_reference(cls, cache: DownloadCache, *, fetch: bool = False) -> list[UmsteigeschluesselRow]:
         return offline_first(partial(load_bbsr_kreise, cache), fetch=fetch)
 

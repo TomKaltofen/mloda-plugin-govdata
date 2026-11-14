@@ -19,9 +19,9 @@ from mloda.provider import ClaimRoute, FeatureSet, NamePolicy, SourceMatch, reco
 from mloda.user import DataAccessCollection, DataType, Options
 from mloda.user.pyarrow import PyArrowTable  # noqa: F401
 
-from .core.cache import DEFAULT_CACHE_DIR, DownloadCache
+from .core.cache import DEFAULT_CACHE_DIR, CachedFile, CacheMissError, DownloadCache
 from .core.client import build_client
-from .core.discovery import resolve_distribution
+from .core.discovery import ResolvedDistribution, resolve_distribution
 from .core.locator import GovDataLocator, Locator
 from .core.parse import ColumnType, parse_german_csv
 from .core.provenance import FetchedPayload, Provenance
@@ -124,6 +124,28 @@ class BaseGovDataReader(GovDataFeature, Generic[LocatorT]):
         return {field.name: str(field.type) for field in table.schema}
 
     @classmethod
+    def retrieval(cls, value: Any) -> FetchedPayload | None:
+        """The cached copy's record for a pointer value, None when not cached; never makes a request.
+
+        Provenance is URL-level: a file first read through CKAN loses its dataset record and CKAN license.
+        """
+        locator = cls._coerce_locator(value)
+        if not isinstance(locator, GovDataLocator):
+            raise NotImplementedError(f"{cls.__name__} must implement retrieval for {type(locator).__name__}")
+        if locator.distribution_url is None:
+            raise ValueError(
+                f"{cls.__name__}.retrieval needs a distribution URL: CKAN resolves {locator.describe()!r} online. "
+                "A read's provenance.url or a recipe's dataset_uri holds it."
+            )
+        with build_client() as client, DownloadCache(cls.cache_dir, client=client) as cache:
+            distribution = resolve_distribution(locator, client)  # a direct URL: no request
+            try:
+                cached = cache.get_or_download(distribution.url, revalidate=False)
+            except CacheMissError:
+                return None
+        return cls._payload(cached, distribution)
+
+    @classmethod
     def describe_columns(cls, match: SourceMatch) -> dict[str, DataType | None]:
         """``peek`` as mloda's column discovery (lineage extenders call it); downloads through the cache too."""
         table = cls._read_table(match.access)
@@ -173,6 +195,10 @@ class BaseGovDataReader(GovDataFeature, Generic[LocatorT]):
                     f"under {distribution.license!r}; read it with a reader that declares no license."
                 )
             cached = DownloadCache(cls.cache_dir, client=client).get_or_download(distribution.url)
+        return cls._payload(cached, distribution)
+
+    @classmethod
+    def _payload(cls, cached: CachedFile, distribution: ResolvedDistribution) -> FetchedPayload:
         return FetchedPayload(
             path=cached.path,
             sha256=cached.sha256,

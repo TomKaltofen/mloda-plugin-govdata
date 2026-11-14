@@ -11,6 +11,7 @@ CC BY 4.0 (CC-BY-4.0). Hashes below are the *original* published file's sha256, 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 
 from mloda_plugin_govdata.feature_groups.govdata.core.discovery import CC_BY_4_0, DL_DE_BY_2_0
 
@@ -22,6 +23,15 @@ class ReferenceSource:
     sha256: str | None  # None when the URL varies per call (GV-ISys per year) and no single hash applies
     license: str
     attribution: str
+
+
+@dataclass(frozen=True)
+class ReferenceCopy:
+    """A source and its cached copy; ``sha256`` and ``retrieved_at`` are None when no pinned copy is cached."""
+
+    source: ReferenceSource
+    sha256: str | None
+    retrieved_at: datetime | None
 
 
 BBSR_KREISE = ReferenceSource(
@@ -56,17 +66,15 @@ GV_ISYS_URL_TEMPLATE = (
     "Namens-Grenz-Aenderung/{year}.xlsx?__blob=publicationFile&v=5"
 )
 GV_ISYS_2016_SHA256 = "301a0b72381d78ece5b3fe811fd29e7739258da55ebda9dacb1a0d2651f2b0b7"
+_KNOWN_GV_ISYS_SHA256: dict[int, str] = {2016: GV_ISYS_2016_SHA256}
 
 
 def gv_isys_source(year: int, *, sha256: str | None = None) -> ReferenceSource:
-    """Builds the :class:`ReferenceSource` for one year of Destatis' GV-ISys change file.
-
-    Pass ``sha256=GV_ISYS_2016_SHA256`` for 2016; other years have no pinned hash yet.
-    """
+    """The :class:`ReferenceSource` for one year of Destatis' GV-ISys change file; ``sha256`` defaults to the pin."""
     return ReferenceSource(
         name=f"Destatis GV-ISys Namens-Grenz-Aenderung {year}",
         url=GV_ISYS_URL_TEMPLATE.format(year=year),
-        sha256=sha256,
+        sha256=sha256 or _KNOWN_GV_ISYS_SHA256.get(year),
         license=DL_DE_BY_2_0,
         attribution="(c) Statistisches Bundesamt (Destatis)",
     )

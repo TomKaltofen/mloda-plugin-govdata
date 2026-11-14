@@ -17,6 +17,7 @@ from mloda.user.pyarrow import PyArrowTable
 
 from ..destatis.core.auth import OPTION_GENESIS_CREDENTIALS
 from ..govdata.core.cache import DEFAULT_CACHE_DIR, CacheMissError, DownloadCache
+from .core.reference.sources import ReferenceCopy, ReferenceSource
 
 _T = TypeVar("_T")
 
@@ -51,6 +52,25 @@ class HarmonizationFeature(FeatureChainParserMixin, FeatureGroup):
         """
         with DownloadCache(Path(cls.cache_dir)) as cache:
             cls._read_reference(cache, fetch=True)
+
+    @classmethod
+    def reference_sources(cls) -> list[ReferenceCopy]:
+        """Each reference file's source with its cached copy's sha256 and download time; offline."""
+        copies = []
+        with DownloadCache(Path(cls.cache_dir)) as cache:
+            for source in cls._reference_files():
+                try:
+                    cached = cache.get_or_download(source.url, revalidate=False, sha256=source.sha256)
+                except CacheMissError:
+                    copies.append(ReferenceCopy(source, None, None))
+                else:
+                    copies.append(ReferenceCopy(source, cached.sha256, cached.retrieved_at))
+        return copies
+
+    @classmethod
+    def _reference_files(cls) -> tuple[ReferenceSource, ...]:
+        """Every file ``_read_reference`` reads."""
+        return ()
 
     @classmethod
     def _read_reference(cls, cache: DownloadCache, *, fetch: bool = False) -> Any:
