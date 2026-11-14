@@ -136,5 +136,6 @@ The definitions in `scripts/write_recipes.py` are the source of truth: edit a de
 regenerate every file with `uv run python scripts/write_recipes.py`. A test fails on a file that differs from
 its definition or has none.
 
-The demo notebook (`demos/govdata_demo.py`) runs `land_population_per_voter.json` and `kreis_population_rebased.json`
-live, with the attribution lines and change markers from their compliance blocks.
+Tutorial 5 (`tutorials/05_recipes_and_provenance.py`) runs `land_population_per_voter.json` live with its compliance
+block and lists the sources of every shipped recipe; tutorial 4 (`tutorials/04_todays_borders.py`) runs the same
+Göttingen re-basing as `kreis_population_rebased.json` with plain options.
