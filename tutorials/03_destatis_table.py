@@ -220,6 +220,11 @@ def _(mo):
     code `GES`, and its values have codes too: `GESM` (male) and `GESW` (female). The codes are listed on the
     [table's page](https://genesis.destatis.de/datenbank/online/statistic/12411/table/12411-0011).
 
+    The table has these two values only. People registered as *divers* (diverse) or with no sex entry are
+    counted too: Destatis re-codes each of them as male or female, so the two always add up to the total. At
+    the end of 2025 that was about 9,600 people. The count with all four entries, per Land, is on the
+    [Destatis website](https://www.destatis.de/DE/Themen/Gesellschaft-Umwelt/Bevoelkerung/Bevoelkerungsstand/aktuell-geschlechtseintrag.html).
+
     `classifyingvariable1` names the category, `classifyingkey1` the values to keep. Here: women only.
     """)
     return
