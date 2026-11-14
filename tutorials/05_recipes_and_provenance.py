@@ -317,7 +317,8 @@ def _(mo):
 
     ## Next
 
-    The next tutorial reads a new election with configuration only, no new code.
+    [Tutorial 6](https://github.com/mloda-ai/mloda-plugin-govdata/blob/main/tutorials/06_a_new_election.py)
+    reads four Berlin elections with one set of reader options.
     [Recipes](https://github.com/mloda-ai/mloda-plugin-govdata/blob/main/docs/recipes.md) describes the file
     format, every shipped recipe and how each one is checked against its sources.
     """)
