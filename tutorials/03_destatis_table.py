@@ -225,14 +225,14 @@ def _(mo):
     the end of 2025 that was about 9,600 people. The count with all four entries, per Land, is on the
     [Destatis website](https://www.destatis.de/DE/Themen/Gesellschaft-Umwelt/Bevoelkerung/Bevoelkerungsstand/aktuell-geschlechtseintrag.html).
 
-    `classifyingvariable1` names the category, `classifyingkey1` the values to keep. Here: women only.
+    `classifyingvariable1` names the category, `classifyingkey1` the values to keep. Here: `GESW` only.
     """)
     return
 
 
 @app.cell
 def _(DestatisLocator, DestatisReader, Feature, TABLE_BY_SEX, mloda):
-    women = DestatisLocator(TABLE_BY_SEX, classifyingvariable1="GES", classifyingkey1=["GESW"])
+    female = DestatisLocator(TABLE_BY_SEX, classifyingvariable1="GES", classifyingkey1=["GESW"])
     _columns = [
         "time",
         "1_variable_attribute_label",
@@ -241,21 +241,21 @@ def _(DestatisLocator, DestatisReader, Feature, TABLE_BY_SEX, mloda):
         "value",
     ]
     _result = mloda.run_all(
-        [Feature(_name, options={DestatisReader: women}) for _name in _columns],
+        [Feature(_name, options={DestatisReader: female}) for _name in _columns],
         compute_frameworks=["PyArrowTable"],
         column_ordering="request_order",
     )
     by_sex = _result[0].to_pandas().sort_values(["1_variable_attribute_label", "value"], ignore_index=True)
     by_sex
-    return by_sex, women
+    return by_sex, female
 
 
 @app.cell
 def _(by_sex, mo):
     mo.md(f"""
-    The sex is the second variable, so its columns start with `2_`. You asked for women, yet there are
+    The sex is the second variable, so its columns start with `2_`. You asked for `GESW`, yet there are
     {len(by_sex)} rows, two per Land: GENESIS adds the total, *Insgesamt*, too. Its code is missing (pandas
-    shows `NaN`). Adding up the `value` column would add the whole population on top of the women. Keep the
+    shows `NaN`). Adding up the `value` column would add the whole population on top of the `GESW` rows. Keep the
     rows whose code you asked for:
     `by_sex[by_sex["2_variable_attribute_code"] == "GESW"]`.
     """)
@@ -356,7 +356,7 @@ def _(mo):
 
 
 @app.cell
-def _(DestatisReader, TABLE, TABLE_BY_SEX, mo, since_1980, women):
+def _(DestatisReader, TABLE, TABLE_BY_SEX, female, mo, since_1980):
     def _retrieved(selection):
         # The copy each step read; a missing one means the cache was cleared since.
         _copy = DestatisReader.retrieval(selection)
@@ -368,7 +368,7 @@ def _(DestatisReader, TABLE, TABLE_BY_SEX, mo, since_1980, women):
     - **License:** `{DestatisReader.LICENSE}`, the id the reader declares for Destatis data
     - **Table {TABLE}:** {_page}{TABLE}, retrieved {_retrieved(TABLE)} (Steps 1 and 2) and
       {_retrieved(since_1980)} (Step 3)
-    - **Table {TABLE_BY_SEX}:** {_page}{TABLE_BY_SEX}, retrieved {_retrieved(women)} (Step 4)
+    - **Table {TABLE_BY_SEX}:** {_page}{TABLE_BY_SEX}, retrieved {_retrieved(female)} (Step 4)
     """)
     return
 
