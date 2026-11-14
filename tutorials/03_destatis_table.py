@@ -99,8 +99,8 @@ def _(DestatisCredentials, GENESIS_ONLINE, MissingCredentialsError, mo):
         mo.md(f"**Stopped.** {_why} Follow *Get a token* above, then start marimo again."),
     )
     TABLE = "12411-0010"
-    TABLE_BY_SEX = "12411-0011"  # the same count, split by sex (Step 4)
-    return TABLE, TABLE_BY_SEX
+    TABLE_BY_AGE = "12411-0012"  # the same count, split by age (Step 4)
+    return TABLE, TABLE_BY_AGE
 
 
 @app.cell
@@ -215,19 +215,21 @@ def _(mo):
     mo.md("""
     ## Step 4: choose a category
 
-    Table `12411-0010` has no categories besides the Land. Its sibling table `12411-0011` holds the same
-    count, split by sex (*Geschlecht*). A category is a *classifying variable* in GENESIS; this one has the
-    code `GES`, and its values have codes too: `GESM` (male) and `GESW` (female). The codes are listed on the
-    [table's page](https://genesis.destatis.de/datenbank/online/statistic/12411/table/12411-0011).
+    Table `12411-0010` has no categories besides the Land. Its sibling table `12411-0012` holds the same
+    count, split by age in years (*Altersjahre*). A category is a *classifying variable* in GENESIS; this one
+    has the code `ALT103`, and its values have codes too: `ALT000` (under 1 year), `ALT001` (1 year) and so
+    on, up to `ALT090UM` (90 years and over). The codes are listed on the
+    [table's page](https://genesis.destatis.de/datenbank/online/statistic/12411/table/12411-0012).
 
-    `classifyingvariable1` names the category, `classifyingkey1` the values to keep. Here: women only.
+    `classifyingvariable1` names the category, `classifyingkey1` the values to keep. Here: children under
+    1 year only.
     """)
     return
 
 
 @app.cell
-def _(DestatisLocator, DestatisReader, Feature, TABLE_BY_SEX, mloda):
-    women = DestatisLocator(TABLE_BY_SEX, classifyingvariable1="GES", classifyingkey1=["GESW"])
+def _(DestatisLocator, DestatisReader, Feature, TABLE_BY_AGE, mloda):
+    under_one = DestatisLocator(TABLE_BY_AGE, classifyingvariable1="ALT103", classifyingkey1=["ALT000"])
     _columns = [
         "time",
         "1_variable_attribute_label",
@@ -236,23 +238,23 @@ def _(DestatisLocator, DestatisReader, Feature, TABLE_BY_SEX, mloda):
         "value",
     ]
     _result = mloda.run_all(
-        [Feature(_name, options={DestatisReader: women}) for _name in _columns],
+        [Feature(_name, options={DestatisReader: under_one}) for _name in _columns],
         compute_frameworks=["PyArrowTable"],
         column_ordering="request_order",
     )
-    by_sex = _result[0].to_pandas().sort_values(["1_variable_attribute_label", "value"], ignore_index=True)
-    by_sex
-    return by_sex, women
+    by_age = _result[0].to_pandas().sort_values(["1_variable_attribute_label", "value"], ignore_index=True)
+    by_age
+    return by_age, under_one
 
 
 @app.cell
-def _(by_sex, mo):
+def _(by_age, mo):
     mo.md(f"""
-    The sex is the second variable, so its columns start with `2_`. You asked for women, yet there are
-    {len(by_sex)} rows, two per Land: GENESIS adds the total, *Insgesamt*, too. Its code is missing (pandas
-    shows `NaN`). Adding up the `value` column would add the whole population on top of the women. Keep the
+    The age is the second variable, so its columns start with `2_`. You asked for one age, yet there are
+    {len(by_age)} rows, two per Land: GENESIS adds the total, *Insgesamt*, too. Its code is missing (pandas
+    shows `NaN`). Adding up the `value` column would add the whole population on top of the children. Keep the
     rows whose code you asked for:
-    `by_sex[by_sex["2_variable_attribute_code"] == "GESW"]`.
+    `by_age[by_age["2_variable_attribute_code"] == "ALT000"]`.
     """)
     return
 
@@ -351,7 +353,7 @@ def _(mo):
 
 
 @app.cell
-def _(DestatisReader, TABLE, TABLE_BY_SEX, mo, since_1980, women):
+def _(DestatisReader, TABLE, TABLE_BY_AGE, mo, since_1980, under_one):
     def _retrieved(selection):
         # The copy each step read; a missing one means the cache was cleared since.
         _copy = DestatisReader.retrieval(selection)
@@ -363,7 +365,7 @@ def _(DestatisReader, TABLE, TABLE_BY_SEX, mo, since_1980, women):
     - **License:** `{DestatisReader.LICENSE}`, the id the reader declares for Destatis data
     - **Table {TABLE}:** {_page}{TABLE}, retrieved {_retrieved(TABLE)} (Steps 1 and 2) and
       {_retrieved(since_1980)} (Step 3)
-    - **Table {TABLE_BY_SEX}:** {_page}{TABLE_BY_SEX}, retrieved {_retrieved(women)} (Step 4)
+    - **Table {TABLE_BY_AGE}:** {_page}{TABLE_BY_AGE}, retrieved {_retrieved(under_one)} (Step 4)
     """)
     return
 
