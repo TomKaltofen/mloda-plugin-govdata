@@ -156,7 +156,8 @@ def _(
         }
 
     # The exports label parties by ballot position (P01, P02, ...). Decoded by
-    # matching city-wide sums against the official results; see the proof cell.
+    # matching city-wide sums against the official results; see the proof cell
+    # and, for 2026, the waiting cell.
     PARTY_LEGEND = {
         "AGH 2023": {"P01": "SPD", "P02": "CDU", "P03": "GRÜNE", "P04": "Die Linke", "P05": "AfD", "P06": "FDP"},
         "EU 2024": {
@@ -176,6 +177,26 @@ def _(
             "P05": "AfD",
             "P06": "FDP",
             "P16": "BSW",
+        },
+        # Every position that received votes in 2026.
+        "AGH 2026": {
+            "P01": "CDU",
+            "P02": "SPD",
+            "P03": "GRÜNE",
+            "P04": "Die Linke",
+            "P05": "AfD",
+            "P06": "FDP",
+            "P07": "Tierschutzpartei",
+            "P08": "Die PARTEI",
+            "P09": "Volt",
+            "P12": "Die Urbane.",
+            "P13": "DKP",
+            "P14": "ÖDP",
+            "P15": "HEIMAT",
+            "P16": "B*",
+            "P17": "SGP",
+            "P24": "BSW",
+            "P27": "PdF",
         },
     }
     return BERLIN_EXPORTS, PARTY_LEGEND, berlin_options
@@ -389,20 +410,30 @@ def _():
 
 
 @app.cell
-def _(ELECTION_2026_URL, Feature, berlin_options, mloda, mo, pd):
+def _(ELECTION_2026_URL, Feature, PARTY_LEGEND, berlin_options, mloda, mo, pd):
     _opts = berlin_options(ELECTION_2026_URL)
-    _positions = [f"P{_i:02d}" for _i in range(1, 121)]  # the 2026 export has 120 ballot columns
+    _parties = PARTY_LEGEND["AGH 2026"]
     _table = mloda.run_all(
-        [Feature(_column, options=_opts) for _column in ["Bezirksname", "Gueltig", *_positions]],
+        [Feature(_column, options=_opts) for _column in ["Bezirksname", "Gueltig", *_parties]],
         compute_frameworks=["PyArrowTable"],
     )[0]
-    _frame = _table.to_pandas()
-    _votes = _frame[_positions].sum()
-    _shares = (100 * _votes[_votes > 0] / _frame["Gueltig"].sum()).round(1)
-    waiting_cell = pd.DataFrame({"Ballot position": _shares.index, "Vote share %": _shares.values})
+    _frame = _table.to_pandas().rename(columns=_parties)
+    _votes = _frame[list(_parties.values())].sum().sort_values(ascending=False)
+    _valid = _frame["Gueltig"].sum()  # valid second votes
+    waiting_cell = pd.DataFrame(
+        {
+            "Party": _votes.index,
+            "Votes": _votes.astype(int).values,
+            "Vote share %": (100 * _votes / _valid).round(1).values,
+        }
+    )
     mo.vstack(
         [
-            mo.md(f"**AGH election 2026**: {len(_frame):,} voting districts in the export."),
+            mo.md(
+                f"**AGH election 2026**: {len(_frame):,} voting districts in the export. "
+                f"The {len(_parties)} parties hold {int(_votes.sum()):,} votes, the export {int(_valid):,} valid "
+                "votes: every valid vote is accounted for."
+            ),
             waiting_cell,
         ]
     )
@@ -412,9 +443,11 @@ def _(ELECTION_2026_URL, Feature, berlin_options, mloda, mo, pd):
 @app.cell
 def _(mo):
     mo.md("""
-    The table shows every ballot position that received votes, not yet
-    decoded to parties for 2026; that works the same way as in section 2,
-    city-wide sums against the official result.
+    The party names came afterwards, decoded as in section 2: each ballot
+    position's city-wide sum matches one party in the official final result of
+    12 October 2026 (*Amtliches Endergebnis*,
+    [wahlen-berlin.de](https://www.wahlen-berlin.de/wahlen/BE2026/AFSPRAES/agh/index.html)),
+    vote for vote.
 
     Sources: Der Landeswahlleiter für Berlin (wahlen-berlin.de) and the Amt
     für Statistik Berlin-Brandenburg, the statistics office of Berlin and
