@@ -90,6 +90,10 @@ Feature(
 - A configuration-based name (`destatis__bevoelkerung__kreise`, or plain `kreise`) whose options select no
   group (the rebase years missing or misspelled, say) fails while features resolve, before any fetch: every
   reader declines a name carrying `in_features` and says so in the error.
+- A configuration-based name must differ from its source column (`kreise`, not `value`, over `in_features="value"`);
+  one equal to it fails while features resolve, before any fetch.
+- A name takes one set of options per run. `__nuts2024` and `__year_period` refuse a second set by name;
+  `__rebased` returns one frame per set.
 - mloda returns one frame per FeatureGroup, so a reader column requested next to a harmonized feature lands
   in its own frame.
 

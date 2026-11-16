@@ -7,10 +7,12 @@ from pathlib import Path
 from typing import Any, ClassVar, TypeVar
 
 from mloda.provider import (
+    NAME_STAGE,
     ComputeFramework,
     FeatureChainParserMixin,
     FeatureGroup,
     FeatureSet,
+    record_match_rejection,
 )
 from mloda.user import Feature, FeatureName, Options
 from mloda.user.pyarrow import PyArrowTable
@@ -30,6 +32,13 @@ def offline_first(load: Callable[..., _T], *, fetch: bool) -> _T:
         if not fetch:
             raise
         return load(revalidate=True)
+
+
+def _source_names(options: Options) -> set[str]:
+    try:
+        return {str(source.name) for source in options.get_in_features()}
+    except (TypeError, ValueError):  # no in_features: a chained name
+        return set()
 
 
 class HarmonizationFeature(FeatureChainParserMixin, FeatureGroup):
@@ -88,10 +97,33 @@ class HarmonizationFeature(FeatureChainParserMixin, FeatureGroup):
         """A ``~part`` name never matches whole, so mloda reads it against OUTPUT_PARTS.
 
         Needed for configuration names, which match any name: mloda strips only a numeric ``~N`` before matching.
+        A configuration name equal to its source column is refused with a reason.
         """
         if cls.OUTPUT_PARTS and FeatureGroup.split_output_part(str(feature_name)) is not None:
             return False
-        return super().match_feature_group_criteria(feature_name, options, data_access_collection)
+        if not super().match_feature_group_criteria(feature_name, options, data_access_collection):
+            return False
+        if str(feature_name) in _source_names(options):
+            reason = f"'{feature_name}' equals its source column (in_features); give the output another name"
+            record_match_rejection(cls.__name__, reason, stage=NAME_STAGE)
+            return False
+        return True
+
+    @classmethod
+    def validate_input_features(cls, data: Any, features: FeatureSet) -> None:
+        """An output column already in the input: the same name requested again under separate options."""
+        present = set(data.column_names)
+        for feature in features.get_sorted_features():
+            name = str(feature.name)
+            outputs = [f"{name}~{part}" for part in cls.OUTPUT_PARTS] if cls.OUTPUT_PARTS else [name]
+            if not present.isdisjoint(outputs):
+                keys = sorted(cls.declared_option_keys())
+                shown = ", ".join(f"{k}={feature.options.get(k)!r}" for k in keys if feature.options.get(k) is not None)
+                raise ValueError(
+                    f"{cls.__name__}: '{name}' is requested more than once in this run under separate options "
+                    f"(this set: {shown or 'none'}), or a source column has its name; request it once, "
+                    "or give each set of options its own configured name"
+                )
 
     @classmethod
     def child(cls, name: str) -> Feature:

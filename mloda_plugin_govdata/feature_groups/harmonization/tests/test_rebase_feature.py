@@ -76,6 +76,7 @@ def test_matches_the_chained_and_the_configuration_based_name() -> None:
     assert not KreisRebaseFeature.match_feature_group_criteria("value", years)
     configured = Options(group=YEARS, context={"in_features": "value"})
     assert KreisRebaseFeature.match_feature_group_criteria(CONFIGURATION_BASED_NAME, configured)
+    assert not KreisRebaseFeature.match_feature_group_criteria("value", configured)  # the name is its source column
     assert not KreisRebaseFeature.match_feature_group_criteria(
         CONFIGURATION_BASED_NAME, Options(context={"in_features": "value"})
     )
@@ -272,6 +273,12 @@ def test_two_parts_of_one_output_in_one_request(genesis: Callable[[str], respx.R
     table = _run([Feature("value__rebased~key", options=options), Feature("value__rebased~value", options=options)])[0]
     assert sorted(table.schema.names) == ["value__rebased~key", "value__rebased~value"]
     assert table.num_rows == 5
+    # Each set of options gets its own frame.
+    flagged = {**options, "rebase_on_incomplete": "flag"}
+    result = _run([Feature("value__rebased~flag", options=options), Feature("value__rebased~value", options=flagged)])
+    for name in ("value__rebased~flag", "value__rebased~value"):
+        assert result.frame_for(name).schema.names == [name]
+        assert result.frame_for(name).num_rows == 5
 
 
 @respx.mock
@@ -500,6 +507,7 @@ def test_collection_credentials_reach_the_reader_under_a_derived_feature(
             {"in_features": "value"},
             CARRIES_IN_FEATURES % "value",
         ),
+        ("value", YEARS, {"in_features": "value"}, r"KreisRebaseFeature \(feature name\): 'value' equals its source"),
     ],
 )
 @respx.mock
