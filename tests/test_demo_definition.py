@@ -1,4 +1,4 @@
-"""Marimo notebooks must define their apps without running any cell; their imports and the docs' must exist."""
+"""Marimo notebooks define their apps and their imports and the docs' exist; live, every tutorial runs to the end."""
 
 import ast
 import importlib.util
@@ -175,3 +175,23 @@ def test_tutorial_stops_without_credentials(path: Path, monkeypatch: pytest.Monk
     assert held_back
     _, defs = _load_app(path).run()
     assert held_back.isdisjoint(defs)
+
+
+def _fail_on_stop(predicate: object, output: object = None) -> None:
+    if predicate:
+        raise AssertionError(f"mo.stop fired: {output!r}")
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        pytest.param(path, marks=[pytest.mark.live, *([pytest.mark.genesis_live] if path in GUARDED_PATHS else [])])
+        for path in NOTEBOOK_PATHS
+        if path.parent.name == "tutorials"
+    ],
+    ids=lambda path: str(path.relative_to(REPO_ROOT)),
+)
+def test_tutorial_runs_every_cell_live(path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # A stopped cell is skipped silently, so any stop must fail here.
+    monkeypatch.setattr(marimo, "stop", _fail_on_stop)
+    _load_app(path).run()

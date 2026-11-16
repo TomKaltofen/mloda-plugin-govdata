@@ -1,0 +1,28 @@
+name: Tutorials (live)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tutorials:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Run every tutorial against the live sources
+        env:
+          GENESIS_TOKEN: ${{ secrets.GENESIS_TOKEN }}
+        run: |
+          if [ -z "$GENESIS_TOKEN" ]; then
+            echo "::error ::Set the GENESIS_TOKEN repository secret; without it tutorials 3 to 5 are skipped."
+            exit 1
+          fi
+          uv run --locked --all-extras --python 3.13 pytest -m live -rs tests/test_demo_definition.py
