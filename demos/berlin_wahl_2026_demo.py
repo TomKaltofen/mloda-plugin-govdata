@@ -157,7 +157,7 @@ def _(
 
     # The exports label parties by ballot position (P01, P02, ...). Decoded by
     # matching city-wide sums against the official results; see the proof cell
-    # and, for 2026, the waiting cell.
+    # and, for 2026, the waiting cell's Votes column.
     PARTY_LEGEND = {
         "AGH 2023": {"P01": "SPD", "P02": "CDU", "P03": "GRÜNE", "P04": "Die Linke", "P05": "AfD", "P06": "FDP"},
         "EU 2024": {
@@ -396,7 +396,8 @@ def _(mo):
     This is the cell this notebook exists for. Before 20 September 2026 it
     held `None`; afterwards the Landeswahlleiter published the 2026 export
     at the path predicted from BE2023 and BU2025, with the same columns. The
-    URL below is the only new input: no release, no change to the reader.
+    URL below is the only new input the reader needs: no release, no change
+    to the reader.
     """)
     return
 
@@ -420,6 +421,8 @@ def _(ELECTION_2026_URL, Feature, PARTY_LEGEND, berlin_options, mloda, mo, pd):
     _frame = _table.to_pandas().rename(columns=_parties)
     _votes = _frame[list(_parties.values())].sum().sort_values(ascending=False)
     _valid = _frame["Gueltig"].sum()  # valid second votes
+    _rest = int(_valid - _votes.sum())
+    _check = "every valid vote is accounted for" if _rest == 0 else f"{_rest:,} valid votes sit in undecoded positions"
     waiting_cell = pd.DataFrame(
         {
             "Party": _votes.index,
@@ -432,7 +435,7 @@ def _(ELECTION_2026_URL, Feature, PARTY_LEGEND, berlin_options, mloda, mo, pd):
             mo.md(
                 f"**AGH election 2026**: {len(_frame):,} voting districts in the export. "
                 f"The {len(_parties)} parties hold {int(_votes.sum()):,} votes, the export {int(_valid):,} valid "
-                "votes: every valid vote is accounted for."
+                f"votes: {_check}."
             ),
             waiting_cell,
         ]
@@ -443,7 +446,8 @@ def _(ELECTION_2026_URL, Feature, PARTY_LEGEND, berlin_options, mloda, mo, pd):
 @app.cell
 def _(mo):
     mo.md("""
-    The party names came afterwards, decoded as in section 2: each ballot
+    The party names are a lookup added after the official final result,
+    decoded as in section 2: each ballot
     position's city-wide sum matches one party in the official final result of
     12 October 2026 (*Amtliches Endergebnis*,
     [wahlen-berlin.de](https://www.wahlen-berlin.de/wahlen/BE2026/AFSPRAES/agh/index.html)),
