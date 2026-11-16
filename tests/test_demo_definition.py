@@ -1,4 +1,4 @@
-"""Marimo notebooks define their apps and their imports and the docs' exist; live, every tutorial runs to the end."""
+"""Marimo notebooks define their apps; their imports and the docs' exist; live, every tutorial runs to the end."""
 
 import ast
 import importlib.util
@@ -179,7 +179,7 @@ def test_tutorial_stops_without_credentials(path: Path, monkeypatch: pytest.Monk
 
 def _fail_on_stop(predicate: object, output: object = None) -> None:
     if predicate:
-        raise AssertionError(f"mo.stop fired: {output!r}")
+        raise AssertionError(f"mo.stop fired: {getattr(output, 'text', output)}")
 
 
 @pytest.mark.parametrize(

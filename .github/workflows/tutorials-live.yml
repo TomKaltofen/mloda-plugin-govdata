@@ -13,6 +13,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
@@ -21,7 +23,7 @@ jobs:
         env:
           GENESIS_TOKEN: ${{ secrets.GENESIS_TOKEN }}
         run: |
-          if [ -z "$GENESIS_TOKEN" ]; then
+          if [ -z "$(printf %s "$GENESIS_TOKEN" | tr -d '[:space:]')" ]; then
             echo "::error ::Set the GENESIS_TOKEN repository secret; without it tutorials 3 to 5 are skipped."
             exit 1
           fi
