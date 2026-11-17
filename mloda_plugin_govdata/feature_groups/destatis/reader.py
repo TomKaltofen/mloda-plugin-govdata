@@ -129,7 +129,7 @@ class DestatisReader(BaseGovDataReader[DestatisLocator]):
         options: Options | None = None,
         collection_credentials: DestatisCredentials | None = None,
     ) -> FetchedPayload:
-        """POSTs (or reuses a cached reply for) the selection; credentials resolve lazily on a miss only."""
+        """POSTs (or reuses a cached reply for) the selection; credentials are needed on a miss only."""
         host = resolve_host(locator.host)
         fields = locator.tablefile_fields()
         cache = ParameterCache(cls.cache_dir)

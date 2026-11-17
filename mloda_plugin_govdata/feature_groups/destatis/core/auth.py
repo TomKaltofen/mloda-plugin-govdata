@@ -109,8 +109,8 @@ class DestatisCredentials:
 def missing_credentials_message(host: GenesisHost) -> str:
     return (
         f"No credentials for {host.label}. Register them in the run's DataAccessCollection under the handle "
-        f"{host.name!r}, e.g. Credential(token=os.environ[{host.env_var('TOKEN')!r}]); the plugin never reads "
-        f"the environment. Registration is free and same-day: {host.registration_url}. Registrations are per "
+        f"{host.name!r}, e.g. Credential(token=os.environ[{host.env_var('TOKEN')!r}]), or pass DestatisCredentials "
+        f"to GenesisClient; the plugin never reads the environment. Registration is free and same-day: {host.registration_url}. Registrations are per "
         "host, so a token from another GENESIS installation is not valid here."
     )
 

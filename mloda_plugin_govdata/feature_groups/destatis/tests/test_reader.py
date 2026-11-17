@@ -166,9 +166,9 @@ def test_peek_without_credentials_raises_on_a_cache_miss(tmp_path: Path, monkeyp
 
 @respx.mock
 def test_peek_on_a_cache_miss_sends_the_collection_token(
-    fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, no_genesis_env: None
+    fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(DestatisReader, "cache_dir", str(tmp_path))
+    _env_token_only(monkeypatch, tmp_path)
     route = _mock_tablefile((fixtures_dir / "ffcsv" / FFCSV_FIXTURE).read_bytes())
     assert DestatisReader.peek(TABLE_CODE, _collection())["value"] == "double"
     assert route.calls.last.request.headers["username"] == TOKEN
