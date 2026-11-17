@@ -58,10 +58,9 @@ recipe.compliance.sources[0].attribution  # what to print next to the result
   differ only by their discriminators stay distinct, so both can be in one recipe's `links` block.
 - `compliance.sources`: one entry per data source with `license`, `attribution`, `dataset_uri`,
   `retrieved_at` (timezone-aware), the payload `sha256`, `modifications` (what the reader changes; dl-de/by-2-0
-  requires marking changes), and `credential_env` (metadata: the env-var names a caller reads to register the source's
-  credential, never values; a GENESIS source names `GENESIS_TOKEN`, registered under the handle `genesis`;
-  the user plus password pair from [credentials.md](credentials.md) works the same). No reader and no mloda
-  option reads it.
+  requires marking changes), and `credential_env` (the env-var names of the source's default credential path,
+  never values; metadata only, nothing reads it; a GENESIS source names `GENESIS_TOKEN`, the user plus password
+  pair from [credentials.md](credentials.md) works the same).
 
 ## What round-trips
 

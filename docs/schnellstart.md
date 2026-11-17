@@ -25,7 +25,7 @@ Der Feature-Name ist die gewünschte Spalte, die Option wählt Reader und Datens
 
 ## Destatis, mit kostenlosem GENESIS-Konto
 
-Registrieren Sie sich bei [GENESIS-Online](https://genesis.destatis.de/datenbank/online/) und setzen Sie den Token, den die Weboberfläche unter „Webservice-Schnittstelle (API)“ zeigt, als Umgebungsvariable `GENESIS_TOKEN`. Der Lauf erhält ihn über eine `DataAccessCollection`; das Plugin selbst liest keine Umgebungsvariablen ([Details auf Englisch](credentials.md)).
+Registrieren Sie sich bei [GENESIS-Online](https://genesis.destatis.de/datenbank/online/) und setzen Sie den Token, den die Weboberfläche unter „Webservice-Schnittstelle (API)“ zeigt, als Umgebungsvariable `GENESIS_TOKEN` ([Details auf Englisch](credentials.md)).
 
 ```python
 import os

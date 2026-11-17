@@ -82,7 +82,6 @@ def _(DataAccessCollection, DestatisCredentials, GENESIS_ONLINE, MissingCredenti
         if _credentials is None:
             _why = "No token found: `GENESIS_TOKEN` is not set (nor `GENESIS_USER` and `GENESIS_PASSWORD`)."
         else:
-            # The runs take the token from their DataAccessCollection; the plugin never reads the environment.
             _collection = DataAccessCollection(credentials={"genesis": _credentials.to_credential()})
     except MissingCredentialsError:  # a user name without a password, or the reverse
         _why = "Set both `GENESIS_USER` and `GENESIS_PASSWORD`, or only `GENESIS_TOKEN`."
@@ -127,8 +126,7 @@ def _(mo):
     mo.md("""
     ## Step 2: run it
 
-    Hand the recipe's features to `mloda.run_all`, like any list of features, with the token's
-    `DataAccessCollection` (the recipe holds no credential). `frame_for` picks a result
+    Hand the recipe's features to `mloda.run_all`, like any list of features. `frame_for` picks a result
     table by a feature it holds: `value` is only on the Destatis side, `Nr` only on the election side. The
     election file also has rows for constituencies and for Germany as a whole; a Land belongs to `99`, the
     number of Germany as a whole, so `gehört zu == "99"` keeps the Länder.
@@ -186,7 +184,7 @@ def _(mo):
 
 @app.cell
 def _(Feature, LandPopulationPerVoter, collection, mloda, recipe):
-    _after_step_1 = recipe  # waits for Step 1
+    _after_step_1 = recipe  # waits for the token check and Step 1
     _table = mloda.run_all(
         [Feature(LandPopulationPerVoter.NAME)], compute_frameworks=["PyArrowTable"], data_access_collection=collection
     )[0]

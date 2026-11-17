@@ -18,7 +18,7 @@ Credentials never go into the URL or the form body: the server ignores body cred
 
 ## Where credentials come from
 
-The plugin never reads the environment: no reader and no `GenesisClient` does. The caller reads it and passes the credentials in.
+The plugin never reads the environment; the caller passes the credentials in.
 
 1. An mloda run takes them from its `DataAccessCollection`. Passed once to `run_all`, it reaches every Destatis feature, chained ones included:
 
@@ -31,16 +31,12 @@ The plugin never reads the environment: no reader and no `GenesisClient` does. T
    mloda.run_all(features, data_access_collection=collection)
    ```
 
-   `DestatisCredentials.from_env(host).to_credential()` builds the entry from the host's env vars above (whitespace stripped, a half-set pair an error).
+   `DestatisCredentials.from_env(host).to_credential()` builds the entry from the env vars above. An entry counts only when its handle is a host name (`genesis`, `regionalstatistik`) or it carries a `host` key. Keys are `host`, `token`, `user`, `password`; several entries for one host are refused. The handle shows in `mloda.explain`, on the plan step and in the plan lock; the value never does.
 
-   An entry counts only when its handle is a host name (`genesis`, `regionalstatistik`) or it carries a `host` key, so another plugin's token is never sent to GENESIS. Keys are `host`, `token`, `user`, `password`. Several entries for one host are refused; keep one. The collection is checked while features resolve, so a misconfigured entry fails the run even when the table is cached. The reader binds the entry at match time: the handle shows in `mloda.explain`, on the plan step (`bound_credential_handle`) and in the plan lock; the value never does. It binds rather than reads at run time because a declared handle must be registered for every run, cached or not, and one handle cannot name both hosts.
-
-   The `genesis_credentials` options key is retired: a feature carrying it, in group or context, chained ones included, is refused at match time. Register the credential in the collection instead, and rotate a token that was passed in `group` (group options are printed with the feature). One run uses one credential per host; there is no per-feature override.
+   The `genesis_credentials` options key is retired and refused at match time.
 2. `GenesisClient` takes `DestatisCredentials(host="genesis", token=...)` (or `user=..., password=...`) for direct protocol use.
 
-With nothing registered for the host, a selection already in the parameter cache is served without credentials, so an offline rerun, `peek` and `retrieval` on a cached table work. A cache miss raises `MissingCredentialsError`, naming the handle and the registration page, before any request. The reader never runs as guest; `allow_guest=True` on `GenesisClient` (send no credential headers) exists for the fixture capture script only. `DestatisReader.peek(value, collection)` takes the collection for a miss.
-
-Credentials scoped to one host are refused on the other (`WrongHostCredentialsError`).
+A cached selection needs no credentials; a cache miss with none registered raises `MissingCredentialsError` before any request. Credentials scoped to one host are refused on the other (`WrongHostCredentialsError`).
 
 ```python
 from mloda_plugin_govdata.feature_groups.destatis import GENESIS_ONLINE, DestatisCredentials, GenesisClient
@@ -65,7 +61,7 @@ A table over the host's download limit raises `GenesisResultTooLarge` (GENESIS s
 
 ## Live tests
 
-Tests marked `genesis_live` are deselected by default and skip with a visible reason when no credentials are set. Run them per host with the env vars above (the tests read them and pass them in):
+Tests marked `genesis_live` are deselected by default and skip with a visible reason when no credentials are set. Run them per host with the env vars above:
 
 ```bash
 GENESIS_TOKEN=... pytest -m "live and genesis_live"
@@ -73,4 +69,4 @@ GENESIS_TOKEN=... pytest -m "live and genesis_live"
 
 ## Notebooks
 
-Tutorials 3 to 5 read `GENESIS_TOKEN` (or the user plus password pair) with `from_env`, pass a `DataAccessCollection` to every run, and stop, naming the reason, when none is set.
+Tutorials 3 to 5 read the env vars with `from_env` and stop, naming the reason, when none are set.

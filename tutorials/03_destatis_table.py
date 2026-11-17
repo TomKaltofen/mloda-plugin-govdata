@@ -51,9 +51,8 @@ def _(mo):
        your token. git ignores this file, so the token stays out of the repository.
     4. Start marimo as in the setup line. It reads `.env` when it starts.
 
-    A user name and password work too (`GENESIS_USER` and `GENESIS_PASSWORD`). The next cell reads them
-    into a `DataAccessCollection`, which every read below receives: the plugin itself never reads the
-    environment. See [credentials](https://github.com/mloda-ai/mloda-plugin-govdata/blob/main/docs/credentials.md).
+    A user name and password work too (`GENESIS_USER` and `GENESIS_PASSWORD`); see
+    [credentials](https://github.com/mloda-ai/mloda-plugin-govdata/blob/main/docs/credentials.md).
     """)
     return
 

@@ -81,7 +81,6 @@ def _(DataAccessCollection, DestatisCredentials, DestatisLocator, GENESIS_ONLINE
         if _credentials is None:
             _why = "No token found: `GENESIS_TOKEN` is not set (nor `GENESIS_USER` and `GENESIS_PASSWORD`)."
         else:
-            # The runs take the token from their DataAccessCollection; the plugin never reads the environment.
             _collection = DataAccessCollection(credentials={"genesis": _credentials.to_credential()})
     except MissingCredentialsError:  # a user name without a password, or the reverse
         _why = "Set both `GENESIS_USER` and `GENESIS_PASSWORD`, or only `GENESIS_TOKEN`."
