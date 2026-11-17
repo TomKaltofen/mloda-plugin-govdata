@@ -48,7 +48,7 @@ with build_client() as client:
 StuttgartPopulationReader.peek(slug)  # {"Stichtag": "date32[day]", "Stadtbezirk": "string", ...}
 ```
 
-It works on every reader (`BundeswahlleiterinReader.peek(kerg)`, `UbaAirReader.peek(uba_measures_url(...))`, `DestatisReader.peek(...)`) and downloads through the cache, so the actual feature request reuses the file. `peek` takes a raw URL, bypassing the `PROPERTY_MAPPING` validation. `describe_columns` returns the same columns with mloda `DataType`s, the form lineage extenders read. A typo in a feature name fails with the available columns and a close-match suggestion. `retrieval` takes the same values and returns the cached copy's record (`retrieved_at`, `sha256`, `provenance`) offline, `None` when it is not cached; a CKAN dataset id needs its distribution URL there, and the provenance names the URL, not the CKAN record.
+It works on every reader (`BundeswahlleiterinReader.peek(kerg)`, `UbaAirReader.peek(uba_measures_url(...))`, `DestatisReader.peek(..., collection)`, which takes the run's `DataAccessCollection` for a cache miss) and downloads through the cache, so the actual feature request reuses the file. `peek` takes a raw URL, bypassing the `PROPERTY_MAPPING` validation. `describe_columns` returns the same columns with mloda `DataType`s, the form lineage extenders read. A typo in a feature name fails with the available columns and a close-match suggestion. `retrieval` takes the same values and returns the cached copy's record (`retrieved_at`, `sha256`, `provenance`) offline, `None` when it is not cached; a CKAN dataset id needs its distribution URL there, and the provenance names the URL, not the CKAN record.
 
 ## Elections (Bundeswahlleiterin)
 
@@ -106,11 +106,16 @@ Columns are `station_id`, `date_start`, `component_id`, `scope_id`, `value`, `da
 Reads a GENESIS table (GENESIS-Online or a Regionalstatistik installation) by table code and parses the ffcsv reply. Needs a free registration, see [credentials.md](credentials.md).
 
 ```python
+import os
+
+from mloda.user import Credential, DataAccessCollection
 from mloda_plugin_govdata.feature_groups.destatis import DestatisReader
 
+genesis = DataAccessCollection(credentials={"genesis": Credential(token=os.environ["GENESIS_TOKEN"])})
 result = mloda.run_all(
     [Feature("value", options={DestatisReader: "12411-0010"})],  # population by Land
     compute_frameworks=["PyArrowTable"],
+    data_access_collection=genesis,
 )
 ```
 

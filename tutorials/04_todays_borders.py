@@ -44,7 +44,7 @@ def _():
     import altair as alt
     import pandas as pd
 
-    from mloda.user import Feature, mloda
+    from mloda.user import DataAccessCollection, Feature, mloda
     from mloda_plugin_govdata.feature_groups.destatis import (
         GENESIS_ONLINE,
         DestatisCredentials,
@@ -56,6 +56,7 @@ def _():
 
     return (
         AgsToNutsFeature,
+        DataAccessCollection,
         DestatisCredentials,
         DestatisLocator,
         DestatisReader,
@@ -71,12 +72,17 @@ def _():
 
 
 @app.cell
-def _(DestatisCredentials, DestatisLocator, GENESIS_ONLINE, MissingCredentialsError, mo):
+def _(DataAccessCollection, DestatisCredentials, DestatisLocator, GENESIS_ONLINE, MissingCredentialsError, mo):
     # Every later cell takes a name from this cell, so mo.stop holds them all back.
     _why = None
+    _collection = None
     try:
-        if DestatisCredentials.from_env(GENESIS_ONLINE) is None:
+        _credentials = DestatisCredentials.from_env(GENESIS_ONLINE)
+        if _credentials is None:
             _why = "No token found: `GENESIS_TOKEN` is not set (nor `GENESIS_USER` and `GENESIS_PASSWORD`)."
+        else:
+            # The runs take the token from their DataAccessCollection; the plugin never reads the environment.
+            _collection = DataAccessCollection(credentials={"genesis": _credentials.to_credential()})
     except MissingCredentialsError:  # a user name without a password, or the reverse
         _why = "Set both `GENESIS_USER` and `GENESIS_PASSWORD`, or only `GENESIS_TOKEN`."
     except ValueError:  # a character that cannot be part of a token, e.g. a copied quote mark
@@ -85,11 +91,12 @@ def _(DestatisCredentials, DestatisLocator, GENESIS_ONLINE, MissingCredentialsEr
         _why is not None,
         mo.md(f"**Stopped.** {_why} See *Get a token* in tutorial 3, then start marimo again."),
     )
+    collection = _collection
     TABLE = "12411-0015"
     goettingen = DestatisLocator(
         TABLE, regionalvariable="KREISE", regionalkey=["03152", "03156", "03159"], startyear=2011
     )
-    return TABLE, goettingen
+    return TABLE, collection, goettingen
 
 
 @app.cell
@@ -106,12 +113,13 @@ def _(mo):
 
 
 @app.cell
-def _(DestatisReader, Feature, goettingen, mloda):
+def _(DestatisReader, Feature, collection, goettingen, mloda):
     _columns = ["time", "1_variable_attribute_code", "1_variable_attribute_label", "value", "value_marker"]
     _result = mloda.run_all(
         [Feature(_name, options={DestatisReader: goettingen}) for _name in _columns],
         compute_frameworks=["PyArrowTable"],
         column_ordering="request_order",
+        data_access_collection=collection,
     )
     raw = _result[0].to_pandas()
     raw.pivot(index="time", columns="1_variable_attribute_label", values="value")  # one column per district
@@ -156,10 +164,14 @@ def _(mo):
 
 
 @app.cell
-def _(DestatisReader, Feature, KreisRebaseFeature, goettingen, mloda):
+def _(DestatisReader, Feature, KreisRebaseFeature, collection, goettingen, mloda):
     KreisRebaseFeature.fetch_reference()
     rebase_options = {DestatisReader: goettingen, "rebase_from_year": 2015, "rebase_to_year": 2016}
-    _result = mloda.run_all([Feature("value__rebased", options=rebase_options)], compute_frameworks=["PyArrowTable"])
+    _result = mloda.run_all(
+        [Feature("value__rebased", options=rebase_options)],
+        compute_frameworks=["PyArrowTable"],
+        data_access_collection=collection,
+    )
     rebased = _result[0].to_pandas().sort_values("value__rebased~year", ignore_index=True)
     rebased[[f"value__rebased~{_part}" for _part in ("key", "year", "value", "flag", "sources")]]
     return rebase_options, rebased
@@ -203,10 +215,12 @@ def _(mo):
 
 
 @app.cell
-def _(AgsToNutsFeature, Feature, mloda, rebase_options):
+def _(AgsToNutsFeature, Feature, collection, mloda, rebase_options):
     AgsToNutsFeature.fetch_reference()
     _name = "value__rebased~key__nuts2024"
-    _result = mloda.run_all([Feature(_name, options=rebase_options)], compute_frameworks=["PyArrowTable"])
+    _result = mloda.run_all(
+        [Feature(_name, options=rebase_options)], compute_frameworks=["PyArrowTable"], data_access_collection=collection
+    )
     nuts = _result[0].to_pandas()
     nuts[[f"{_name}~{_part}" for _part in ("key", "nuts1", "nuts2", "nuts3", "version")]].drop_duplicates()
     return (nuts,)
@@ -287,7 +301,7 @@ def _(DestatisLocator, TABLE, goettingen, mo):
 
 
 @app.cell
-def _(DestatisReader, Feature, alt, merger, mloda, pd, rebased):
+def _(DestatisReader, Feature, alt, collection, merger, mloda, pd, rebased):
     _after_step_2 = rebased  # Step 2 fetched the key file this cell needs
     _locator, _from_year = merger.value
     _options = {DestatisReader: _locator}
@@ -296,10 +310,13 @@ def _(DestatisReader, Feature, alt, merger, mloda, pd, rebased):
         [Feature(_name, options=_options) for _name in _columns],
         compute_frameworks=["PyArrowTable"],
         column_ordering="request_order",
+        data_access_collection=collection,
     )[0].to_pandas()
     _years = {"rebase_from_year": _from_year, "rebase_to_year": _from_year + 1}
     _rebased = mloda.run_all(
-        [Feature("value__rebased", options={**_options, **_years})], compute_frameworks=["PyArrowTable"]
+        [Feature("value__rebased", options={**_options, **_years})],
+        compute_frameworks=["PyArrowTable"],
+        data_access_collection=collection,
     )[0].to_pandas()
     # Formatting only: one long table, one line per series.
     _lines = pd.concat(

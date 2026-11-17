@@ -27,6 +27,7 @@ from .conftest import (
     LAND_ZIP,
     ffcsv_zip_with_rows,
     fixture_crosswalk,
+    genesis_collection,
     gv_isys_changes,
     lau_rows,
 )
@@ -37,7 +38,7 @@ PARTS = AgsToNutsFeature.OUTPUT_PARTS
 
 
 def _run(features: list[Feature | str]) -> Any:
-    return mloda.run_all(features, compute_frameworks=["PyArrowTable"])
+    return mloda.run_all(features, compute_frameworks=["PyArrowTable"], data_access_collection=genesis_collection())
 
 
 def test_matches_only_the_pinned_nuts_version() -> None:

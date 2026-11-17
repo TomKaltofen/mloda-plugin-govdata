@@ -4,7 +4,7 @@
       "compute_framework": "mloda_plugins.compute_framework.base_implementations.pyarrow.table:PyArrowTable",
       "compute_framework_reason": "only allowed framework",
       "feature_group": "mloda_plugin_govdata.feature_groups.destatis.reader:DestatisReader",
-      "feature_group_hash": "d7924f788814fc70c960c78e65f2d1004c0c8266d7acb8345c5e68b68222c390",
+      "feature_group_hash": "89e87f2f86d3e79ea58bff42fdf85b741f5e206b8f48df2dd7df52effa5ac204",
       "feature_names": [
         "1_variable_attribute_code",
         "2_variable_attribute_code",
@@ -25,7 +25,7 @@
       "compute_framework": "mloda_plugins.compute_framework.base_implementations.pyarrow.table:PyArrowTable",
       "compute_framework_reason": "only allowed framework",
       "feature_group": "mloda_plugin_govdata.feature_groups.destatis.reader:DestatisReader",
-      "feature_group_hash": "d7924f788814fc70c960c78e65f2d1004c0c8266d7acb8345c5e68b68222c390",
+      "feature_group_hash": "89e87f2f86d3e79ea58bff42fdf85b741f5e206b8f48df2dd7df52effa5ac204",
       "feature_names": [
         "1_variable_attribute_code",
         "time",
