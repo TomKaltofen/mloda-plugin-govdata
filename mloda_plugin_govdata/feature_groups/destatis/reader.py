@@ -109,9 +109,16 @@ class DestatisReader(BaseGovDataReader[DestatisLocator]):
         return match.access.entry if isinstance(match.access, _CollectionAccess) else None
 
     @classmethod
-    def peek(cls, value: Any, data_access_collection: DataAccessCollection | None = None) -> dict[str, str]:
+    def peek(
+        cls,
+        value: Any,
+        data_access_collection: DataAccessCollection | None = None,
+        *,
+        options: Mapping[str, Any] | None = None,
+    ) -> dict[str, str]:
         """As the base ``peek``; a cache miss needs the host's credentials in ``data_access_collection``."""
-        table = cls._read_table(cls._bind(cls._coerce_locator(value), data_access_collection))
+        locator = cls._bind(cls._coerce_locator(value), data_access_collection)
+        table = cls._read_table(locator, cls._peek_options(options))
         return {field.name: str(field.type) for field in table.schema}
 
     @classmethod

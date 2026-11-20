@@ -114,9 +114,6 @@ def _(mo):
       so on count the votes for each party; more on them below.
     - A column ending in `p` is a percentage, written with a decimal comma (`64,9`). So read the numbers
       as decimal numbers.
-
-    In tutorials 1 and 2, `peek` listed the columns. It reads with the reader's default layout, so on this
-    file it fails; the header line above lists the columns instead.
     """)
     return
 
@@ -135,15 +132,11 @@ def _(mo):
 
 @app.cell
 def _(
-    AGH_2023_URL,
-    BundeswahlleiterinReader,
     ColumnType,
-    Feature,
     OPTION_WAHL_HEADER_ROWS,
     OPTION_WAHL_LABEL_COLUMNS,
     OPTION_WAHL_SKIPROWS,
     OPTION_WAHL_VALUE_TYPE,
-    mloda,
 ):
     BERLIN_LAYOUT = {
         OPTION_WAHL_SKIPROWS: 0,
@@ -151,6 +144,26 @@ def _(
         OPTION_WAHL_LABEL_COLUMNS: 12,
         OPTION_WAHL_VALUE_TYPE: ColumnType.FLOAT,
     }
+    return (BERLIN_LAYOUT,)
+
+
+@app.cell
+def _(mo):
+    mo.md("""
+    In tutorials 1 and 2, `peek` listed the columns you can ask for. Give it the layout, and it does the
+    same for this file:
+    """)
+    return
+
+
+@app.cell
+def _(AGH_2023_URL, BERLIN_LAYOUT, BundeswahlleiterinReader):
+    BundeswahlleiterinReader.peek(AGH_2023_URL, options=BERLIN_LAYOUT)
+    return
+
+
+@app.cell
+def _(AGH_2023_URL, BERLIN_LAYOUT, BundeswahlleiterinReader, Feature, mloda):
     COLUMNS = ["Bezirksname", "WBezArt", "WberIns", "Waehler", "Gueltig", "P01"]
     _options = {BundeswahlleiterinReader: AGH_2023_URL, **BERLIN_LAYOUT}
     _result = mloda.run_all(
@@ -160,7 +173,7 @@ def _(
     )
     agh_2023 = _result[0].to_pandas()
     agh_2023
-    return BERLIN_LAYOUT, COLUMNS, agh_2023
+    return COLUMNS, agh_2023
 
 
 @app.cell

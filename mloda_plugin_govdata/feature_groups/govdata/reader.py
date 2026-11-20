@@ -15,7 +15,16 @@ from pathlib import Path
 from typing import Any, ClassVar, Generic, TypeVar, cast
 
 import pyarrow as pa
-from mloda.provider import ClaimRoute, FeatureSet, NamePolicy, SourceMatch, record_match_rejection, scrub_credentials
+from mloda.provider import (
+    ClaimRoute,
+    FeatureSet,
+    NamePolicy,
+    PropertyValidationError,
+    SourceMatch,
+    record_match_rejection,
+    scrub_credentials,
+    validate_property_values,
+)
 from mloda.user import DataAccessCollection, DataType, Options
 from mloda.user.pyarrow import PyArrowTable  # noqa: F401
 
@@ -104,8 +113,7 @@ class BaseGovDataReader(GovDataFeature, Generic[LocatorT]):
 
     @classmethod
     def load_neutral(cls, match: SourceMatch, features: FeatureSet) -> Any:
-        # get_all_names() is sorted (deterministic column order); str() so messages print plain names.
-        requested = [str(name) for name in features.get_all_names()]
+        requested = list(features.get_all_names())  # sorted: deterministic column order
         locator = match.access
         table = cls._read_table(locator, features.options)
         available = set(table.column_names)
@@ -115,12 +123,13 @@ class BaseGovDataReader(GovDataFeature, Generic[LocatorT]):
         return table.select(requested)
 
     @classmethod
-    def peek(cls, value: Any) -> dict[str, str]:
+    def peek(cls, value: Any, *, options: Mapping[str, Any] | None = None) -> dict[str, str]:
         """Columns selectable as features for a pointer value, as name to Arrow type.
 
+        ``options`` are the reader options a feature would carry (e.g. a file layout), validated the same way.
         Downloads through the cache, so a following feature request reuses the file.
         """
-        table = cls._read_table(cls._coerce_locator(value))
+        table = cls._read_table(cls._coerce_locator(value), cls._peek_options(options))
         return {field.name: str(field.type) for field in table.schema}
 
     @classmethod
@@ -147,7 +156,7 @@ class BaseGovDataReader(GovDataFeature, Generic[LocatorT]):
 
     @classmethod
     def describe_columns(cls, match: SourceMatch) -> dict[str, DataType | None]:
-        """``peek`` as mloda's column discovery (lineage extenders call it); downloads through the cache too."""
+        """``peek`` as mloda's column discovery (lineage extenders call it), with the reader's default options."""
         table = cls._read_table(match.access)
         return {field.name: DataType.from_arrow_type_safe(field.type) for field in table.schema}
 
@@ -167,8 +176,21 @@ class BaseGovDataReader(GovDataFeature, Generic[LocatorT]):
 
     @classmethod
     def _option(cls, key: str, options: Options | None) -> Any:
-        """``read_option`` that also serves ``peek``, which has no feature options."""
+        """``read_option`` that accepts ``None`` options (``describe_columns``, a bare ``peek``)."""
         return cls.read_option(key, options if options is not None else Options())
+
+    @classmethod
+    def _peek_options(cls, options: Mapping[str, Any] | None) -> Options | None:
+        if options is None:
+            return None
+        values = dict(options)
+        # Only the keys given: a reader may require options that peek never reads (UBA's query).
+        specs = {key: spec for key, spec in (cls.PROPERTY_MAPPING or {}).items() if key in values}
+        validate_property_values(values, specs, closed_world=False)
+        for key, spec in specs.items():
+            if spec.match_guard is not None and not spec.match_guard(values[key]):
+                raise PropertyValidationError(key, f"must be {spec.expected or 'accepted by its match guard'}")
+        return Options(values)
 
     @classmethod
     def _coerce_locator(cls, value: Any) -> LocatorT:
