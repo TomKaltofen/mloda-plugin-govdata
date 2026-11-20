@@ -398,6 +398,37 @@ def test_peek_elections_level2(fixtures_dir: Path, tmp_path: Path, monkeypatch: 
     assert record.provenance.license == BundeswahlleiterinReader.LICENSE
 
 
+@pytest.mark.parametrize(
+    ("url", "fixture", "options", "text_column", "value_column"),
+    [
+        (KERG2_URL, "kerg2_sample.csv", KERG2_OPTIONS, "Gewählt", "Anzahl"),
+        (BERLIN_URL, "berlin_wahl_sample.csv", BERLIN_OPTIONS, "Bezirksname", "Gueltig"),
+    ],
+)
+@respx.mock
+def test_peek_reads_with_the_layout_options(
+    url: str,
+    fixture: str,
+    options: dict[str, Any],
+    text_column: str,
+    value_column: str,
+    fixtures_dir: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(BundeswahlleiterinReader, "cache_dir", str(tmp_path))
+    payload = (fixtures_dir / fixture).read_bytes()
+    respx.get(url).mock(return_value=httpx.Response(200, content=payload, headers={"ETag": '"l1"'}))
+    columns = BundeswahlleiterinReader.peek(url, options=options)
+    assert (columns[text_column], columns[value_column]) == ("string", "double")
+
+
+@respx.mock
+def test_peek_validates_the_layout_options_before_any_network_call() -> None:
+    with pytest.raises(ValueError, match=OPTION_WAHL_SKIPROWS):
+        BundeswahlleiterinReader.peek(KERG_URL, options={OPTION_WAHL_SKIPROWS: -1})
+
+
 @respx.mock
 def test_peek_uba_level2(fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(UbaAirReader, "cache_dir", str(tmp_path))
@@ -502,21 +533,6 @@ def test_unknown_feature_names_available_columns(
     assert "Unknown feature(s) 'Einwohner_'" in message
     assert "Available: Alter in 10 Gruppen, Einwohner, Stadtbezirk, Stichtag." in message
     assert "Did you mean 'Einwohner' instead of 'Einwohner_'?" in message
-
-
-@respx.mock
-def test_unknown_feature_message_prints_plain_names(
-    fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    # FeatureSet names are FeatureName; the message must not leak the wrapper repr.
-    monkeypatch.setattr(GovDataReader, "cache_dir", str(tmp_path))
-    _mock_population_endpoints(fixtures_dir)
-    features = FeatureSet([Feature("Nr"), Feature("Stadtbezirk")])
-    with pytest.raises(ValueError) as excinfo:
-        GovDataReader.load_neutral(_match(GovDataReader, SLUG), features)
-    message = str(excinfo.value)
-    assert "Unknown feature(s) 'Nr'" in message
-    assert "FeatureName" not in message
 
 
 @respx.mock

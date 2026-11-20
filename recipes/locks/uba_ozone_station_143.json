@@ -4,7 +4,7 @@
       "compute_framework": "mloda_plugins.compute_framework.base_implementations.pyarrow.table:PyArrowTable",
       "compute_framework_reason": "only allowed framework",
       "feature_group": "mloda_plugin_govdata.feature_groups.govdata.uba:UbaAirReader",
-      "feature_group_hash": "ad6834965de4ed68de1084912da1c14c73d0db3da8645e00d7a65c52cdcf1a6d",
+      "feature_group_hash": "3cfeba9449fc9b346799db6a3d6a71b2c72f61631a5bdaa54b590a3c0d20a534",
       "feature_names": [
         "date_start",
         "index",

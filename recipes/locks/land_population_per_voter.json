@@ -4,7 +4,7 @@
       "compute_framework": "mloda_plugins.compute_framework.base_implementations.pyarrow.table:PyArrowTable",
       "compute_framework_reason": "only allowed framework",
       "feature_group": "mloda_plugin_govdata.feature_groups.destatis.reader:DestatisReader",
-      "feature_group_hash": "914385570e8ada768b3aacb5aef553c0746cd6cd5cd9708d01a7a20c162614eb",
+      "feature_group_hash": "7c09f07ed99d7a807180c00ecf5f2c4d649f74346e7695c99a5acc6e1a445a8d",
       "feature_names": [
         "1_variable_attribute_code",
         "1_variable_attribute_label",
@@ -24,7 +24,7 @@
       "compute_framework": "mloda_plugins.compute_framework.base_implementations.pyarrow.table:PyArrowTable",
       "compute_framework_reason": "only allowed framework",
       "feature_group": "mloda_plugin_govdata.feature_groups.govdata.bundeswahlleiterin:BundeswahlleiterinReader",
-      "feature_group_hash": "6e9175648a3f89df0e8394eb2308101f7aa5e646f16001c265fd1a0d3cac7d6c",
+      "feature_group_hash": "cecdfce685ac1229ae333fc29446afd959b668665e465f5e281eb6d6e6dbe854",
       "feature_names": [
         "Christlich-Soziale Union in Bayern e.V. Zweitstimmen Endg\u00fcltig",
         "Gebiet",
