@@ -29,7 +29,7 @@ from mloda_plugin_govdata.feature_groups.govdata.core.provenance import FetchedP
 from mloda_plugin_govdata.feature_groups.govdata.feature import GovDataFeature
 from mloda_plugin_govdata.feature_groups.govdata.population import StuttgartPopulationReader
 from mloda_plugin_govdata.feature_groups.govdata.reader import BaseGovDataReader, GovDataReader
-from mloda_plugin_govdata.feature_groups.govdata.uba import UbaAirReader, uba_measures_url
+from mloda_plugin_govdata.feature_groups.govdata.uba import OPTION_UBA_LANG, UbaAirReader, uba_measures_url
 
 SLUG = "einwohner-nach-altersgruppen-und-stadtbezirken"
 PACKAGE_SHOW = "https://ckan.govdata.de/api/3/action/package_show"
@@ -423,10 +423,11 @@ def test_peek_reads_with_the_layout_options(
     assert (columns[text_column], columns[value_column]) == ("string", "double")
 
 
+@pytest.mark.parametrize("bad_value", [-1, [5, 9]])
 @respx.mock
-def test_peek_validates_the_layout_options_before_any_network_call() -> None:
+def test_peek_validates_the_layout_options_before_any_network_call(bad_value: Any) -> None:
     with pytest.raises(ValueError, match=OPTION_WAHL_SKIPROWS):
-        BundeswahlleiterinReader.peek(KERG_URL, options={OPTION_WAHL_SKIPROWS: -1})
+        BundeswahlleiterinReader.peek(KERG_URL, options={OPTION_WAHL_SKIPROWS: bad_value})
 
 
 @respx.mock
@@ -435,7 +436,7 @@ def test_peek_uba_level2(fixtures_dir: Path, tmp_path: Path, monkeypatch: pytest
     url = uba_measures_url(station=143, component=3, scope=2, date_from="2025-01-01", date_to="2025-01-01")
     payload = (fixtures_dir / "uba_measures.json").read_bytes()
     respx.get(url).mock(return_value=httpx.Response(200, content=payload, headers={"ETag": '"u1"'}))
-    columns = UbaAirReader.peek(url)
+    columns = UbaAirReader.peek(url, options={OPTION_UBA_LANG: "en"})  # required query keys need not be passed
     assert columns["station_id"] == "int64"
     assert columns["value"] == "double"
 

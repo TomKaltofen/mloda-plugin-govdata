@@ -4,7 +4,7 @@
       "compute_framework": "mloda_plugins.compute_framework.base_implementations.pyarrow.table:PyArrowTable",
       "compute_framework_reason": "only allowed framework",
       "feature_group": "mloda_plugin_govdata.feature_groups.govdata.bundeswahlleiterin:BundeswahlleiterinReader",
-      "feature_group_hash": "cecdfce685ac1229ae333fc29446afd959b668665e465f5e281eb6d6e6dbe854",
+      "feature_group_hash": "92cf53f09165e9861b09a23ed34b80900f4e9dac2dcbbdc17bcfb0099db80f4f",
       "feature_names": [
         "Christlich-Soziale Union in Bayern e.V. Zweitstimmen Endg\u00fcltig",
         "Gebiet",

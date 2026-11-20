@@ -19,6 +19,7 @@ from mloda.provider import (
     ClaimRoute,
     FeatureSet,
     NamePolicy,
+    PropertyValidationError,
     SourceMatch,
     record_match_rejection,
     scrub_credentials,
@@ -182,8 +183,14 @@ class BaseGovDataReader(GovDataFeature, Generic[LocatorT]):
     def _peek_options(cls, options: Mapping[str, Any] | None) -> Options | None:
         if options is None:
             return None
-        validate_property_values(dict(options), cls.PROPERTY_MAPPING or {}, closed_world=False)
-        return Options(dict(options))
+        values = dict(options)
+        # Only the keys given: a reader may require options that peek never reads (UBA's query).
+        specs = {key: spec for key, spec in (cls.PROPERTY_MAPPING or {}).items() if key in values}
+        validate_property_values(values, specs, closed_world=False)
+        for key, spec in specs.items():
+            if spec.match_guard is not None and not spec.match_guard(values[key]):
+                raise PropertyValidationError(key, f"must be {spec.expected or 'accepted by its match guard'}")
+        return Options(values)
 
     @classmethod
     def _coerce_locator(cls, value: Any) -> LocatorT:

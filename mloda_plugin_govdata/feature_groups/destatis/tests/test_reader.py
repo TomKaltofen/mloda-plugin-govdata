@@ -170,7 +170,7 @@ def test_peek_on_a_cache_miss_sends_the_collection_token(
 ) -> None:
     _env_token_only(monkeypatch, tmp_path)
     route = _mock_tablefile((fixtures_dir / "ffcsv" / FFCSV_FIXTURE).read_bytes())
-    assert DestatisReader.peek(TABLE_CODE, _collection())["value"] == "double"
+    assert DestatisReader.peek(TABLE_CODE, _collection(), options={})["value"] == "double"
     assert route.calls.last.request.headers["username"] == TOKEN
 
 
