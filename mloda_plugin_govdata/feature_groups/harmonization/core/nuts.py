@@ -71,7 +71,7 @@ def _kreis_index(lau_rows: Sequence[LauNutsRow]) -> dict[str, str]:
 
 
 def _kreis_redirect_candidates(key: str, changes: Sequence[GvIsysChange]) -> set[str]:
-    return {change.to_ags for change in changes if change.level == "Kreis" and change.from_ags == key}
+    return {c.to_ags for c in changes if c.level == "Kreis" and c.from_ags == key and c.to_ags is not None}
 
 
 def _resolve_one(
