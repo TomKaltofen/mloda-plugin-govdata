@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
-from typing import Any, ClassVar, TypeVar
+from typing import Any, ClassVar
 
 from mloda.provider import (
     NAME_STAGE,
@@ -19,19 +18,8 @@ from mloda.user.pyarrow import PyArrowTable
 
 from ..destatis.core.auth import OPTION_GENESIS_CREDENTIALS
 from ..govdata.core.cache import DEFAULT_CACHE_DIR, CacheMissError, DownloadCache
+from .core.reference.download import fetch_pinned
 from .core.reference.sources import ReferenceCopy, ReferenceSource
-
-_T = TypeVar("_T")
-
-
-def offline_first(load: Callable[..., _T], *, fetch: bool) -> _T:
-    """One pinned file through ``load(revalidate=...)``: offline first; with ``fetch``, a cache miss is fetched once."""
-    try:
-        return load(revalidate=False)
-    except CacheMissError:
-        if not fetch:
-            raise
-        return load(revalidate=True)
 
 
 def _source_names(options: Options) -> set[str]:
@@ -55,12 +43,20 @@ class HarmonizationFeature(FeatureChainParserMixin, FeatureGroup):
 
     @classmethod
     def fetch_reference(cls) -> None:
-        """Puts this group's reference tables in ``cache_dir``: read offline when cached, else fetched once.
+        """Puts this group's reference files in ``cache_dir`` unparsed: kept when cached, else fetched once.
 
-        A fetched file that does not match its pinned sha256 raises ``SourceIntegrityError``.
+        A fetched file that does not match its pinned sha256 raises ``SourceIntegrityError``; an unpinned file
+        is not checked until the first run reads it.
         """
+        files = cls._reference_files()
+        if not files:
+            raise NotImplementedError(f"{cls.__name__} reads no reference table")
         with DownloadCache(Path(cls.cache_dir)) as cache:
-            cls._read_reference(cache, fetch=True)
+            for source in files:
+                try:
+                    fetch_pinned(cache, source)
+                except CacheMissError:
+                    fetch_pinned(cache, source, revalidate=True)
 
     @classmethod
     def reference_sources(cls) -> list[ReferenceCopy]:
@@ -78,12 +74,12 @@ class HarmonizationFeature(FeatureChainParserMixin, FeatureGroup):
 
     @classmethod
     def _reference_files(cls) -> tuple[ReferenceSource, ...]:
-        """Every file ``_read_reference`` reads."""
+        """Every file ``_read_reference`` reads; ``fetch_reference`` fetches exactly these."""
         return ()
 
     @classmethod
-    def _read_reference(cls, cache: DownloadCache, *, fetch: bool = False) -> Any:
-        """The group's reference tables from ``cache``, each file through ``offline_first``."""
+    def _read_reference(cls, cache: DownloadCache) -> Any:
+        """The group's reference tables, parsed from ``cache`` offline; a miss raises ``CacheMissError``."""
         raise NotImplementedError(f"{cls.__name__} reads no reference table")
 
     @classmethod

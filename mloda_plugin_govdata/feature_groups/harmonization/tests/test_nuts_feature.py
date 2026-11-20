@@ -18,6 +18,8 @@ from mloda_plugin_govdata.feature_groups.harmonization.core.reference.sources im
     EUROSTAT_LAU_NUTS,
     GV_ISYS_2016_SHA256,
     ReferenceCopy,
+    ReferenceSource,
+    gv_isys_source,
 )
 from mloda_plugin_govdata.feature_groups.harmonization.nuts import NULL_KEY, AgsToNutsFeature
 
@@ -185,20 +187,22 @@ def test_fetch_reference_fetches_only_the_file_missing_from_the_cache(
 ) -> None:
     calls: list[tuple[str, bool]] = []
 
-    def changes(year: int, cache: Any, *, revalidate: bool = False) -> list[Any]:
-        calls.append((f"gv-isys {year}", revalidate))
-        return []
-
-    def crosswalk(cache: Any, *, gv_isys_changes: Any = (), revalidate: bool = False) -> Any:
-        calls.append(("crosswalk", revalidate))
-        if not revalidate:
+    def fetch(cache: Any, source: ReferenceSource, *, revalidate: bool = False) -> Path:
+        calls.append((source.url, revalidate))
+        if source == EUROSTAT_LAU_NUTS and not revalidate:
             raise CacheMissError("miss")
+        return tmp_path / "unused"
 
-    monkeypatch.setattr("mloda_plugin_govdata.feature_groups.harmonization.nuts.load_gv_isys_changes", changes)
-    monkeypatch.setattr("mloda_plugin_govdata.feature_groups.harmonization.nuts.load_nuts_crosswalk", crosswalk)
+    def parse(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("fetch_reference parsed a file")
+
+    monkeypatch.setattr("mloda_plugin_govdata.feature_groups.harmonization.base.fetch_pinned", fetch)
+    monkeypatch.setattr("mloda_plugin_govdata.feature_groups.harmonization.nuts.load_gv_isys_changes", parse)
+    monkeypatch.setattr("mloda_plugin_govdata.feature_groups.harmonization.nuts.load_nuts_crosswalk", parse)
     monkeypatch.setattr(AgsToNutsFeature, "cache_dir", str(tmp_path))
     AgsToNutsFeature.fetch_reference()
-    assert calls == [("gv-isys 2016", False), ("crosswalk", False), ("crosswalk", True)]
+    codes = EUROSTAT_LAU_NUTS.url
+    assert calls == [(codes, False), (codes, True), (gv_isys_source(2016).url, False)]
 
 
 @respx.mock
