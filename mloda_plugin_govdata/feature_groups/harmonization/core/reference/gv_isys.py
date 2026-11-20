@@ -53,10 +53,11 @@ def parse_gv_isys_workbook(path: str | os.PathLike[str]) -> list[GvIsysChange]:
     donating/dissolving unit).
     """
     workbook = load_workbook(path)
-    sheet = workbook[workbook.sheetnames[0]]
+    # The published file opens with a cover sheet, so read every sheet.
+    rows = (cells for sheet in workbook.worksheets for cells in sheet.iter_rows(values_only=True))
 
     changes: list[GvIsysChange] = []
-    for cells in sheet.iter_rows(values_only=True):
+    for cells in rows:
         change_id = cells[0]
         if not isinstance(change_id, str) or not _CHANGE_ID.match(change_id):
             continue  # title, blank, or header row; data rows are self-describing
@@ -74,7 +75,7 @@ def parse_gv_isys_workbook(path: str | os.PathLike[str]) -> list[GvIsysChange]:
             to_name,
             legal_date,
             statistical_date,
-        ) = cells
+        ) = cells[:13]  # read-only mode pads each row to the sheet's dimension
         changes.append(
             GvIsysChange(
                 change_id=change_id,

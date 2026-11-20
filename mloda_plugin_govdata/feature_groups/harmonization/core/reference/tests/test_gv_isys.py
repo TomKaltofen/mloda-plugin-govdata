@@ -2,8 +2,10 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+import openpyxl
 import pytest
 
+from mloda_plugin_govdata.feature_groups.govdata.core.cache import DownloadCache
 from mloda_plugin_govdata.feature_groups.harmonization.core.reference import gv_isys
 from mloda_plugin_govdata.feature_groups.harmonization.core.reference.gv_isys import (
     load_gv_isys_changes,
@@ -28,6 +30,23 @@ def test_ags_values_are_stripped_of_trailing_padding(fixtures_dir: Path) -> None
     # The raw sheet stores the AGS column with trailing whitespace ("03152   ").
     changes = parse_gv_isys_workbook(fixtures_dir / "gv-isys-2016-extract.xlsx")
     assert all(c.from_ags == c.from_ags.strip() for c in changes)
+
+
+def test_reads_the_data_sheet_behind_a_cover_sheet_with_padded_rows(fixtures_dir: Path, tmp_path: Path) -> None:
+    # The published file opens with a cover sheet, and its sheet dimension pads rows past the 13 columns.
+    extract = fixtures_dir / "gv-isys-2016-extract.xlsx"
+    source = openpyxl.load_workbook(extract).active
+    workbook = openpyxl.Workbook()
+    cover = workbook.active
+    assert source is not None and cover is not None
+    cover.title = "Deckblatt"
+    sheet = workbook.create_sheet("Gebietsaenderungen 2016")
+    sheet.cell(row=1, column=20, value="widens the dimension")
+    for row in source.iter_rows(values_only=True):
+        sheet.append(row)
+    made = tmp_path / "made.xlsx"
+    workbook.save(made)
+    assert parse_gv_isys_workbook(made) == parse_gv_isys_workbook(extract)
 
 
 def test_effective_dates_parsed(fixtures_dir: Path) -> None:
@@ -70,3 +89,11 @@ def test_load_leaves_an_unknown_year_unpinned(monkeypatch: pytest.MonkeyPatch) -
     load_gv_isys_changes(2017, cache=object())  # type: ignore[arg-type]
     assert captured["source"].sha256 is None
     assert gv_isys_source(2017).sha256 is None
+
+
+@pytest.mark.live
+def test_the_pinned_real_2016_file_holds_the_goettingen_merger(tmp_path: Path) -> None:
+    with DownloadCache(tmp_path) as cache:
+        changes = load_gv_isys_changes(2016, cache, revalidate=True)
+    merged = {(c.from_ags, c.to_ags) for c in changes if c.level == "Kreis"}
+    assert merged == {("03152", "03159"), ("03156", "03159")}
