@@ -118,5 +118,5 @@ def test_the_pinned_real_2016_file_holds_the_goettingen_merger(tmp_path: Path) -
         changes = load_gv_isys_changes(2016, cache, revalidate=True)
     merged = {(c.from_ags, c.to_ags) for c in changes if c.level == "Kreis"}
     assert merged == {("03152", "03159"), ("03156", "03159")}
-    assert "None" not in {c.from_ags for c in changes} | {c.to_ags for c in changes}
+    assert all(code is None or code.isdigit() for c in changes for code in (c.from_ags, c.to_ags))
     assert {c.effective_date_statistical.year for c in changes} == {2016}
