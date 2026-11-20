@@ -4,7 +4,7 @@ Flow, on the shared ``BaseGovDataReader`` seam:
     _source_locator             pointer value -> DestatisLocator; declines chained and ``~part`` names
     find_sources                binds the run's DataAccessCollection credentials for the host to the match
     _fetch                      locator.tablefile_fields() -> ParameterCache hit, or a GenesisClient POST
-                                on a miss (credentials: the collection, then env)
+                                on a miss (credentials: the bound collection entry only; none raises)
     _parse                      zip on disk -> parse_ffcsv_zip -> typed Arrow table
 """
 
@@ -80,26 +80,39 @@ class DestatisReader(BaseGovDataReader[DestatisLocator]):
         if not matches:
             return matches
         (match,) = matches
-        host = resolve_host(match.access.host)
         # Each _abort raises a marked abort, or declines with the reason inside mloda's global filter probe.
         try:
-            refuse_option_credentials(options, host)
+            refuse_option_credentials(options, resolve_host(match.access.host))
         except ValueError as exc:
             cls._abort(exc, code=CoreDeclineCode.OPTION_VALUE_REJECTED)
             return []
         try:
-            found = credentials_from_collection(data_access_collection, host)
+            access = cls._bind(match.access, data_access_collection)
         except (ValueError, GenesisAuthError) as exc:
             cls._abort(ValueError(str(exc)), code=CoreDeclineCode.CREDENTIALS_INVALID)
             return []
+        return [SourceMatch(match.source, access)]
+
+    @classmethod
+    def _bind(
+        cls, locator: DestatisLocator, collection: DataAccessCollection | None
+    ) -> DestatisLocator | _CollectionAccess:
+        """The locator with the collection's entry for its host, or the bare locator when none is registered."""
+        found = credentials_from_collection(collection, resolve_host(locator.host))
         if found is None:
-            return matches
+            return locator
         entry, credentials = found
-        return [SourceMatch(match.source, _CollectionAccess(match.access, credentials, entry))]
+        return _CollectionAccess(locator, credentials, entry)
 
     @classmethod
     def match_credentials(cls, match: SourceMatch) -> Any | None:
         return match.access.entry if isinstance(match.access, _CollectionAccess) else None
+
+    @classmethod
+    def peek(cls, value: Any, data_access_collection: DataAccessCollection | None = None) -> dict[str, str]:
+        """As the base ``peek``; a cache miss needs the host's credentials in ``data_access_collection``."""
+        table = cls._read_table(cls._bind(cls._coerce_locator(value), data_access_collection))
+        return {field.name: str(field.type) for field in table.schema}
 
     @classmethod
     def _read_table(cls, locator: DestatisLocator | _CollectionAccess, options: Options | None = None) -> pa.Table:
@@ -116,7 +129,7 @@ class DestatisReader(BaseGovDataReader[DestatisLocator]):
         options: Options | None = None,
         collection_credentials: DestatisCredentials | None = None,
     ) -> FetchedPayload:
-        """POSTs (or reuses a cached reply for) the selection; credentials resolve lazily on a miss only."""
+        """POSTs (or reuses a cached reply for) the selection; credentials are needed on a miss only."""
         host = resolve_host(locator.host)
         fields = locator.tablefile_fields()
         cache = ParameterCache(cls.cache_dir)

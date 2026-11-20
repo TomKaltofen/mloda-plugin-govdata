@@ -50,11 +50,16 @@ result = mloda.run_all(
 Destatis, with a free [GENESIS account](https://github.com/mloda-ai/mloda-plugin-govdata/blob/main/docs/credentials.md):
 
 ```python
+import os
+
+from mloda.user import Credential, DataAccessCollection
 from mloda_plugin_govdata.feature_groups.destatis import DestatisReader
 
+genesis = DataAccessCollection(credentials={"genesis": Credential(token=os.environ["GENESIS_TOKEN"])})
 result = mloda.run_all(
     [Feature("value", options={DestatisReader: "12411-0010"})],  # population by Land
     compute_frameworks=["PyArrowTable"],
+    data_access_collection=genesis,
 )
 ```
 

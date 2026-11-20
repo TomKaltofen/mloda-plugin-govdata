@@ -35,11 +35,14 @@ pinned files are cached, else fetched once; a file that no longer matches its pi
 sha256 and download time, offline; both are `None` for a file not in the cache.
 
 ```python
-from mloda.user import Feature, Options, mloda
+import os
+
+from mloda.user import Credential, DataAccessCollection, Feature, Options, mloda
 from mloda_plugin_govdata.feature_groups.destatis import DestatisReader
 from mloda_plugin_govdata.feature_groups.harmonization import KreisRebaseFeature  # registers the groups
 
 KreisRebaseFeature.fetch_reference()  # the BBSR key file: fetched on the first run, read offline afterwards
+genesis = DataAccessCollection(credentials={"genesis": Credential(token=os.environ["GENESIS_TOKEN"])})
 
 goettingen = {
     "name": "12411-0015",
@@ -56,6 +59,7 @@ result = mloda.run_all(
         )
     ],
     compute_frameworks=["PyArrowTable"],
+    data_access_collection=genesis,
 )
 result[0]  # value__rebased~key, ~year, ~value, ~flag, ~sources, ~marker, ~issues, ~provenance
 ```

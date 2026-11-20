@@ -42,7 +42,15 @@ from mloda_plugin_govdata.feature_groups.harmonization.core.reference.sources im
 from mloda_plugin_govdata.feature_groups.harmonization.rebase import KreisRebaseFeature
 from mloda_plugin_govdata.recipes import Compliance, SourceCompliance, build_recipe, parse_recipe, recipe_to_json
 
-from .conftest import COCHEM_ZELL_ZIP, EXTRACT, GOETTINGEN_LOCATOR, GOETTINGEN_ZIP, LAND_ZIP, ffcsv_zip_with_rows
+from .conftest import (
+    COCHEM_ZELL_ZIP,
+    EXTRACT,
+    GOETTINGEN_LOCATOR,
+    GOETTINGEN_ZIP,
+    LAND_ZIP,
+    ffcsv_zip_with_rows,
+    genesis_collection,
+)
 
 CONFIGURATION_BASED_NAME = "destatis__bevoelkerung__kreise"
 PARTS = KreisRebaseFeature.OUTPUT_PARTS
@@ -63,7 +71,7 @@ def _cells(table: pa.Table, name: str) -> list[tuple[str, int, int, str, str]]:
 
 
 def _run(features: list[Feature | str]) -> Any:
-    return mloda.run_all(features, compute_frameworks=["PyArrowTable"])
+    return mloda.run_all(features, compute_frameworks=["PyArrowTable"], data_access_collection=genesis_collection())
 
 
 # --- Level 1: matching and input features -----------------------------------------------------

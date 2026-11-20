@@ -28,12 +28,16 @@ Der Feature-Name ist die gewünschte Spalte, die Option wählt Reader und Datens
 Registrieren Sie sich bei [GENESIS-Online](https://genesis.destatis.de/datenbank/online/) und setzen Sie den Token, den die Weboberfläche unter „Webservice-Schnittstelle (API)“ zeigt, als Umgebungsvariable `GENESIS_TOKEN` ([Details auf Englisch](credentials.md)).
 
 ```python
-from mloda.user import Feature, mloda
+import os
+
+from mloda.user import Credential, DataAccessCollection, Feature, mloda
 from mloda_plugin_govdata.feature_groups.destatis import DestatisReader
 
+genesis = DataAccessCollection(credentials={"genesis": Credential(token=os.environ["GENESIS_TOKEN"])})
 result = mloda.run_all(
     [Feature("value", options={DestatisReader: "12411-0010"})],  # Bevölkerung nach Ländern
     compute_frameworks=["PyArrowTable"],
+    data_access_collection=genesis,
 )
 ```
 

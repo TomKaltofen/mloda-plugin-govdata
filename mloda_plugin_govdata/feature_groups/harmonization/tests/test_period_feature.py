@@ -18,7 +18,7 @@ from mloda_plugin_govdata.feature_groups.govdata.population import StuttgartPopu
 from mloda_plugin_govdata.feature_groups.govdata.reader import GovDataReader
 from mloda_plugin_govdata.feature_groups.harmonization.period import AnnualPeriodFeature
 
-from .conftest import GOETTINGEN_LOCATOR, GOETTINGEN_ZIP
+from .conftest import GOETTINGEN_LOCATOR, GOETTINGEN_ZIP, genesis_collection
 
 PACKAGE_SHOW = "https://ckan.govdata.de/api/3/action/package_show"
 CSV_URL = "https://example.org/jahre.csv"
@@ -26,7 +26,7 @@ SLUG = "einwohner-nach-altersgruppen-und-stadtbezirken"
 
 
 def _run(features: list[Feature | str]) -> Any:
-    return mloda.run_all(features, compute_frameworks=["PyArrowTable"])
+    return mloda.run_all(features, compute_frameworks=["PyArrowTable"], data_access_collection=genesis_collection())
 
 
 def test_matches_the_year_period_name_and_the_configuration_based_form() -> None:

@@ -51,8 +51,7 @@ def _(mo):
        your token. git ignores this file, so the token stays out of the repository.
     4. Start marimo as in the setup line. It reads `.env` when it starts.
 
-    A user name and password work too (`GENESIS_USER` and `GENESIS_PASSWORD`), and so does a
-    `DataAccessCollection` passed to `run_all`; see
+    A user name and password work too (`GENESIS_USER` and `GENESIS_PASSWORD`); see
     [credentials](https://github.com/mloda-ai/mloda-plugin-govdata/blob/main/docs/credentials.md).
     """)
     return
@@ -62,7 +61,7 @@ def _(mo):
 def _():
     import altair as alt
 
-    from mloda.user import Feature, mloda
+    from mloda.user import DataAccessCollection, Feature, mloda
     from mloda_plugin_govdata.feature_groups.destatis import (
         GENESIS_ONLINE,
         DestatisCredentials,
@@ -72,6 +71,7 @@ def _():
     )
 
     return (
+        DataAccessCollection,
         DestatisCredentials,
         DestatisLocator,
         DestatisReader,
@@ -84,12 +84,16 @@ def _():
 
 
 @app.cell
-def _(DestatisCredentials, GENESIS_ONLINE, MissingCredentialsError, mo):
+def _(DataAccessCollection, DestatisCredentials, GENESIS_ONLINE, MissingCredentialsError, mo):
     # Every later cell takes a name from this cell, so mo.stop holds them all back.
     _why = None
+    _collection = None
     try:
-        if DestatisCredentials.from_env(GENESIS_ONLINE) is None:
+        _credentials = DestatisCredentials.from_env(GENESIS_ONLINE)
+        if _credentials is None:
             _why = "No token found: `GENESIS_TOKEN` is not set (nor `GENESIS_USER` and `GENESIS_PASSWORD`)."
+        else:
+            _collection = DataAccessCollection(credentials={"genesis": _credentials.to_credential()})
     except MissingCredentialsError:  # a user name without a password, or the reverse
         _why = "Set both `GENESIS_USER` and `GENESIS_PASSWORD`, or only `GENESIS_TOKEN`."
     except ValueError:  # a character that cannot be part of a token, e.g. a copied quote mark
@@ -98,9 +102,10 @@ def _(DestatisCredentials, GENESIS_ONLINE, MissingCredentialsError, mo):
         _why is not None,
         mo.md(f"**Stopped.** {_why} Follow *Get a token* above, then start marimo again."),
     )
+    collection = _collection
     TABLE = "12411-0010"
     TABLE_BY_AGE = "12411-0012"  # the same count, split by age (Step 4)
-    return TABLE, TABLE_BY_AGE
+    return TABLE, TABLE_BY_AGE, collection
 
 
 @app.cell
@@ -115,8 +120,8 @@ def _(mo):
 
 
 @app.cell
-def _(DestatisReader, TABLE):
-    DestatisReader.peek(TABLE)
+def _(DestatisReader, TABLE, collection):
+    DestatisReader.peek(TABLE, collection)
     return
 
 
@@ -148,7 +153,7 @@ def _(mo):
 
 
 @app.cell
-def _(DestatisReader, Feature, TABLE, mloda):
+def _(DestatisReader, Feature, TABLE, collection, mloda):
     _columns = [
         "time",
         "time_label",
@@ -161,6 +166,7 @@ def _(DestatisReader, Feature, TABLE, mloda):
         [Feature(_name, options={DestatisReader: TABLE}) for _name in _columns],
         compute_frameworks=["PyArrowTable"],
         column_ordering="request_order",
+        data_access_collection=collection,
     )
     population = _result[0].to_pandas().sort_values(["1_variable_attribute_code", "time"], ignore_index=True)
     population
@@ -189,13 +195,14 @@ def _(mo):
 
 
 @app.cell
-def _(DestatisLocator, DestatisReader, Feature, TABLE, mloda):
+def _(DestatisLocator, DestatisReader, Feature, TABLE, collection, mloda):
     since_1980 = DestatisLocator(TABLE, startyear=1980)
     _columns = ["time", "1_variable_attribute_code", "1_variable_attribute_label", "value", "value_marker"]
     _result = mloda.run_all(
         [Feature(_name, options={DestatisReader: since_1980}) for _name in _columns],
         compute_frameworks=["PyArrowTable"],
         column_ordering="request_order",
+        data_access_collection=collection,
     )
     history = _result[0].to_pandas().sort_values(["1_variable_attribute_code", "time"], ignore_index=True)
     history
@@ -228,7 +235,7 @@ def _(mo):
 
 
 @app.cell
-def _(DestatisLocator, DestatisReader, Feature, TABLE_BY_AGE, mloda):
+def _(DestatisLocator, DestatisReader, Feature, TABLE_BY_AGE, collection, mloda):
     under_one = DestatisLocator(TABLE_BY_AGE, classifyingvariable1="ALT103", classifyingkey1=["ALT000"])
     _columns = [
         "time",
@@ -241,6 +248,7 @@ def _(DestatisLocator, DestatisReader, Feature, TABLE_BY_AGE, mloda):
         [Feature(_name, options={DestatisReader: under_one}) for _name in _columns],
         compute_frameworks=["PyArrowTable"],
         column_ordering="request_order",
+        data_access_collection=collection,
     )
     by_age = _result[0].to_pandas().sort_values(["1_variable_attribute_label", "value"], ignore_index=True)
     by_age

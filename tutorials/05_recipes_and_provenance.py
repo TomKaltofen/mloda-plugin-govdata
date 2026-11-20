@@ -43,7 +43,7 @@ def _(mo):
 def _():
     import pandas as pd
 
-    from mloda.user import Feature, mloda
+    from mloda.user import DataAccessCollection, Feature, mloda
     from mloda_plugin_govdata.feature_groups.destatis import (
         GENESIS_ONLINE,
         DestatisCredentials,
@@ -57,6 +57,7 @@ def _():
 
     return (
         BundeswahlleiterinReader,
+        DataAccessCollection,
         DestatisCredentials,
         DestatisReader,
         Feature,
@@ -72,12 +73,16 @@ def _():
 
 
 @app.cell
-def _(DestatisCredentials, GENESIS_ONLINE, MissingCredentialsError, mo):
+def _(DataAccessCollection, DestatisCredentials, GENESIS_ONLINE, MissingCredentialsError, mo):
     # Every later cell takes a name from this cell, so mo.stop holds them all back.
     _why = None
+    _collection = None
     try:
-        if DestatisCredentials.from_env(GENESIS_ONLINE) is None:
+        _credentials = DestatisCredentials.from_env(GENESIS_ONLINE)
+        if _credentials is None:
             _why = "No token found: `GENESIS_TOKEN` is not set (nor `GENESIS_USER` and `GENESIS_PASSWORD`)."
+        else:
+            _collection = DataAccessCollection(credentials={"genesis": _credentials.to_credential()})
     except MissingCredentialsError:  # a user name without a password, or the reverse
         _why = "Set both `GENESIS_USER` and `GENESIS_PASSWORD`, or only `GENESIS_TOKEN`."
     except ValueError:  # a character that cannot be part of a token, e.g. a copied quote mark
@@ -87,8 +92,9 @@ def _(DestatisCredentials, GENESIS_ONLINE, MissingCredentialsError, mo):
     elif mo.notebook_dir() is None or not (mo.notebook_dir().parent / "recipes").is_dir():
         _why = "This notebook cannot find the `recipes/` folder. Open it from your clone of the repository."
     mo.stop(_why is not None, mo.md(f"**Stopped.** {_why}"))
+    collection = _collection
     recipes = mo.notebook_dir().parent / "recipes"
-    return (recipes,)
+    return collection, recipes
 
 
 @app.cell
@@ -129,8 +135,13 @@ def _(mo):
 
 
 @app.cell
-def _(mloda, recipe):
-    _result = mloda.run_all(recipe.features, compute_frameworks=["PyArrowTable"], column_ordering="request_order")
+def _(collection, mloda, recipe):
+    _result = mloda.run_all(
+        recipe.features,
+        compute_frameworks=["PyArrowTable"],
+        column_ordering="request_order",
+        data_access_collection=collection,
+    )
     population = _result.frame_for("value").to_pandas().sort_values("1_variable_attribute_code", ignore_index=True)
     election = _result.frame_for("Nr").to_pandas()
     lands = election[election["gehört zu"] == "99"].sort_values("Nr", ignore_index=True)
@@ -172,9 +183,11 @@ def _(mo):
 
 
 @app.cell
-def _(Feature, LandPopulationPerVoter, mloda, recipe):
+def _(Feature, LandPopulationPerVoter, collection, mloda, recipe):
     _after_step_1 = recipe  # waits for the token check and Step 1
-    _table = mloda.run_all([Feature(LandPopulationPerVoter.NAME)], compute_frameworks=["PyArrowTable"])[0]
+    _table = mloda.run_all(
+        [Feature(LandPopulationPerVoter.NAME)], compute_frameworks=["PyArrowTable"], data_access_collection=collection
+    )[0]
     per_voter = _table.to_pandas()
     per_voter.columns = [_name.rpartition("~")[2] for _name in per_voter.columns]  # keep only the part name
     per_voter[["code", "land", "population", "voters", "value"]]
