@@ -152,7 +152,8 @@ Maps AGS keys through the pinned Eurostat LAU-to-NUTS crosswalk
 (or the `nuts_version` option) and must be the cached crosswalk's. Kreis keys retired before the
 crosswalk's Gebietsstand resolve through the GV-ISys change files named in `AgsToNutsFeature.history_years`
 (the pinned year); Land keys are out of scope. `AgsToNutsFeature.fetch_reference()` fetches the crosswalk
-and the change files once.
+and the change files once, without parsing them; a change file for a year without a pin is first checked
+when a run reads it.
 
 | Option | Meaning |
 | --- | --- |
