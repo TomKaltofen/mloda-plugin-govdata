@@ -58,7 +58,7 @@ def parse_gv_isys_workbook(path: str | os.PathLike[str]) -> list[GvIsysChange]:
 
     changes: list[GvIsysChange] = []
     for cells in rows:
-        change_id = cells[0]
+        change_id = cells[0] if cells else None
         if not isinstance(change_id, str) or not _CHANGE_ID.match(change_id):
             continue  # title, blank, or header row; data rows are self-describing
         (
@@ -76,6 +76,8 @@ def parse_gv_isys_workbook(path: str | os.PathLike[str]) -> list[GvIsysChange]:
             legal_date,
             statistical_date,
         ) = cells[:13]  # read-only mode pads each row to the sheet's dimension
+        if any(value is not None for value in cells[13:]):
+            raise ValueError(f"GV-ISys row {change_id}: cells past column 13, so the layout changed")
         changes.append(
             GvIsysChange(
                 change_id=change_id,
@@ -91,6 +93,8 @@ def parse_gv_isys_workbook(path: str | os.PathLike[str]) -> list[GvIsysChange]:
                 effective_date_statistical=_parse_date(statistical_date),
             )
         )
+    if not changes:
+        raise ValueError(f"No GV-ISys change rows in {path} (sheets: {', '.join(workbook.sheetnames)})")
     return changes
 
 

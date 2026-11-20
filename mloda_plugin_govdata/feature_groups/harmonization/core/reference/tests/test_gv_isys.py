@@ -32,9 +32,8 @@ def test_ags_values_are_stripped_of_trailing_padding(fixtures_dir: Path) -> None
     assert all(c.from_ags == c.from_ags.strip() for c in changes)
 
 
-def test_reads_the_data_sheet_behind_a_cover_sheet_with_padded_rows(fixtures_dir: Path, tmp_path: Path) -> None:
-    # The published file opens with a cover sheet, and its sheet dimension pads rows past the 13 columns.
-    extract = fixtures_dir / "gv-isys-2016-extract.xlsx"
+def _behind_a_cover_sheet(extract: Path, tmp_path: Path, *, data: bool = True, trailing: str | None = None) -> Path:
+    """The extract laid out like the published file: a cover sheet first, rows padded past the 13 columns."""
     source = openpyxl.load_workbook(extract).active
     workbook = openpyxl.Workbook()
     cover = workbook.active
@@ -42,11 +41,28 @@ def test_reads_the_data_sheet_behind_a_cover_sheet_with_padded_rows(fixtures_dir
     cover.title = "Deckblatt"
     sheet = workbook.create_sheet("Gebietsaenderungen 2016")
     sheet.cell(row=1, column=20, value="widens the dimension")
-    for row in source.iter_rows(values_only=True):
-        sheet.append(row)
+    for row in source.iter_rows(values_only=True) if data else ():
+        sheet.append(row if trailing is None or not row[0] else (*row, trailing))
     made = tmp_path / "made.xlsx"
     workbook.save(made)
-    assert parse_gv_isys_workbook(made) == parse_gv_isys_workbook(extract)
+    return made
+
+
+def test_reads_the_data_sheet_behind_a_cover_sheet_with_padded_rows(fixtures_dir: Path, tmp_path: Path) -> None:
+    extract = fixtures_dir / "gv-isys-2016-extract.xlsx"
+    assert parse_gv_isys_workbook(_behind_a_cover_sheet(extract, tmp_path)) == parse_gv_isys_workbook(extract)
+
+
+@pytest.mark.parametrize(
+    ("layout", "message"),
+    [({"data": False}, "No GV-ISys change rows"), ({"trailing": "extra"}, "cells past column 13")],
+)
+def test_an_unexpected_layout_fails_loudly(
+    layout: dict[str, Any], message: str, fixtures_dir: Path, tmp_path: Path
+) -> None:
+    made = _behind_a_cover_sheet(fixtures_dir / "gv-isys-2016-extract.xlsx", tmp_path, **layout)
+    with pytest.raises(ValueError, match=message):
+        parse_gv_isys_workbook(made)
 
 
 def test_effective_dates_parsed(fixtures_dir: Path) -> None:
