@@ -26,16 +26,22 @@ _CHANGE_ID = re.compile(r"^\d{2}/\d{4}/\d+-[A-Z]$")
 @dataclass(frozen=True)
 class GvIsysChange:
     change_id: str
-    level: str  # "Kreis" or "Gemeinde"
+    level: str  # "Kreis", "Gemeinde" or "Gemeindeverband" (no AGS, only the RS)
     from_rs: str
-    from_ags: str
+    from_ags: str | None
     from_name: str
     change_type: str
     to_rs: str
-    to_ags: str
+    to_ags: str | None
     to_name: str
     effective_date_legal: date  # "juristisch"
     effective_date_statistical: date  # "statistisch"
+
+
+def _ags(value: Any) -> str | None:
+    """An AGS cell, stripped of its padding; ``None`` when empty."""
+    text = "" if value is None else str(value).strip()
+    return text or None
 
 
 def _parse_date(value: Any) -> date:
@@ -83,11 +89,11 @@ def parse_gv_isys_workbook(path: str | os.PathLike[str]) -> list[GvIsysChange]:
                 change_id=change_id,
                 level=str(level).strip(),
                 from_rs=str(from_rs).strip(),
-                from_ags=str(from_ags).strip(),
+                from_ags=_ags(from_ags),
                 from_name=str(from_name).strip(),
                 change_type=str(change_type).strip(),
                 to_rs=str(to_rs).strip(),
-                to_ags=str(to_ags).strip(),
+                to_ags=_ags(to_ags),
                 to_name=str(to_name).strip(),
                 effective_date_legal=_parse_date(legal_date),
                 effective_date_statistical=_parse_date(statistical_date),
