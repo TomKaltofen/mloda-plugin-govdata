@@ -566,29 +566,26 @@ def test_the_key_file_cache_state_in_load_keys_and_reference_sources(
     assert respx.calls.call_count == 1
 
 
-@pytest.mark.parametrize("cached", [True, False])
-def test_fetch_reference_reads_offline_first_and_fetches_once_on_a_miss(
-    cached: bool, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+@respx.mock
+def test_fetch_reference_stores_the_pinned_file_unparsed_and_fetches_it_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    calls: list[bool] = []
-
-    def load(cache: Any, *, revalidate: bool = False) -> list[Any]:
-        calls.append(revalidate)
-        if not (cached or revalidate):
-            raise CacheMissError("miss")
-        return []
-
-    monkeypatch.setattr("mloda_plugin_govdata.feature_groups.harmonization.rebase.load_bbsr_kreise", load)
+    # Not a workbook, so a parse would raise.
+    body = b"key sheets"
+    route = respx.get(BBSR_KREISE.url).mock(return_value=httpx.Response(200, content=body))
+    pinned = dataclasses.replace(BBSR_KREISE, sha256=hashlib.sha256(body).hexdigest())
+    monkeypatch.setattr("mloda_plugin_govdata.feature_groups.harmonization.rebase.BBSR_KREISE", pinned)
     monkeypatch.setattr(KreisRebaseFeature, "cache_dir", str(tmp_path))
     KreisRebaseFeature.fetch_reference()
-    assert calls == ([False] if cached else [False, True])
+    KreisRebaseFeature.fetch_reference()
+    assert route.call_count == 1
+    assert [copy.sha256 for copy in KreisRebaseFeature.reference_sources()] == [pinned.sha256]
 
 
+@respx.mock
 def test_fetch_reference_raises_a_drifted_upstream_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    def load(cache: Any, *, revalidate: bool = False) -> list[Any]:
-        raise SourceIntegrityError("drifted") if revalidate else CacheMissError("miss")
-
-    monkeypatch.setattr("mloda_plugin_govdata.feature_groups.harmonization.rebase.load_bbsr_kreise", load)
+    respx.get(BBSR_KREISE.url).mock(return_value=httpx.Response(200, content=b"drifted"))
     monkeypatch.setattr(KreisRebaseFeature, "cache_dir", str(tmp_path))
-    with pytest.raises(SourceIntegrityError, match="drifted"):
+    with pytest.raises(SourceIntegrityError, match="the upstream file may have changed"):
         KreisRebaseFeature.fetch_reference()
+    assert KreisRebaseFeature.reference_sources() == [ReferenceCopy(BBSR_KREISE, None, None)]
