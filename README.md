@@ -82,7 +82,7 @@ cd mloda-plugin-govdata
 uv sync --all-extras
 ```
 
-Tutorials, about 15 minutes each:
+Tutorials, about 15 minutes each. Read them online with their results, no install needed: [mloda-ai.github.io/mloda-plugin-govdata](https://mloda-ai.github.io/mloda-plugin-govdata/).
 
 1. [Your first table](https://github.com/mloda-ai/mloda-plugin-govdata/blob/main/tutorials/01_first_table.py): find a GovData dataset, see its columns, read it. No account. `uv run marimo edit tutorials/01_first_table.py`
 2. [Elections and air quality](https://github.com/mloda-ai/mloda-plugin-govdata/blob/main/tutorials/02_elections_and_air_quality.py): read the 2025 Bundestag election results and hourly ozone, steering each reader with options. No account. `uv run marimo edit tutorials/02_elections_and_air_quality.py`

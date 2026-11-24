@@ -49,6 +49,19 @@ git fetch template
 git merge template/main
 ```
 
+## Tutorials (live) Workflow
+
+**File:** `.github/workflows/tutorials-live.yml`
+
+**Triggers:**
+- Manual dispatch only, with an optional `publish` tick box
+
+**Purpose:** Runs every tutorial against the live sources. With `publish`, it then builds one web page per tutorial plus an index (`scripts/build_site.py`) and deploys them to GitHub Pages. From a branch other than the default one the pages are not deployed; they stay an artifact of the run.
+
+**Requirements:**
+- `GENESIS_TOKEN` - a GENESIS-Online token, as a repository secret
+- For `publish`: **Settings** > **Pages** > **Source** set to **GitHub Actions**
+
 ## Release Workflow
 
 **File:** `.github/workflows/release.yaml`
