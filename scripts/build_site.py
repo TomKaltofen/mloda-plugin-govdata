@@ -97,7 +97,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--tutorials", type=Path, default=TUTORIALS_DIR, help="the folder with the notebooks")
     args = parser.parse_args(argv)
 
-    # The same cases stop tutorials 3 to 5 without failing their export.
+    # The same cases stop the tutorials that need a token, and a stopped cell does not fail its export.
     try:
         credentials = DestatisCredentials.from_env(GENESIS_ONLINE)
     except (MissingCredentialsError, ValueError):
@@ -114,10 +114,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 2
     out.mkdir(parents=True, exist_ok=True)
 
-    problem = build(args.tutorials, out, secrets)
+    problem: str | None = "the build broke off"
+    try:
+        problem = build(args.tutorials, out, secrets)
+    finally:
+        if problem is not None:  # also on an error nobody expected
+            shutil.rmtree(out)
+            print(f"{problem}; {out} removed.", file=sys.stderr)
     if problem is not None:
-        shutil.rmtree(out)
-        print(f"{problem}; {out} removed.", file=sys.stderr)
         return 1
     print(f"{out}: pages and index written")
     return 0

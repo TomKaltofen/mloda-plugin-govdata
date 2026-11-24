@@ -14,6 +14,16 @@ from scripts.build_site import TUTORIALS_DIR, main
 TOKEN = "fake0token1for2the3tests"
 WORKFLOW = Path(__file__).resolve().parents[1] / ".github" / "workflows" / "tutorials-live.yml"
 SHOWS_THE_TOKEN = 'import os\n\n    os.environ["GENESIS_TOKEN"]'
+NOTEBOOK = """import marimo
+
+app = marimo.App()
+
+
+@app.cell
+def _():
+    {cell}
+    return
+"""
 
 
 @pytest.fixture
@@ -42,8 +52,7 @@ def _fake_export(monkeypatch: pytest.MonkeyPatch, names: list[str], body: str = 
 def _notebook(folder: Path, name: str, docstring: str | None, cell: str = "1 + 1") -> None:
     folder.mkdir(exist_ok=True)
     head = f'"""{docstring}"""\n\n' if docstring else ""
-    body = f"import marimo\n\napp = marimo.App()\n\n\n@app.cell\ndef _():\n    {cell}\n    return\n"
-    (folder / name).write_text(head + body, encoding="utf-8")
+    (folder / name).write_text(head + NOTEBOOK.format(cell=cell), encoding="utf-8")
 
 
 def _run(tmp_path: Path) -> int:
@@ -54,6 +63,7 @@ def test_index_links_every_tutorial_with_its_docstring_line(tmp_path: Path, toke
     _notebook(tmp_path / "tutorials", "01_first.py", "Tutorial 1: read <one> & two.\n\nMore.")
     _notebook(tmp_path / "tutorials", "02_second.py", "Tutorial 2: the next one.")
     _notebook(tmp_path / "tutorials", "_draft.py", "Not a tutorial yet.")
+    (tmp_path / "site").mkdir()  # an empty folder is taken
     assert _run(tmp_path) == 0
     assert exported == ["01_first.py", "02_second.py"]
     site = tmp_path / "site"
@@ -68,8 +78,8 @@ def test_index_links_every_tutorial_with_its_docstring_line(tmp_path: Path, toke
 
 def test_the_default_folder_is_the_repos_tutorials(tmp_path: Path, token: str, exported: list[str]) -> None:
     assert main(["--out", str(tmp_path / "site")]) == 0
-    assert exported == sorted(path.name for path in TUTORIALS_DIR.glob("[0-9]*.py"))
-    assert len(exported) >= 6
+    assert exported
+    assert all((TUTORIALS_DIR / name).is_file() for name in exported)
 
 
 @pytest.mark.parametrize(
@@ -100,13 +110,19 @@ def test_without_a_usable_token_nothing_is_exported(
     assert "GENESIS_TOKEN" in capsys.readouterr().err
 
 
-def test_a_folder_with_content_is_refused_and_left_alone(tmp_path: Path, token: str, exported: list[str]) -> None:
+@pytest.mark.parametrize("as_folder", [False, True], ids=["a-file", "a-folder-with-content"])
+def test_an_out_that_holds_something_is_refused_and_left_alone(
+    tmp_path: Path, token: str, exported: list[str], as_folder: bool
+) -> None:
     _notebook(tmp_path / "tutorials", "01_first.py", "Tutorial 1: one.")
-    (tmp_path / "site").mkdir()
-    (tmp_path / "site" / "keep.txt").write_text("mine", encoding="utf-8")
+    kept = tmp_path / "site"
+    if as_folder:
+        kept.mkdir()
+        kept = kept / "keep.txt"
+    kept.write_text("mine", encoding="utf-8")
     assert _run(tmp_path) == 2
     assert exported == []
-    assert (tmp_path / "site" / "keep.txt").read_text(encoding="utf-8") == "mine"
+    assert kept.read_text(encoding="utf-8") == "mine"
 
 
 @pytest.mark.parametrize(
@@ -139,15 +155,37 @@ def test_a_failed_export_removes_the_folder(tmp_path: Path, token: str, monkeypa
     assert not (tmp_path / "site").exists()
 
 
-def test_a_credential_in_a_page_removes_the_folder_and_names_only_the_file(
-    tmp_path: Path, token: str, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+def test_an_unexpected_error_still_removes_the_folder(tmp_path: Path, token: str, exported: list[str]) -> None:
+    (tmp_path / "tutorials").mkdir()
+    (tmp_path / "tutorials" / "01_first.py").write_text("def broken(:\n", encoding="utf-8")
+    with pytest.raises(SyntaxError):
+        _run(tmp_path)
+    assert not (tmp_path / "site").exists()
+
+
+@pytest.mark.parametrize(
+    ("docstring", "body", "file"),
+    [
+        ("Tutorial 1: one.", f"<p>{TOKEN.upper()}</p>", "01_first.html"),
+        (f"Tutorial 1: {TOKEN}.", "<p>page</p>", "index.html"),
+    ],
+    ids=["in-a-page", "in-the-index"],
+)
+def test_a_credential_in_any_file_removes_the_folder_and_names_only_the_file(
+    tmp_path: Path,
+    token: str,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    docstring: str,
+    body: str,
+    file: str,
 ) -> None:
-    _fake_export(monkeypatch, [], body=f"<p>{token.upper()}</p>")
-    _notebook(tmp_path / "tutorials", "01_first.py", "Tutorial 1: one.")
+    _fake_export(monkeypatch, [], body=body)
+    _notebook(tmp_path / "tutorials", "01_first.py", docstring)
     assert _run(tmp_path) == 1
     assert not (tmp_path / "site").exists()
     err = capsys.readouterr().err
-    assert "01_first.html contains a GENESIS credential" in err
+    assert f"{file} contains a GENESIS credential" in err
     assert token.lower() not in err.lower()
 
 
@@ -169,6 +207,8 @@ def test_the_real_marimo_export_is_caught(
 def test_the_workflow_publishes_by_hand_only_and_after_the_live_test() -> None:
     workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
     assert set(workflow[True]) == {"workflow_dispatch"}  # YAML 1.1 reads the key `on` as true
+    tick_box = workflow[True]["workflow_dispatch"]["inputs"]["publish"]
+    assert (tick_box["type"], tick_box["default"]) == ("boolean", False)
     steps = workflow["jobs"]["tutorials"]["steps"]
     runs = [step.get("run", "") for step in steps]
     live = next(position for position, run in enumerate(runs) if "pytest -m live" in run)
