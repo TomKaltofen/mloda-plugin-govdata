@@ -1,4 +1,4 @@
-"""build_site.py: the index, the refusals, the leak scan, one real marimo export; and the workflow that publishes."""
+"""build_site.py: index, legal links, refusals, leak scan, real marimo exports; and the workflow that publishes."""
 
 import base64
 from collections.abc import Callable
@@ -16,6 +16,9 @@ TOKEN = "fake0token1for2the3tests"
 WORKFLOW = Path(__file__).resolve().parents[1] / ".github" / "workflows" / "tutorials-live.yml"
 EMBEDDED = base64.b64encode(f"n;t\n1;{TOKEN}\n".encode()).decode()
 TOKEN_FROM_ENV = 'import os\n\n    token = os.environ["GENESIS_TOKEN"]'
+LEGAL_PAGES = ("https://mloda.ai/impressum/", "https://mloda.ai/datenschutz/")
+# The tag also as text inside the page, as notebook code can hold it.
+PAGE = '<html><body><script>"</body>"</script>{}</body></html>'
 NOTEBOOK = """import marimo
 
 app = marimo.App()
@@ -42,10 +45,12 @@ def exported(monkeypatch: pytest.MonkeyPatch) -> list[str]:
     return names
 
 
-def _fake_export(monkeypatch: pytest.MonkeyPatch, names: list[str], body: str = "<p>page</p>", code: int = 0) -> None:
+def _fake_export(
+    monkeypatch: pytest.MonkeyPatch, names: list[str], body: str = "<p>page</p>", code: int = 0, frame: str = PAGE
+) -> None:
     def export(notebook: Path, page: Path) -> int:
         names.append(notebook.name)
-        page.write_text(body, encoding="utf-8")
+        page.write_text(frame.format(body), encoding="utf-8")
         return code
 
     monkeypatch.setattr(build_site, "export", export)
@@ -76,6 +81,13 @@ def test_index_links_every_tutorial_with_its_docstring_line(tmp_path: Path, toke
     for expected in ('charset="utf-8"', "snapshot", "jsDelivr", "docs/schnellstart.md", "Funding code: 16IS26S11"):
         assert expected in index
     assert "<img" not in index  # the ministry logo needs approval first
+    for legal_page in LEGAL_PAGES:
+        assert f'href="{legal_page}"' in index
+    for name in ("01_first.html", "02_second.html"):
+        page = (site / name).read_text(encoding="utf-8")
+        assert page.count(build_site._BAR) == 1
+        assert page.endswith(build_site._BAR + "</body></html>")  # before the last body end, not the text one
+        assert all(f'href="{target}"' in page for target in ("index.html", *LEGAL_PAGES))
 
 
 def test_the_default_folder_is_the_repos_tutorials(tmp_path: Path, token: str, exported: list[str]) -> None:
@@ -154,11 +166,25 @@ def test_nothing_to_list_fails_and_removes_the_folder(
     assert reason in capsys.readouterr().err
 
 
-def test_a_failed_export_removes_the_folder(tmp_path: Path, token: str, monkeypatch: pytest.MonkeyPatch) -> None:
-    _fake_export(monkeypatch, [], code=1)
+@pytest.mark.parametrize(
+    ("code", "frame", "reason"),
+    [(1, PAGE, "did not run to the end"), (0, "{}", "has no </body>")],
+    ids=["failed-export", "page-without-a-body-end"],
+)
+def test_a_page_that_cannot_be_kept_removes_the_folder(
+    tmp_path: Path,
+    token: str,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    code: int,
+    frame: str,
+    reason: str,
+) -> None:
+    _fake_export(monkeypatch, [], code=code, frame=frame)
     _notebook(tmp_path / "tutorials", "01_first.py", "Tutorial 1: one.")
     assert _run(tmp_path) == 1
     assert not (tmp_path / "site").exists()
+    assert reason in capsys.readouterr().err
 
 
 def test_an_unexpected_error_still_removes_the_folder(tmp_path: Path, token: str, exported: list[str]) -> None:
@@ -217,6 +243,15 @@ def test_the_real_marimo_export_is_caught(
     assert _run(tmp_path) == 1
     assert not (tmp_path / "site").exists()
     assert reason in capsys.readouterr().err
+
+
+def test_the_real_marimo_page_takes_the_links(tmp_path: Path, token: str) -> None:
+    _notebook(tmp_path / "tutorials", "01_first.py", "Tutorial 1: one.")
+    assert _run(tmp_path) == 0
+    page = (tmp_path / "site" / "01_first.html").read_text(encoding="utf-8")
+    assert "__MARIMO_EXPORT_CONTEXT__" in page
+    assert page.count(build_site._BAR) == 1
+    assert page.rfind("</body>") == page.index(build_site._BAR) + len(build_site._BAR)
 
 
 def test_the_workflow_publishes_by_hand_only_and_after_the_live_test() -> None:

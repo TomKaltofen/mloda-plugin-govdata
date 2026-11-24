@@ -32,6 +32,19 @@ REPO_URL = "https://github.com/mloda-ai/mloda-plugin-govdata"
 # marimo's command line, with a stopped cell counted as a failed one.
 _MARIMO = Path(__file__).with_name("export_page.py")
 _BASE64_PAYLOAD = re.compile(r";base64,([A-Za-z0-9+/]+=*)")
+_LINK = '<a href="{href}" style="color:inherit;text-decoration:underline"{lang}>{label}</a>'
+_BETWEEN = '<span aria-hidden="true"> | </span>'
+_LEGAL = _BETWEEN.join(
+    _LINK.format(href=f"https://mloda.ai/{page}/", lang=' lang="de"', label=label)
+    for page, label in (("impressum", "Impressum"), ("datenschutz", "Datenschutz"))
+)
+# Fixed, because marimo's viewer owns the page layout; bottom left, because its own badge sits bottom right.
+_BAR = (
+    '<nav aria-label="Tutorials and legal links" style="position:fixed;bottom:0;left:0;z-index:30;max-width:100%;'
+    "box-sizing:border-box;padding:.3rem .8rem;font:13px system-ui,sans-serif;background:Canvas;color:CanvasText;"
+    'border:1px solid #8886;border-width:1px 1px 0 0;border-top-right-radius:.4rem">'
+    f"{_LINK.format(href='index.html', lang='', label='All tutorials')}{_BETWEEN}{_LEGAL}</nav>"
+)
 
 
 def export(notebook: Path, page: Path) -> int:
@@ -88,6 +101,7 @@ marimo, from the jsDelivr network.</p>
 <p>Funded by the German Federal Ministry of Research, Technology and Space (BMFTR) through the
 <a href="https://prototypefund.de">Prototype Fund</a>, supported by the
 <a href="https://okfn.de">Open Knowledge Foundation Deutschland</a>. Funding code: 16IS26S11.</p>
+<p>{_LEGAL}</p>
 </body>
 </html>
 """
@@ -106,6 +120,11 @@ def build(tutorials: Path, out: Path, secrets: set[str]) -> str | None:
         page = f"{notebook.stem}.html"
         if export(notebook, out / page) != 0:
             return f"{notebook.name} did not run to the end"
+        # The last </body>: notebook code or an output may hold the tag as text.
+        head, body_end, tail = (out / page).read_text(encoding="utf-8").rpartition("</body>")
+        if not body_end:
+            return f"{page} has no </body> to put the legal links before"
+        (out / page).write_text(head + _BAR + body_end + tail, encoding="utf-8")
         entries.append((page, line))
     (out / "index.html").write_text(_index(entries), encoding="utf-8")
     for written in sorted(out.iterdir()):
