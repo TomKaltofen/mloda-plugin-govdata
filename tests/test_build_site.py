@@ -1,5 +1,6 @@
 """build_site.py: the index, the refusals, the leak scan, one real marimo export; and the workflow that publishes."""
 
+import base64
 from collections.abc import Callable
 from pathlib import Path
 
@@ -13,7 +14,8 @@ from scripts.build_site import TUTORIALS_DIR, main
 
 TOKEN = "fake0token1for2the3tests"
 WORKFLOW = Path(__file__).resolve().parents[1] / ".github" / "workflows" / "tutorials-live.yml"
-SHOWS_THE_TOKEN = 'import os\n\n    os.environ["GENESIS_TOKEN"]'
+EMBEDDED = base64.b64encode(f"n;t\n1;{TOKEN}\n".encode()).decode()
+TOKEN_FROM_ENV = 'import os\n\n    token = os.environ["GENESIS_TOKEN"]'
 NOTEBOOK = """import marimo
 
 app = marimo.App()
@@ -110,13 +112,17 @@ def test_without_a_usable_token_nothing_is_exported(
     assert "GENESIS_TOKEN" in capsys.readouterr().err
 
 
-@pytest.mark.parametrize("as_folder", [False, True], ids=["a-file", "a-folder-with-content"])
-def test_an_out_that_holds_something_is_refused_and_left_alone(
-    tmp_path: Path, token: str, exported: list[str], as_folder: bool
+@pytest.mark.parametrize("kind", ["a-file", "a-folder-with-content", "a-link-to-a-folder"])
+def test_an_out_that_is_taken_is_refused_and_left_alone(
+    tmp_path: Path, token: str, exported: list[str], kind: str
 ) -> None:
     _notebook(tmp_path / "tutorials", "01_first.py", "Tutorial 1: one.")
     kept = tmp_path / "site"
-    if as_folder:
+    if kind == "a-link-to-a-folder":
+        kept = tmp_path / "elsewhere" / "keep.txt"
+        kept.parent.mkdir()
+        (tmp_path / "site").symlink_to(kept.parent, target_is_directory=True)
+    elif kind == "a-folder-with-content":
         kept.mkdir()
         kept = kept / "keep.txt"
     kept.write_text("mine", encoding="utf-8")
@@ -168,8 +174,9 @@ def test_an_unexpected_error_still_removes_the_folder(tmp_path: Path, token: str
     [
         ("Tutorial 1: one.", f"<p>{TOKEN.upper()}</p>", "01_first.html"),
         (f"Tutorial 1: {TOKEN}.", "<p>page</p>", "index.html"),
+        ("Tutorial 1: one.", f'<a href="data:text/csv;base64,{EMBEDDED}">data</a>', "01_first.html"),
     ],
-    ids=["in-a-page", "in-the-index"],
+    ids=["in-a-page", "in-the-index", "in-an-embedded-file"],
 )
 def test_a_credential_in_any_file_removes_the_folder_and_names_only_the_file(
     tmp_path: Path,
@@ -191,8 +198,16 @@ def test_a_credential_in_any_file_removes_the_folder_and_names_only_the_file(
 
 @pytest.mark.parametrize(
     ("cell", "reason"),
-    [('raise RuntimeError("boom")', "did not run to the end"), (SHOWS_THE_TOKEN, "contains a GENESIS credential")],
-    ids=["failing-cell", "token-in-an-output"],
+    [
+        ('raise RuntimeError("boom")', "did not run to the end"),
+        ('import marimo as mo\n\n    mo.stop(True, "nothing to show")', "did not run to the end"),
+        (f"{TOKEN_FROM_ENV}\n\n    token", "contains a GENESIS credential"),
+        (
+            f'{TOKEN_FROM_ENV}\n    import pandas as pd\n\n    pd.DataFrame({{"t": [token]}})',
+            "contains a GENESIS credential",
+        ),
+    ],
+    ids=["failing-cell", "stopped-cell", "token-in-an-output", "token-in-a-table"],
 )
 def test_the_real_marimo_export_is_caught(
     tmp_path: Path, token: str, cell: str, reason: str, capsys: pytest.CaptureFixture[str]
@@ -215,7 +230,7 @@ def test_the_workflow_publishes_by_hand_only_and_after_the_live_test() -> None:
     build = next(position for position, run in enumerate(runs) if "scripts/build_site.py" in run)
     assert live < build
     assert all(step["if"] == "inputs.publish" for step in steps[build:])
+    assert steps[build]["env"] == steps[live]["env"]  # the same token, or tutorials 3 to 5 stop
     publish = workflow["jobs"]["publish"]
     assert publish["needs"] == "tutorials"
-    assert "inputs.publish" in publish["if"]
-    assert "default_branch" in publish["if"]
+    assert publish["if"] == "inputs.publish && github.ref_name == github.event.repository.default_branch"

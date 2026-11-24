@@ -4,14 +4,17 @@ Usage:
     uv run --env-file .env python scripts/build_site.py --out site
 
 Every tutorial runs against the live sources, so this needs network access and ``GENESIS_TOKEN``.
-A cell that fails, or a credential in a page, removes ``--out`` again.
+A cell that fails or stops, or a credential in a page, removes ``--out`` again.
 """
 
 from __future__ import annotations
 
 import argparse
 import ast
+import base64
+import binascii
 import html
+import re
 import shutil
 
 # marimo's own export command, a fixed argument list, no shell.
@@ -26,12 +29,33 @@ from mloda_plugin_govdata.recipes.credential_scan import environment_secrets
 
 TUTORIALS_DIR = Path(__file__).resolve().parents[1] / "tutorials"
 REPO_URL = "https://github.com/mloda-ai/mloda-plugin-govdata"
+# marimo's command line, with a stopped cell counted as a failed one.
+_MARIMO = Path(__file__).with_name("export_page.py")
+_BASE64_PAYLOAD = re.compile(r";base64,([A-Za-z0-9+/]+=*)")
 
 
 def export(notebook: Path, page: Path) -> int:
-    """Run the notebook and write it as one static page; non-zero when a cell failed."""
-    command = [sys.executable, "-m", "marimo", "export", "html", str(notebook), "-o", str(page), "-f"]
+    """Run the notebook and write it as one static page; non-zero when a cell failed or stopped."""
+    command = [sys.executable, str(_MARIMO), "export", "html", str(notebook), "-o", str(page), "-f"]
     return subprocess.run(command, check=False).returncode  # nosec B603
+
+
+def _leaks(text: str, secrets: set[str], nested: int = 2) -> bool:
+    """A secret in the text, or in what its base64 payloads (embedded files) decode to."""
+    lowered = text.lower()
+    if any(secret in lowered for secret in secrets):
+        return True
+    if nested == 0:
+        return False
+    for payload in _BASE64_PAYLOAD.findall(text):
+        try:
+            raw = base64.b64decode(payload + "=" * (-len(payload) % 4))
+        except (binascii.Error, ValueError):
+            continue
+        decoded = (raw.decode(encoding, errors="replace") for encoding in ("utf-8", "latin-1"))
+        if any(_leaks(inner, secrets, nested - 1) for inner in decoded):
+            return True
+    return False
 
 
 def _first_docstring_line(notebook: Path) -> str | None:
@@ -58,7 +82,7 @@ def _index(entries: Sequence[tuple[str, str]]) -> str:
 </ul>
 <p>These pages are a snapshot from {built}. The inputs on them do not react: to change a value, run the
 notebooks yourself, see the <a href="{REPO_URL}#tutorials-and-demos">README</a>
-(auf Deutsch: <a href="{REPO_URL}/blob/main/docs/schnellstart.md">Schnellstart</a>).</p>
+(<span lang="de">auf Deutsch: <a href="{REPO_URL}/blob/main/docs/schnellstart.md">Schnellstart</a></span>).</p>
 <p>Each tutorial ends with the source and the license of its data. The tutorial pages load their viewer,
 marimo, from the jsDelivr network.</p>
 <p>Funded by the German Federal Ministry of Research, Technology and Space (BMFTR) through the
@@ -85,8 +109,7 @@ def build(tutorials: Path, out: Path, secrets: set[str]) -> str | None:
         entries.append((page, line))
     (out / "index.html").write_text(_index(entries), encoding="utf-8")
     for written in sorted(out.iterdir()):
-        text = written.read_text(encoding="utf-8", errors="replace").lower()
-        if any(secret in text for secret in secrets):
+        if _leaks(written.read_text(encoding="utf-8", errors="replace"), secrets):
             return f"{written.name} contains a GENESIS credential"  # the file, never the value
     return None
 
@@ -109,8 +132,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("Set GENESIS_TOKEN: the pages are built with the token and checked for it.", file=sys.stderr)
         return 2
     out: Path = args.out
-    if out.exists() and (not out.is_dir() or any(out.iterdir())):
-        print(f"{out} exists and is not empty; pass a new or empty folder.", file=sys.stderr)
+    if out.is_symlink() or (out.exists() and (not out.is_dir() or any(out.iterdir()))):
+        print(f"{out} is a link or not empty; pass a new or empty folder.", file=sys.stderr)
         return 2
     out.mkdir(parents=True, exist_ok=True)
 
