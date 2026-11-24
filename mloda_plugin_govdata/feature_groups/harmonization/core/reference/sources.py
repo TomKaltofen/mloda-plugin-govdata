@@ -5,7 +5,7 @@ Datenlizenz Deutschland - Namensnennung - Version 2.0 (DL-DE-BY-2.0), Eurostat u
 CC BY 4.0 (CC-BY-4.0). Hashes below are the *original* published file's sha256, fetched and pinned
 2026-08-17 (see the fixtures' own ``NOTICE`` for the matching extract hashes); BBSR re-pinned
 2026-09-24 after the 2024-2025 sheet was added, the earlier sheets unchanged; Eurostat LAU-to-NUTS re-pinned
-2026-10-21 after a re-publication that left the DE sheet unchanged.
+2026-10-21 and 2026-11-24, each after a re-publication that left the DE sheet unchanged.
 """
 
 from __future__ import annotations
@@ -53,7 +53,7 @@ EUROSTAT_NUTS_CORRESPONDENCE = ReferenceSource(
 EUROSTAT_LAU_NUTS = ReferenceSource(
     name="Eurostat LAU-to-NUTS correspondence (EU-27-LAU-2025-NUTS-2024)",
     url="https://ec.europa.eu/eurostat/documents/345175/501971/EU-27-LAU-2025-NUTS-2024.xlsx/574c9e4a-2dae-99fe-5510-3fd18d8e90c2",
-    sha256="9fd84ca59e36c2d494ccf0d7009f14feaa304a3943877c7d6533f736265aaf73",
+    sha256="5cfb4dc995746a4b5b8a60994e91e9bdc82bfdf68769c05b171d475d16a9c799",
     license=CC_BY_4_0,
     attribution="Source: Eurostat.",
 )

@@ -76,8 +76,12 @@ Original: https://ec.europa.eu/eurostat/documents/345175/501971/EU-27-LAU-2025-N
 Fetched: 2026-08-17
 Original sha256: 983e75ed4ec38b716f9e3839a99cdc9a3e72e55c6473e24084ff13afee4e65e5
 Re-published 2026-09-28 at the same URL, sha256 9fd84ca59e36c2d494ccf0d7009f14feaa304a3943877c7d6533f736265aaf73
-(the current pin, set 2026-10-21): the DE sheet unchanged cell for cell, compared against the Wayback Machine capture of
+(pinned 2026-10-21): the DE sheet unchanged cell for cell, compared against the Wayback Machine capture of
 2026-08-13, whose body matches the original sha256; only the EL, CY, RO, NO and CH sheets differ.
+Re-published again at the same URL between 2026-11-16 and 2026-11-24, sha256
+5cfb4dc995746a4b5b8a60994e91e9bdc82bfdf68769c05b171d475d16a9c799 (the current pin, set 2026-11-24): the DE sheet
+unchanged cell for cell against the 2026-09-28 file; an ME sheet was added, and the File_info, Overview,
+Overview_Population, BE, LV and FI sheets differ.
 Extract sha256: f2e0734283885f364e30f787b4e5fd78f42090218f50f297efdea505b8227576
 License: Creative Commons Attribution 4.0 International (CC BY 4.0), same Eurostat copyright
 notice as above. Attribution: Source: Eurostat.
