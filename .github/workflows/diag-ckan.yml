@@ -1,0 +1,51 @@
+name: Diagnose GovData reachability
+
+on:
+  push:
+    branches: [diag/ckan-reachability]
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, ubuntu-22.04, ubuntu-24.04-arm]
+        repeat: [1, 2]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    steps:
+      - name: Runner
+        run: |
+          echo "region: $(curl -s --max-time 5 -H Metadata:true 'http://169.254.169.254/metadata/instance/compute/location?api-version=2021-02-01&format=text' || echo unknown)"
+          echo "egress: $(curl -s --max-time 10 https://api.ipify.org || echo unknown)"
+      - name: DNS
+        run: |
+          getent ahosts ckan.govdata.de || true
+          getent ahosts www.govdata.de || true
+      - name: HTTPS probes
+        run: |
+          probe() {
+            for i in 1 2 3; do
+              curl -sS -o /dev/null --connect-timeout 10 --max-time 30 \
+                -w "$1 try $i: code=%{http_code} ip=%{remote_ip} connect=%{time_connect}s total=%{time_total}s\n" "$1" \
+                || echo "$1 try $i: FAILED"
+            done
+          }
+          probe 'https://ckan.govdata.de/api/3/action/package_search?q=test&rows=1'
+          probe 'https://www.govdata.de/'
+          probe 'http://ckan.govdata.de/'
+          probe 'https://www-genesis.destatis.de/'
+          probe 'https://www.bundeswahlleiterin.de/'
+          probe 'https://www.umweltbundesamt.de/'
+          probe 'https://pypi.org/simple/'
+      - name: TCP ports
+        run: |
+          ip=$(getent ahostsv4 ckan.govdata.de | awk 'NR==1{print $1}')
+          for port in 443 80; do
+            timeout 15 bash -c "</dev/tcp/$ip/$port" && echo "$ip:$port open" || echo "$ip:$port no connect"
+          done
+      - name: Path
+        run: timeout 90 tracepath -n -m 25 ckan.govdata.de || true
